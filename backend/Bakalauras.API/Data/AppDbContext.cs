@@ -189,7 +189,7 @@ public partial class AppDbContext : DbContext
                 .HasColumnType("int(11)");
             entity.Property(e => e.fk_Ordersid_Orders).HasColumnType("int(11)");
             entity.Property(e => e.fk_Productid_Product).HasColumnType("int(11)");
-            entity.Property(e => e.quantity).HasColumnType("int(11)");
+            entity.Property(e => e.quantity).HasColumnType("double");
 
             entity.HasOne(d => d.fk_Ordersid_OrdersNavigation).WithMany(p => p.ordersproducts)
                 .HasForeignKey(d => d.fk_Ordersid_Orders)

@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import DataTable from "../components/DataTable";
+import RightDrawer from "../components/RightDrawerSidebar";
 import "../styles/UserPage.css";
 function UsersList() {
   const [users, setUsers] = useState([]);
@@ -6,57 +8,124 @@ function UsersList() {
 
   useEffect(() => {
     fetch("http://localhost:5065/api/users/allUsersWithClients")
-      .then(res => {
+      .then((res) => {
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         return res.json();
       })
-      .then(data => setUsers(data))
-      .catch(err => console.error(err));
+      .then((data) => setUsers(data))
+      .catch((err) => console.error(err));
   }, []);
+
+  const columns = useMemo(
+    () => [
+
+      {
+        key: "fullName",
+        header: "Vardas, pavardė",
+        sortable: true,
+        accessor: (u) => `${u.name ?? ""} ${u.surname ?? ""}`.trim(),
+        cell: (_value, u) => (
+          <div className="dt-cell-stack">
+            <div className="dt-cell-primary">{u.name || "-"}</div>
+            <div className="dt-cell-secondary">{u.surname || "-"}</div>
+          </div>
+        ),
+      },
+      {
+        key: "emailPhone",
+        header: "El.paštas / Telefonas",
+        sortable: true,
+        accessor: (u) => u.email,
+        cell: (_value, u) => (
+          <div className="dt-cell-stack">
+            <div className="dt-cell-primary">{u.email || "-"}</div>
+            <div className="dt-cell-secondary">{u.phoneNumber || "-"}</div>
+          </div>
+        ),
+      },
+      {
+        key: "location",
+        header: "Vieta",
+        sortable: true,
+        accessor: (u) => `${u.client?.country ?? ""} ${u.client?.city ?? ""}`.trim(),
+        cell: (_value, u) => (
+          <div className="dt-cell-stack">
+            <div className="dt-cell-primary">{u.client?.country || "-"}</div>
+            <div className="dt-cell-secondary">
+              {(u.client?.city || " ") + " " + (u.client?.deliveryAddress || " ")}
+            </div>
+          </div>
+        ),
+      },
+      { key: "creationDate", header: "Sukūrimo data", sortable: true, accessor: (u) => new Date(u.creationDate), cell: (v) => v ? v.toLocaleDateString("lt-LT") : "-" },
+      {
+        key: "client",
+        header: "Klientas",
+        accessor: (u) => (u.client ? "Taip" : "Ne"),
+        sortable: true,
+      },
+    ],
+    []
+  );
+
+  const drawerSections = selectedUser
+    ? [
+      {
+        title: "Naudotojo duomenys",
+        rows: [
+          { label: "Vardas", value: selectedUser.name },
+          { label: "Pavardė", value: selectedUser.surname },
+          { label: "El. paštas", value: selectedUser.email },
+          { label: "Telefonas", value: selectedUser.phoneNumber || "-" },
+          {
+            label: "Sukurta",
+            value: selectedUser.creationDate
+              ? new Date(selectedUser.creationDate).toLocaleDateString("lt-LT")
+              : "-",
+          },
+          { label: "Auth", value: selectedUser.authProvider || "-" },
+        ],
+      },
+      {
+        title: "Kliento duomenys",
+        rows: selectedUser.client
+          ? [
+            { label: "Adresas", value: selectedUser.client.deliveryAddress || "-" },
+            { label: "Miestas", value: selectedUser.client.city || "-" },
+            { label: "Šalis", value: selectedUser.client.country || "-" },
+            { label: "VAT", value: selectedUser.client.vat || "-" },
+            { label: "Bank Code", value: selectedUser.client.bankCode || "-" },
+            { label: "Max Debt", value: selectedUser.client.maxDebt || "-" },
+          ]
+          : [],
+        emptyText: "Šis naudotojas neturi kliento duomenų.",
+      },
+    ]
+    : [];
 
   return (
     <div className="user-cointainer">
-      <h2>Visi naudotojai</h2>
-      <div className="user-list">
-        {users.map(user => (
-          <div className="user-card" key={user.id_Users} onClick={() => setSelectedUser(user)}>
-            <h4>Vardas, pavardė:</h4>
-            <h3>{user.name} {user.surname}</h3>
-            <h4>El.paštas:</h4>
-            <p>{user.email}</p>
-          </div>
-        ))}
-      </div>
 
-      {selectedUser && (
-        <div className="user-modal" onClick={() => setSelectedUser(null)}>
-          <div className="user-modal-content" onClick={e => e.stopPropagation()}>
-            <h2>{selectedUser.name} {selectedUser.surname}</h2>
-            <div className="user-modal-content-wrap">
-              <div>
+      <DataTable
+        title={null}
+        columns={columns}
+        rows={users}
+        pageSize={25}
+        getRowId={(u) => u.id_Users}
+        onRowClick={(u) => setSelectedUser(u)}
+        emptyText="Nėra duomenų"
+        initialSort={{ key: "fullName", dir: "asc" }}
+      />
 
-                <h3>Naudotojo duomenys</h3>
-                <p><strong>El.paštas:</strong> {selectedUser.email}</p>
-                <p><strong>Telefono Numeris:</strong> {selectedUser.phoneNumber || "-"}</p>
-                <p><strong>Paskyra sukurta:</strong> {new Date(selectedUser.creationDate).toLocaleString()}</p>
-                <p><strong>Auth Provider:</strong> {selectedUser.authProvider}</p>
-              </div>
-              {selectedUser.client && (
-                <div>
-                  <h3>Kliento duomenys</h3>
-                  <p><strong>Miestas:</strong> {selectedUser.client.city || "-"}</p>
-                  <p><strong>Šalis:</strong> {selectedUser.client.country || "-"}</p>
-                  <p><strong>VAT:</strong> {selectedUser.client.vat || "-"}</p>
-                  <p><strong>Bank Code:</strong> {selectedUser.client.bankCode || "-"}</p>
-                  <p><strong>Max Debt:</strong> {selectedUser.client.maxDebt || "-"}</p>
-                </div>
-              )}
-            </div>
-            <button onClick={() => setSelectedUser(null)}>Uždaryti</button>
-          </div>
-        </div>
-      )}
 
+
+      <RightDrawer
+        open={!!selectedUser}
+        title={selectedUser ? `${selectedUser.name} ${selectedUser.surname}` : ""}
+        subtitle={selectedUser?.email}
+        sections={drawerSections}
+        onClose={() => setSelectedUser(null)}
+      />
     </div>
   );
 }

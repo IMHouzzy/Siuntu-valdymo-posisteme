@@ -145,3 +145,4 @@ C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siunt�
 C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\obj\Debug\net8.0\Bakalauras.API.pdb
 C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\obj\Debug\net8.0\Bakalauras.API.genruntimeconfig.cache
 C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\obj\Debug\net8.0\ref\Bakalauras.API.dll
+C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\obj\Debug\net8.0\Bakalauras.API.sourcelink.json

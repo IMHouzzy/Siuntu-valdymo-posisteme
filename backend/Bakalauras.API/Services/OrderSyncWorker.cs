@@ -27,7 +27,7 @@ public class OrderSyncWorker : BackgroundService
                 Console.WriteLine($"[OrderSyncWorker] Error: {ex}");
             }
 
-            await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+            await Task.Delay(TimeSpan.FromMinutes(60), stoppingToken);
         }
     }
 
@@ -118,8 +118,19 @@ public class OrderSyncWorker : BackgroundService
                 {
                     fk_Ordersid_Orders = order.id_Orders,
                     fk_Productid_Product = productId,
-                    quantity = (int)Math.Round(it.Quantity, MidpointRounding.AwayFromZero)
+                    quantity =it.Quantity,
                 });
+                if (it.Price.HasValue && it.Quantity != 0)
+                {
+                    var unitPrice =it.Price.Value;
+
+
+                    var affected = await db.products
+                        .Where(p => p.externalCode == it.Good_Id)
+                        .ExecuteUpdateAsync(s => s.SetProperty(p => p.price, unitPrice), ct);
+
+                    Console.WriteLine($"Updated ext={it.Good_Id} affected={affected} unitPrice={unitPrice}");
+                }
             }
 
             await db.SaveChangesAsync(ct);

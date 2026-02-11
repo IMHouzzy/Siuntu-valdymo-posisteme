@@ -1,0 +1,51 @@
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: var(--radius-lg);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+/* Awaiting confirmation (warning/yellow) */
+.status-awaiting {
+  background: rgba(245, 158, 11, 0.14);
+  color: var(--color-warning);
+  border-color: rgba(245, 158, 11, 0.28);
+}
+
+/* In progress (primary/blue) */
+.status-progress {
+  background: rgba(37, 99, 235, 0.14);
+  color: var(--color-primary);
+  border-color: rgba(37, 99, 235, 0.28);
+}
+
+/* Sent (secondary/slate) */
+.status-sent {
+  background: rgba(100, 116, 139, 0.14);
+  color: var(--color-secondary);
+  border-color: rgba(100, 116, 139, 0.28);
+}
+
+/* Completed (success/green) */
+.status-completed {
+  background: rgba(34, 197, 94, 0.14);
+  color: var(--color-accent);
+  border-color: rgba(34, 197, 94, 0.28);
+}
+
+/* Cancelled (danger/red) */
+.status-cancelled {
+  background: rgba(239, 68, 68, 0.14);
+  color: var(--color-danger);
+  border-color: rgba(239, 68, 68, 0.28);
+}
+
+/* fallback */
+.status-default {
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+}

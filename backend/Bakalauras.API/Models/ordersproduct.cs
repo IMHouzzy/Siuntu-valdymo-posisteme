@@ -5,7 +5,7 @@ namespace Bakalauras.API.Models;
 
 public partial class ordersproduct
 {
-    public int quantity { get; set; }
+    public double quantity { get; set; }
 
     public int id_OrdersProduct { get; set; }
 

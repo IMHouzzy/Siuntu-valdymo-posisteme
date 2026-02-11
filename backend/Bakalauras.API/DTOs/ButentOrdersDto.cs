@@ -45,8 +45,8 @@ public sealed class ButentItemDto
 
     [JsonPropertyName("quantity")]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
-    public decimal Quantity { get; set; }
+    public double Quantity { get; set; }
 
     [JsonPropertyName("price")]
-    public decimal? Price { get; set; }
+    public double? Price { get; set; }
 }

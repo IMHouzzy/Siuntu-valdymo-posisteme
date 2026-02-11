@@ -1,21 +1,25 @@
 :root {
-  /* ===== COLORS ===== */
-  --color-primary: #2563eb;        /* mėlyna – pagrindiniai veiksmai */
-  --color-primary-hover: #1d4ed8;
+/* ===== COLORS — Enterprise Track ===== */
+--color-primary: #1d4ed8;
+--color-primary-hover: #1e40af;
 
-  --color-secondary: #64748b;      /* pilkai-mėlyna */
-  --color-accent: #22c55e;         /* žalia – success */
+--color-secondary: #475569;
+--color-accent: #16a34a;
 
-  --color-danger: #ef4444;         /* klaidos */
-  --color-warning: #f59e0b;        /* įspėjimai */
+--color-danger: #dc2626;
+--color-warning: #d97706;
 
-  --color-bg: #f8fafc;             /* app background */
-  --color-bg-card: #ffffff;        /* kortelės */
-  --color-border: #e5e7eb;
+--color-bg: #f5f7fb;
+--color-bg-card: #ffffff;
+--color-border: #d9dee7;
 
-  --color-text-primary: #0f172a;   /* pagrindinis tekstas */
-  --color-text-secondary: #475569; /* antrinis tekstas */
-  --color-text-muted: #94a3b8;
+--color-text-primary: #0b1220;
+--color-text-secondary: #3f4d63;
+--color-text-muted: #8b98ad;
+
+
+
+
 
   /* ===== FONTS ===== */
   --font-family-base: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;

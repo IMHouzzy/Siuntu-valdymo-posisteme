@@ -28,7 +28,7 @@ public class ClientSyncWorker : BackgroundService
                 Console.WriteLine($"Error syncing clients: {ex}");
             }
 
-            await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+            await Task.Delay(TimeSpan.FromMinutes(60), stoppingToken);
         }
     }
 

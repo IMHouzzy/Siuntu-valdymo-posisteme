@@ -29,7 +29,7 @@ public class ProductSyncWorker : BackgroundService
                 Console.WriteLine($"[ProductSyncWorker] Error: {ex}");
             }
 
-            await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+            await Task.Delay(TimeSpan.FromMinutes(60), stoppingToken);
         }
     }
 
