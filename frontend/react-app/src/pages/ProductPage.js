@@ -1,21 +1,64 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, } from "react";
+import { useNavigate } from "react-router-dom";
 import DataTable from "../components/DataTable";
 import RightDrawer from "../components/RightDrawerSidebar";
 import "../styles/UserPage.css";
+import TableToolbar from "../components/TableToolbar";
+import { FiTrash2, FiEdit } from "react-icons/fi";
 function ProductList() {
+    const navigate = useNavigate();
     const [products, setProducts] = useState([]);
     const [selectedProduct, setSelectedProduct] = useState(null);
+    const [q, setQ] = useState("");
 
     useEffect(() => {
         fetch("http://localhost:5065/api/products/allProductsFullInfo")
             .then((res) => {
                 if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
                 return res.json();
+
             })
             .then((data) => setProducts(data))
             .catch((err) => console.error(err));
-    }, []);
 
+    }, []);
+    const deleteProduct = async (p) => {
+        const ok = window.confirm(`Delete product "${p.name}"?`);
+        if (!ok) return;
+
+        const res = await fetch(`http://localhost:5065/api/products/deleteProduct/${p.id_Product}`, {
+            method: "DELETE",
+        });
+
+        if (!res.ok) {
+            alert("Delete failed");
+            return;
+        }
+
+        // remove from UI
+        setProducts((prev) => prev.filter((x) => x.id_Product !== p.id_Product));
+        setSelectedProduct(null);
+    };
+    const filtered = useMemo(() => {
+        const s = q.trim().toLowerCase();
+        if (!s) return products;
+
+        return products.filter((p) => {
+            const name = (p.name || "").toLowerCase();
+            const code = String(p.externalCode ?? "").toLowerCase();
+            const id = String(p.id_Product ?? "").toLowerCase();
+            const date = String(p.creationDate ?? "").toLowerCase();
+            const group = (p.groups ?? [])
+                .map(g => g.name?.toLowerCase() || "")
+                .join(" ");
+            const type = (p.categories ?? [])
+                .map(c => c.name?.toLowerCase() || "")
+                .join(" ");
+
+            const price = String(p.price ?? "").toLowerCase();
+            return name.includes(s) || code.includes(s) || id.includes(s) || date.includes(s) || group.includes(s) || type.includes(s) || price.includes(s);
+        });
+    }, [products, q]);
     const columns = useMemo(
         () => [
 
@@ -93,6 +136,37 @@ function ProductList() {
                     </div>
                 ),
             },
+            {
+                key: "actions",
+                header: "",
+                width: 80,
+                align: "right",
+                cell: (_v, p) => (
+                    <div className="dt-actions">
+                        <button
+                            className="dt-icon-btn"
+                            title="Edit"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/productEdit/${p.id_Product}`);
+                            }}
+                        >
+                            <FiEdit />
+                        </button>
+
+                        <button
+                            className="dt-icon-btn danger"
+                            title="Delete"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                deleteProduct(p);
+                            }}
+                        >
+                            <FiTrash2 />
+                        </button>
+                    </div>
+                ),
+            }
 
         ],
         []
@@ -137,16 +211,23 @@ function ProductList() {
                     },
                 ],
             },
+
         ]
         : [];
 
     return (
         <div className="user-cointainer">
-
+            <TableToolbar
+                title="Produktai"
+                searchValue={q}
+                onSearchChange={setQ}
+                addLabel="Pridėti produktą"
+                onAdd={() => navigate("/productAdd")}
+            />
             <DataTable
                 title={null}
                 columns={columns}
-                rows={products}
+                rows={filtered}
                 pageSize={25}
                 getRowId={(p) => p.id_Product}
                 onRowClick={(p) => setSelectedProduct(p)}
@@ -162,6 +243,26 @@ function ProductList() {
                 subtitle={selectedProduct ? `Id: ${selectedProduct.id_Product} ` : ""}
                 sections={drawerSections}
                 onClose={() => setSelectedProduct(null)}
+                actions={
+                    selectedProduct ? (
+                        <>
+                            <button
+                                className="rd-action-btn"
+                                onClick={() => navigate(`/productEdit/${selectedProduct.id_Product}`)}
+                            >
+                               <FiEdit /> Redaguoti
+                            </button>
+
+                            <button
+                                className="rd-action-btn danger"
+                                onClick={() => deleteProduct(selectedProduct)}
+                            >
+                               <FiTrash2 /> Ištrinti
+                            </button>
+                        </>
+                    ) : null
+                }
+
             />
         </div>
     );

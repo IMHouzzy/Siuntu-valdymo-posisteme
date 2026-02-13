@@ -11,6 +11,8 @@ import Header from "./components/header";
 import OrderPage from "./pages/OrderPage";
 import ProductPage from "./pages/ProductPage";
 import SidebarLeft from "./components/SidebarLeft";
+import ProductAdd from "./pages/ProductAdd";
+import ProductEdit from "./pages/ProductEdit";
 import "./App.css";
 
 function App() {
@@ -43,6 +45,9 @@ function App() {
           <Route path="/orderList" element={<OrderPage />} />
           <Route path="/productList" element={<ProductPage />} />
           <Route path="/usersList" element={<UsersPage />} />
+          <Route path="/productAdd" element={<ProductAdd />} />
+          <Route path="/productEdit/:id" element={<ProductEdit />} />
+
         </Routes>
       </div>
 

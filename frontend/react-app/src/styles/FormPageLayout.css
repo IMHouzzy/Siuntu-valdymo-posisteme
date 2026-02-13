@@ -1,0 +1,30 @@
+.fpl {
+  max-width: 900px;
+  margin:  50px auto;
+}
+
+.fpl-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+}
+
+.fpl-title {
+  margin: 0;
+  font-size: var(--text-2xl);
+  color: var(--color-text-primary);
+}
+
+.fpl-sub {
+  margin-top: 6px;
+  color: var(--color-text-muted);
+}
+
+.fpl-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  box-shadow: var(--shadow-sm);
+}

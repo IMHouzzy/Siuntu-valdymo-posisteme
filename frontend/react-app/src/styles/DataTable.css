@@ -147,3 +147,36 @@
   background: rgba(37, 99, 235, 0.12);
   color: var(--color-primary);
 }
+.dt-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap: var(--space-xs);
+}
+
+.dt-icon-btn{
+  display:inline-grid;
+  place-items:center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  cursor:pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.dt-icon-btn:hover{
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+}
+
+.dt-icon-btn.danger{
+  color: var(--color-danger);
+  border-color: rgba(239,68,68,.35);
+  background: rgba(239,68,68,.06);
+}
+
+.dt-icon-btn.danger:hover{
+  background: rgba(239,68,68,.12);
+}

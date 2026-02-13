@@ -18,6 +18,7 @@ export default function RightDrawer({
   subtitle,
   sections = [],
   onClose,
+  actions,
   width = 520, // px
 }) {
   // ESC to close
@@ -49,9 +50,10 @@ export default function RightDrawer({
             {subtitle ? <div className="rd-subtitle">{subtitle}</div> : null}
           </div>
 
-          <button className="rd-close" onClick={onClose} aria-label="Close">
-            ✕
-          </button>
+          <div className="rd-header-actions">
+            {actions}
+            <button className="rd-close" onClick={onClose}>✕</button>
+          </div>
         </div>
 
         <div className="rd-body">
