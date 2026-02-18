@@ -3,11 +3,15 @@
   flex-wrap: wrap;
   gap: var(--space-lg);
   padding: var(--space-md) var(--space-lg);
- 
+
 }
+
 .nav-container a {
   text-decoration: none;
   color: var(--color-text);
   font-size: var(--text-lg);
   font-weight: var(--font-medium);
+    display: flex;         
+  align-items: center;    
+  gap: 8px;   
 }

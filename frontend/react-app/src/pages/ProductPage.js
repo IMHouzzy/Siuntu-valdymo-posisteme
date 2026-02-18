@@ -35,7 +35,6 @@ function ProductList() {
             return;
         }
 
-        // remove from UI
         setProducts((prev) => prev.filter((x) => x.id_Product !== p.id_Product));
         setSelectedProduct(null);
     };
@@ -221,7 +220,7 @@ function ProductList() {
                 title="Produktai"
                 searchValue={q}
                 onSearchChange={setQ}
-                addLabel="Pridėti produktą"
+                addLabel="Kurti prekę"
                 onAdd={() => navigate("/productAdd")}
             />
             <DataTable
@@ -250,14 +249,14 @@ function ProductList() {
                                 className="rd-action-btn"
                                 onClick={() => navigate(`/productEdit/${selectedProduct.id_Product}`)}
                             >
-                               <FiEdit /> Redaguoti
+                                <FiEdit /> Redaguoti
                             </button>
 
                             <button
                                 className="rd-action-btn danger"
                                 onClick={() => deleteProduct(selectedProduct)}
                             >
-                               <FiTrash2 /> Ištrinti
+                                <FiTrash2 /> Ištrinti
                             </button>
                         </>
                     ) : null

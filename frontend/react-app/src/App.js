@@ -1,18 +1,32 @@
 import React, { useState } from "react";
 import { Routes, Route } from "react-router-dom";
+
+import Header from "./components/header";
+import SidebarLeft from "./components/SidebarLeft";
+
 import HomePage from "./pages/HomePage";
-import UsersPage from "./pages/UsersPage";
 import NotFoundPage from "./pages/NotFoundPage";
+
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import AccountConfirmationPassword from "./pages/AccountConfirmationPassword";
 import ChangePassword from "./pages/ChangePasswordPage";
-import Header from "./components/header";
+
+
+
 import OrderPage from "./pages/OrderPage";
+import OrderAdd from "./pages/OrderAdd";
+import OrderEdit from "./pages/OrderEdit";
+
 import ProductPage from "./pages/ProductPage";
-import SidebarLeft from "./components/SidebarLeft";
 import ProductAdd from "./pages/ProductAdd";
 import ProductEdit from "./pages/ProductEdit";
+
+import UsersPage from "./pages/UsersPage";
+import UserAdd from "./pages/UserAdd";
+import UserEdit from "./pages/UserEdit";
+
+
 import "./App.css";
 
 function App() {
@@ -42,11 +56,18 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/account-confirmation" element={<AccountConfirmationPassword />} />
           <Route path="/change-password" element={<ChangePassword />} />
-          <Route path="/orderList" element={<OrderPage />} />
+
           <Route path="/productList" element={<ProductPage />} />
-          <Route path="/usersList" element={<UsersPage />} />
           <Route path="/productAdd" element={<ProductAdd />} />
           <Route path="/productEdit/:id" element={<ProductEdit />} />
+
+          <Route path="/orderList" element={<OrderPage />} />
+          <Route path="/orderAdd" element={<OrderAdd />} />
+          <Route path="/orderEdit/:id" element={<OrderEdit />} />
+
+          <Route path="/usersList" element={<UsersPage />} />
+          <Route path="/userAdd" element={<UserAdd />} />
+          <Route path="/userEdit/:id" element={<UserEdit />} />
 
         </Routes>
       </div>

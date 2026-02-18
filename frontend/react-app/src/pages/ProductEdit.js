@@ -63,7 +63,7 @@ export default function ProductEditPage() {
   return (
     <FormPageLayout title="Redaguoti prekę" subtitle={`ID: ${id}`}>
       <SmartForm
-        key={`edit-${id}`}  /* ensures it mounts once when page loads */
+        key={`edit-${id}`}
         fields={fields}
         initialValues={initialValues}
         submitLabel="Išsaugoti"

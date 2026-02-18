@@ -176,7 +176,6 @@ public class ProductController : ControllerBase
         p.canTheProductBeProductReturned = dto.canTheProductBeProductReturned;
         p.countableItem = dto.countableItem;
 
-        // replace relations (single-select)
         p.fk_Categoryid_Categories.Clear();
         p.fk_ProductGroupId_ProductGroups.Clear();
 
@@ -207,7 +206,7 @@ public class ProductController : ControllerBase
         // also if product is in orders -> block or delete links (see note below)
         // p.ordersproducts.Clear(); // only if you include and want to delete order links
 
-        await _db.SaveChangesAsync(); // executes DELETE from join tables
+        await _db.SaveChangesAsync(); 
 
         _db.products.Remove(p);
         await _db.SaveChangesAsync();

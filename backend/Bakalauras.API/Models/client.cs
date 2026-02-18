@@ -25,7 +25,7 @@ public partial class client
 
     public int? maxDebt { get; set; }
 
-    public int externalClientId { get; set; }
+    public int? externalClientId { get; set; }
 
     public int userId { get; set; }
 

@@ -102,3 +102,111 @@
     grid-column: span 1;
   }
 }
+
+.sf-block.span-2 {
+  grid-column: span 2;
+}
+
+.sf-section-title{
+  font-size: var(--text-md);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  margin-top: 8px;
+}
+
+.sf-section-sub{
+  margin-top: 4px;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.sf-divider.span-2{
+  grid-column: span 2;
+  height: 1px;
+  background: var(--color-border);
+  margin: 6px 0;
+}
+.sf-block.span-2,
+.sf-divider.span-2 {
+  grid-column: span 2;
+}
+.sf-combo {
+  position: relative;
+}
+
+.sf-combo-btn {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+}
+
+.sf-combo-btn.is-error {
+  border-color: rgba(239, 68, 68, 0.6);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+.sf-combo-placeholder {
+  color: var(--color-text-muted);
+}
+
+.sf-combo-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.sf-combo-search {
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  outline: none;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+}
+
+.sf-combo-options {
+  max-height: 240px;
+  overflow: auto;
+}
+
+.sf-combo-option {
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 10px 12px;
+  text-align: left;
+  color: var(--color-text-primary);
+}
+
+.sf-combo-option:hover {
+  background: var(--color-bg);
+}
+
+.sf-combo-option.active {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.sf-combo-empty {
+  padding: 12px;
+  color: var(--color-text-muted);
+}

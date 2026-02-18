@@ -21,7 +21,7 @@ public partial class order
 
     public int? fk_Reportid_Report { get; set; }
 
-    public int externalDocumentId { get; set; }
+    public int? externalDocumentId { get; set; }
 
     public virtual client fk_Clientid_UsersNavigation { get; set; } = null!;
 

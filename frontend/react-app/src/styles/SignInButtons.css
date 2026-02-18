@@ -1,61 +1,177 @@
-.auth-buttons {
-    display: flex;
-    gap: var(--space-xs);
+.signin-container {
+    position: relative;
+    display: inline-block;
 }
 
-.signin-button-login {
+
+.signin-trigger {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: var(--text-md);
+    font-weight: var(--font-medium);
+    color: var(--color-text);
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px;
+    border-radius: var(--radius-lg);
+}
+
+.signin-trigger:hover {
+    background: var(--color-bg);
+}
+
+.avatar-circle {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 2px solid var(--color-border);
+    background: var(--color-bg-card);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 34px;
+}
+
+.avatar-circle.is-logged {
+    border-color: var(--color-primary);
+}
+
+.avatar-initials {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.user-name {
+    max-width: 160px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chev {
+    transition: transform var(--transition-fast);
+}
+
+.chev.open {
+    transform: rotate(180deg);
+}
+
+.menu-header {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--color-text-secondary);
+    padding: 8px 12px;
+}
+
+.menu-header a {
+    margin-top: var(--space-sm);
+}
+
+.menu-header h4 {
+    font-size: var(--text-md);
+}
+
+.menu-top {}
+
+/* dropdown */
+.signin-content {
+    position: absolute;
+    top: calc(100% + 1px);
+    right: 0;
+    /* usually nicer for user menu */
+    background: var(--color-bg-card);
+    min-width: 240px;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    z-index: 20;
+    border-radius: var(--radius-md);
+    opacity: 0;
+    transform: translateY(-8px);
+    pointer-events: none;
+    transition: all var(--transition-fast);
+    border: 2px solid var(--color-border);
+    padding: 10px;
+}
+
+.signin-content.open {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+/* buttons inside menu */
+.menu-btn {
+    border: none;
+    cursor: pointer;
+    width: 100%;
+    text-align: center;
+
     background-color: var(--color-primary);
     color: var(--color-bg);
-    border: none;
     padding: var(--space-sm) var(--space-lg);
     border-radius: var(--radius-lg);
     font-size: var(--text-md);
     font-weight: var(--font-medium);
-    cursor: pointer;
     box-shadow: var(--shadow-sm);
     transition: var(--transition-normal);
+    text-decoration: none;
 
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.signin-button-login:hover {
+.menu-btn:hover {
     background-color: var(--color-primary-hover);
     box-shadow: var(--shadow-md);
 }
 
-.signup-button-register {
-    background-color: var(--color-bg);
+.menu-btn.secondary {
+    background: var(--color-bg);
     color: var(--color-text-primary);
-    border: none;
-    padding: var(--space-sm) var(--space-lg);
-    border-radius: var(--radius-lg);
-    font-size: var(--text-md);
-    font-weight: var(--font-medium);
-    cursor: pointer;
-    box-shadow: var(--shadow-sm);
-    transition: var(--transition-normal);
     border: 1px solid var(--color-border);
 }
 
-.signup-button-register:hover {
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--color-primary);
+.menu-btn.secondary:hover {
+    border-color: var(--color-primary);
 }
 
-.logout-button {
-    background-color: var(--color-danger);
-    color: var(--color-bg);
-    border: none;
-    padding: var(--space-sm) var(--space-lg);
-    border-radius: var(--radius-lg);
-    font-size: var(--text-md);
-    font-weight: var(--font-medium);
-    cursor: pointer;
-    box-shadow: var(--shadow-sm);
-    transition: var(--transition-normal);
-
+.menu-btn.danger {
+    margin-top: var(--space-sm);
+    background: var(--color-danger);
 }
 
-.logout-button:hover {
-    background-color: #d13434;
-    box-shadow: var(--shadow-md);
+.menu-btn.danger:hover {
+    background: #d13434;
+}
+
+.menu-divider {
+    height: 1px;
+    background: var(--color-border);
+    margin: 10px 0;
+}
+
+/* links under divider */
+.menu-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    color: var(--color-text-primary);
+}
+
+.menu-link:hover {
+    background: var(--color-bg);
+}
+
+.menu-link svg {
+    display: block;
 }

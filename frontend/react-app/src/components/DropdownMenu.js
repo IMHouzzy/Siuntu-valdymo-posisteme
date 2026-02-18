@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import "../styles/DropdownMenu.css";
-
-function DropdownMenu({ title, items }) {
+import { FiChevronDown } from "react-icons/fi";
+function DropdownMenu({ title, items, icon }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -14,7 +14,7 @@ function DropdownMenu({ title, items }) {
         className="dropdown-button"
         onClick={() => setOpen(!open)}
       >
-        {title}
+        {icon} {title}<FiChevronDown size={18}/>
       </button>
 
       <div className={`dropdown-content ${open ? "open" : ""}`}>

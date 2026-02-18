@@ -7,7 +7,7 @@ public partial class employee
 {
     public string position { get; set; } = null!;
 
-    public DateOnly startDate { get; set; }
+    public DateTime startDate { get; set; }
 
     public bool? active { get; set; }
 

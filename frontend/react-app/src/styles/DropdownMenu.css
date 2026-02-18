@@ -8,9 +8,12 @@
     border: none;
     cursor: pointer;
     font-size: var(--text-lg);
-
     font-weight: var(--font-medium);
     color: var(--color-text);
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .dropdown-content {
@@ -18,7 +21,7 @@
     top: 100%;
     left: 0;
     background: var(--color-bg-card);
-    min-width: 210px;
+    min-width: 230px;
     box-shadow: var(--shadow-md);
     display: flex;
     flex-direction: column;
@@ -35,7 +38,7 @@
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
-    
+
 }
 
 
@@ -46,6 +49,6 @@
 }
 
 .dropdown-content a:hover {
-    background-color: var( --color-bg);
+    background-color: var(--color-bg);
     border-radius: var(--radius-md);
 }

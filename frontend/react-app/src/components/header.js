@@ -1,11 +1,11 @@
 import Navbar from "./Navbar";
-import SignInButtons from "./SignInButtons";
+import SignInProfile from "./SignInProfile";
 import "../styles/Header.css";
 function header() {
   return (
     <div className="header-container">
-    <Navbar/>
-    <SignInButtons/>
+      <Navbar />
+      <SignInProfile />
 
     </div>
   );

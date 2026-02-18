@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import DataTable from "../components/DataTable";
 import RightDrawer from "../components/RightDrawerSidebar";
 import "../styles/UserPage.css";
+import TableToolbar from "../components/TableToolbar";
+import { FiTrash2, FiEdit } from "react-icons/fi";
 function UsersList() {
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
-
+  const [q, setQ] = useState("");
   useEffect(() => {
     fetch("http://localhost:5065/api/users/allUsersWithClients")
       .then((res) => {
@@ -15,7 +19,39 @@ function UsersList() {
       .then((data) => setUsers(data))
       .catch((err) => console.error(err));
   }, []);
+  const deleteUser = async (p) => {
+    const ok = window.confirm(`Delete user "${p.name}"?`);
+    if (!ok) return;
 
+    const res = await fetch(`http://localhost:5065/api/users/deleteUser/${p.id_Users}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      alert("Delete failed");
+      return;
+    }
+
+    setUsers((prev) => prev.filter((x) => x.id_Users !== p.id_Users));
+    setSelectedUser(null);
+  };
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return users;
+
+    return users.filter((p) => {
+      const name = (p.name || "").toLowerCase();
+      const surname = (p.surname || "").toLowerCase();
+      const date = String(p.creationDate ?? "").toLowerCase();
+      const email = String(p.email ?? "").toLowerCase();
+      const phoneNumber = String(p.phoneNumber ?? "").toLowerCase();
+      const city = String(p.client?.city ?? "").toLowerCase();
+      const country = String(p.client?.country ?? "").toLowerCase();
+      const deliveryAddress = String(p.client?.deliveryAddress ?? "").toLowerCase();
+
+      return name.includes(s) || surname.includes(s) || email.includes(s) || phoneNumber.includes(s) || city.includes(s) || country.includes(s) || deliveryAddress.includes(s) || date.includes(s);
+    });
+  }, [users, q]);
   const columns = useMemo(
     () => [
 
@@ -64,6 +100,37 @@ function UsersList() {
         accessor: (u) => (u.client ? "Taip" : "Ne"),
         sortable: true,
       },
+      {
+        key: "actions",
+        header: "",
+        width: 80,
+        align: "right",
+        cell: (_v, p) => (
+          <div className="dt-actions">
+            <button
+              className="dt-icon-btn"
+              title="Edit"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/userEdit/${p.id_Users}`);
+              }}
+            >
+              <FiEdit />
+            </button>
+
+            <button
+              className="dt-icon-btn danger"
+              title="Delete"
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteUser(p);
+              }}
+            >
+              <FiTrash2 />
+            </button>
+          </div>
+        ),
+      }
     ],
     []
   );
@@ -105,11 +172,18 @@ function UsersList() {
 
   return (
     <div className="user-cointainer">
+      <TableToolbar
+        title="Naudotojai"
+        searchValue={q}
+        onSearchChange={setQ}
+        addLabel="Kurti naudotoją"
+        onAdd={() => navigate("/userAdd")}
+      />
 
       <DataTable
         title={null}
         columns={columns}
-        rows={users}
+        rows={filtered}
         pageSize={25}
         getRowId={(u) => u.id_Users}
         onRowClick={(u) => setSelectedUser(u)}
@@ -125,6 +199,25 @@ function UsersList() {
         subtitle={selectedUser?.email}
         sections={drawerSections}
         onClose={() => setSelectedUser(null)}
+        actions={
+          selectedUser ? (
+            <>
+              <button
+                className="rd-action-btn"
+                onClick={() => navigate(`/userEdit/${selectedUser.id_Users}`)}
+              >
+                <FiEdit /> Redaguoti
+              </button>
+
+              <button
+                className="rd-action-btn danger"
+                onClick={() => deleteUser(selectedUser)}
+              >
+                <FiTrash2 /> Ištrinti
+              </button>
+            </>
+          ) : null
+        }
       />
     </div>
   );

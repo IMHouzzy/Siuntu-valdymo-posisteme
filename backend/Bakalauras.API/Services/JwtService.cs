@@ -14,29 +14,34 @@ public class JwtService
         _config = config;
     }
 
-    public string GenerateToken(users user)
+   public string GenerateToken(users user)
+{
+    var claims = new[]
     {
-        var claims = new[]
-        {
-            new Claim(JwtRegisteredClaimNames.Sub, user.id_Users.ToString()),
-            new Claim(JwtRegisteredClaimNames.Email, user.email),
-            new Claim("provider", user.authProvider)
-        };
+        new Claim(JwtRegisteredClaimNames.Sub, user.id_Users.ToString()),
+        new Claim(JwtRegisteredClaimNames.Email, user.email),
+        new Claim("provider", user.authProvider),
 
-        var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(_config["Jwt:Key"])
-        );
+        // ✅ add these:
+        new Claim("name", user.name ?? ""),
+        new Claim("surname", user.surname ?? ""),
+        new Claim("fullName", $"{user.name} {user.surname}".Trim())
+    };
 
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+    var key = new SymmetricSecurityKey(
+        Encoding.UTF8.GetBytes(_config["Jwt:Key"])
+    );
 
-        var token = new JwtSecurityToken(
-            issuer: _config["Jwt:Issuer"],
-            audience: _config["Jwt:Audience"],
-            claims: claims,
-            expires: DateTime.Now.AddMinutes(60),
-            signingCredentials: creds
-        );
+    var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
+    var token = new JwtSecurityToken(
+        issuer: _config["Jwt:Issuer"],
+        audience: _config["Jwt:Audience"],
+        claims: claims,
+        expires: DateTime.Now.AddMinutes(60),
+        signingCredentials: creds
+    );
+
+    return new JwtSecurityTokenHandler().WriteToken(token);
+}
 }

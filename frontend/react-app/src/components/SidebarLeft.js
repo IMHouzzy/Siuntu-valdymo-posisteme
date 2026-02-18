@@ -16,21 +16,22 @@ export default function SidebarLeft({ collapsed, onToggle }) {
                 id: "Užsakymai",
                 label: "Užsakymai",
                 icon: <FiShoppingCart />,
-                children: [{ label: "Užsakymų sąrašas", to: "/orderList" }],
+                children: [{ label: "Užsakymų sąrašas", to: "/orderList" }, { label: "Kurti užsakymą", to: "/orderAdd" }],
             },
             {
                 type: "group",
                 id: "Prekės",
                 label: "Prekės",
                 icon: <FiBox />,
-                children: [{ label: "Prekių sąrašas", to: "/productList" }],
+                children: [{ label: "Prekių sąrašas", to: "/productList" }, { label: "Kurti prekę", to: "/productAdd" }],
+              
             },
             {
                 type: "group",
                 id: "Naudotojai",
                 label: "Naudotojai",
                 icon: <FiUsers />,
-                children: [{ label: "Naudotojų sąrašas", to: "/usersList" }],
+                children: [{ label: "Naudotojų sąrašas", to: "/usersList"}, { label: "Kurti naudotoją", to: "/userAdd"  }],
             },
         ],
         []
