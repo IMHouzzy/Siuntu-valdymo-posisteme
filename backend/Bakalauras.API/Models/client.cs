@@ -7,11 +7,11 @@ public partial class client
 {
     public int id_Users { get; set; }
 
-    public string deliveryAddress { get; set; } = null!;
+    public string? deliveryAddress { get; set; }
 
-    public string city { get; set; } = null!;
+    public string? city { get; set; }
 
-    public string country { get; set; } = null!;
+    public string? country { get; set; }
 
     public long? code { get; set; }
 
@@ -27,9 +27,9 @@ public partial class client
 
     public int? externalClientId { get; set; }
 
-    public int userId { get; set; }
+    public int? userId { get; set; }
 
-    public virtual users id_UsersNavigation { get; set; } = null!;
+    public virtual user id_UsersNavigation { get; set; } = null!;
 
     public virtual ICollection<order> orders { get; set; } = new List<order>();
 }

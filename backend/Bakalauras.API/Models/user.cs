@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Bakalauras.API.Models;
 
-public partial class users
+public partial class user
 {
     public int id_Users { get; set; }
 
@@ -13,7 +13,7 @@ public partial class users
 
     public string email { get; set; } = null!;
 
-    public string? password { get; set; } = null!;
+    public string? password { get; set; }
 
     public string? phoneNumber { get; set; }
 

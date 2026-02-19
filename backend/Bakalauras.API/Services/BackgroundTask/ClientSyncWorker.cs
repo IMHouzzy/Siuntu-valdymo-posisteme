@@ -1,6 +1,5 @@
 using Bakalauras.API.Models;
 using Microsoft.EntityFrameworkCore;
-using Bakalauras.API.Data;
 
 public class ClientSyncWorker : BackgroundService
 {
@@ -59,7 +58,7 @@ public class ClientSyncWorker : BackgroundService
 
         if (existingUser == null)
         {
-            existingUser = new users
+            existingUser = new user
             {
                 email = $"klientas{ext.ClientID}@gmail.com",
                 password = BCrypt.Net.BCrypt.HashPassword("123"),

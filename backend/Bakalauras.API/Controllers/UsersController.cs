@@ -1,7 +1,7 @@
 using Bakalauras.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Bakalauras.API.Data;
+using Bakalauras.API.Models;
 
 [ApiController]
 [Route("api/users/")]
@@ -79,7 +79,7 @@ public class UsersController : ControllerBase
         try
         {
             // 1) Create base user
-            var user = new users
+            var user = new user
             {
                 name = dto.Name,
                 surname = dto.Surname,

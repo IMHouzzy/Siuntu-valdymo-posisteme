@@ -1,7 +1,7 @@
 using Bakalauras.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Bakalauras.API.Data;
+
 
 [ApiController]
 [Route("api/orders/")]
@@ -74,6 +74,8 @@ public class OrderController : ControllerBase
                 products = o.ordersproducts.Select(op => new
                 {
                     quantity = op.quantity,
+                    unitPrice = op.unitPrice,
+                    vatValue = op.vatValue,
                     productId = op.fk_Productid_Product,
                     name = op.fk_Productid_ProductNavigation.name,
                     price = op.fk_Productid_ProductNavigation.price,
@@ -120,7 +122,7 @@ public class OrderController : ControllerBase
 
         var products = await _db.products
             .Where(p => q == "" || p.name.Contains(q))
-            .Select(p => new { p.id_Product, p.name })
+            .Select(p => new { p.id_Product, p.name, p.price })
             .ToListAsync();
 
         return Ok(products);
@@ -181,7 +183,9 @@ public class OrderController : ControllerBase
                 {
                     fk_Ordersid_Orders = order.id_Orders,
                     fk_Productid_Product = it.ProductId,
-                    quantity = it.Quantity
+                    quantity = it.Quantity,
+                    unitPrice = it.UnitPrice,
+                    vatValue = it.VatValue
                 };
                 _db.ordersproducts.Add(op);
             }

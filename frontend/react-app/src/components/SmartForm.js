@@ -50,11 +50,12 @@ export default function SmartForm({
         }
       }
 
-      if (changed) onValuesChange?.(next);
+      // ✅ SVARBU: nepaleidžiam onValuesChange čia, kad nebūtų loop'o
       return changed ? next : prev;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patchValues]);
+
 
   const setField = (name, value) => {
     setValues((prev) => {
@@ -322,7 +323,7 @@ export default function SmartForm({
                       }}
                     >
                       {/* render row fields (two-column feel) */}
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr auto", gap: 10 }}>
                         {rowFields.map((rf) => {
                           const rowVisible = rf.visible ? rf.visible(row, values) : true;
                           if (!rowVisible) return null;

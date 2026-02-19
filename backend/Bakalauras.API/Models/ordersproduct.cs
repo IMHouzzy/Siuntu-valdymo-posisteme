@@ -5,9 +5,13 @@ namespace Bakalauras.API.Models;
 
 public partial class ordersproduct
 {
+    public int id_OrdersProduct { get; set; }
+
     public double quantity { get; set; }
 
-    public int id_OrdersProduct { get; set; }
+    public double unitPrice { get; set; }
+
+    public double vatValue { get; set; }
 
     public int fk_Ordersid_Orders { get; set; }
 

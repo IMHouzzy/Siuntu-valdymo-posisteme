@@ -131,6 +131,7 @@ C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siunt�
 C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\obj\Debug\net8.0\Bakalauras.API.csproj.CoreCompileInputs.cache
 C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\obj\Debug\net8.0\Bakalauras.API.MvcApplicationPartsAssemblyInfo.cs
 C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\obj\Debug\net8.0\Bakalauras.API.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\obj\Debug\net8.0\Bakalauras.API.sourcelink.json
 C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\obj\Debug\net8.0\staticwebassets.build.json
 C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\obj\Debug\net8.0\staticwebassets.development.json
 C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\obj\Debug\net8.0\staticwebassets\msbuild.Bakalauras.API.Microsoft.AspNetCore.StaticWebAssets.props
@@ -145,4 +146,3 @@ C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siunt�
 C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\obj\Debug\net8.0\Bakalauras.API.pdb
 C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\obj\Debug\net8.0\Bakalauras.API.genruntimeconfig.cache
 C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\obj\Debug\net8.0\ref\Bakalauras.API.dll
-C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\obj\Debug\net8.0\Bakalauras.API.sourcelink.json

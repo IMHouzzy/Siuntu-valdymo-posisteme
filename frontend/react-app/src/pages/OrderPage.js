@@ -39,6 +39,13 @@ function OrdersList() {
         setOrders((prev) => prev.filter((x) => x.id_Orders !== p.id_Orders));
         setSelectedOrder(null);
     };
+    const sumVatTotal = (o) =>
+        (o.products || []).reduce((acc, p) => {
+            const qty = Number(p.quantity ?? 0);
+            const vatUnit = Number(p.vatValue ?? 0); // darom prielaidą: vatValue = vieneto PVM
+            return acc + vatUnit * qty;
+        }, 0);
+
     const filtered = useMemo(() => {
         const s = q.trim().toLowerCase();
         if (!s) return orders;
@@ -57,9 +64,9 @@ function OrdersList() {
             const status = String(p.statusName ?? "").toLowerCase();
             const totalAmmount = String(p.totalAmount ?? "").toLowerCase();
 
-            return productName.includes(s) || code.includes(s) || id.includes(s) || date.includes(s) || email.includes(s) 
-            || clientName.includes(s) || clientSurname.includes(s) || clientCity.includes(s) || clientCountry.includes(s) || clientDeliveryAddress.includes(s)
-            || status.includes(s) || totalAmmount.includes(s);
+            return productName.includes(s) || code.includes(s) || id.includes(s) || date.includes(s) || email.includes(s)
+                || clientName.includes(s) || clientSurname.includes(s) || clientCity.includes(s) || clientCountry.includes(s) || clientDeliveryAddress.includes(s)
+                || status.includes(s) || totalAmmount.includes(s);
         });
     }, [orders, q]);
 
@@ -107,7 +114,7 @@ function OrdersList() {
                 accessor: (o) => Number(o.totalAmount ?? 0).toFixed(2),
                 cell: (_v, o) => (
                     <div className="dt-cell-stack">
-                        <div className="dt-cell-primary">{Number(o.totalAmount ?? 0).toFixed(2)}</div>
+                        <div className="dt-cell-primary">{Number(o.totalAmount ?? 0).toFixed(2) + " €"}</div>
                         <div className="dt-cell-secondary">{o.paymentMethod ?? "-"}</div>
                     </div>
                 ),
@@ -164,9 +171,10 @@ function OrdersList() {
     );
 
     const drawerSections = useMemo(() => {
+
         if (!selectedOrder) return [];
         const o = selectedOrder;
-
+       const vatTotal = sumVatTotal(o);
         const orderRows = [
             { label: "Užsakymo ID", value: o.id_Orders || "-" },
             { label: "Dokumento ID", value: o.externalDocumentId || "-" },
@@ -178,7 +186,12 @@ function OrdersList() {
             { label: "Statusas", value: <StatusBadge status={o.statusName} /> },
             { label: "Apmokėjimo būdas", value: o.paymentMethod || "-" },
             { label: "Pristatymo kaina", value: o.deliveryPrice != null ? Number(o.deliveryPrice).toFixed(2) : "-" },
-            { label: "Suma", value: o.totalAmount != null ? Number(o.totalAmount).toFixed(2) : "-" },
+            { label: "Suma", value: o.totalAmount != null ? Number(o.totalAmount).toFixed(2) + " €": "-" },
+            {
+                label: "PVM",
+                value: Number(vatTotal ?? 0).toFixed(2) + " €"
+            },
+
         ];
 
         const clientRows = o.client
@@ -200,7 +213,7 @@ function OrdersList() {
 
         const productRows = (o.products || []).map((p) => ({
             label: `${p.name || "Prekė"} (x${p.quantity || 0})`,
-            value: `${p.price != null ? Number(p.price).toFixed(2) : "-"} Eur`,
+            value: `${p.unitPrice != null ? Number(p.unitPrice).toFixed(2) : "-"} € be PVM`,
         }));
 
         return [

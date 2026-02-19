@@ -13,7 +13,7 @@ public partial class order
 
     public string paymentMethod { get; set; } = null!;
 
-    public double deliveryPrice { get; set; }
+    public double? deliveryPrice { get; set; }
 
     public int status { get; set; }
 

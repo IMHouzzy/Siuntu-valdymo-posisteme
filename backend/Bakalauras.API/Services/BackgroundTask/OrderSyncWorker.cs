@@ -1,4 +1,4 @@
-using Bakalauras.API.Data;
+
 using Bakalauras.API.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
@@ -60,15 +60,16 @@ public class OrderSyncWorker : BackgroundService
                 .ToListAsync(ct))
             .ToHashSet();
 
-        // cache mappings for fast FK resolve
         var clientsByExternal = await db.clients
             .AsNoTracking()
-            .ToDictionaryAsync(c => c.externalClientId, c => c.id_Users, ct);
-        // NOTE: adjust value if your orders.fk_Clientid_Users references something else
+            .Where(c => c.externalClientId.HasValue)
+            .ToDictionaryAsync(c => c.externalClientId!.Value, c => c.id_Users, ct);
 
         var productsByExternal = await db.products
             .AsNoTracking()
-            .ToDictionaryAsync(p => p.externalCode, p => p.id_Product, ct);
+            .Where(p => p.externalCode.HasValue)
+            .ToDictionaryAsync(p => p.externalCode!.Value, p => p.id_Product, ct);
+
 
         foreach (var bill in sales)
         {
@@ -109,29 +110,27 @@ public class OrderSyncWorker : BackgroundService
             // now insert items
             var items = await _butent.GetDocumentItemsAsync(extDocId, ct);
 
+            const double VatRate = 0.21;
+
             foreach (var it in items)
             {
                 if (!productsByExternal.TryGetValue(it.Good_Id, out var productId))
                     continue;
 
+                var unitPrice = it.Price ?? 0.0;
+                var vatValue = unitPrice * VatRate;
+
                 db.ordersproducts.Add(new ordersproduct
                 {
                     fk_Ordersid_Orders = order.id_Orders,
                     fk_Productid_Product = productId,
-                    quantity =it.Quantity,
+                    quantity = it.Quantity,
+
+                    unitPrice = unitPrice,
+                    vatValue = vatValue
                 });
-                if (it.Price.HasValue && it.Quantity != 0)
-                {
-                    var unitPrice =it.Price.Value;
-
-
-                    var affected = await db.products
-                        .Where(p => p.externalCode == it.Good_Id)
-                        .ExecuteUpdateAsync(s => s.SetProperty(p => p.price, unitPrice), ct);
-
-                    Console.WriteLine($"Updated ext={it.Good_Id} affected={affected} unitPrice={unitPrice}");
-                }
             }
+
 
             await db.SaveChangesAsync(ct);
 

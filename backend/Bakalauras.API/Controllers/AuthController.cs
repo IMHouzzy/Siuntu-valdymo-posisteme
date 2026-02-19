@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 
 using Bakalauras.API.Models;
 
-using Bakalauras.API.Data;
 using Bakalauras.API.Dtos;
 
 [ApiController]
@@ -25,7 +24,7 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public IActionResult Register(RegisterDto dto)
     {
-        var user = new users
+        var user = new user
         {
             email = dto.Email,
             password = BCrypt.Net.BCrypt.HashPassword(dto.Password),
@@ -69,7 +68,7 @@ public class AuthController : ControllerBase
 
         if (user == null)
 {
-    user = new users
+    user = new user
     {
         email = payload.Email ?? $"unknown{Guid.NewGuid()}@google.com",
         name = payload.GivenName ?? "Unknown",

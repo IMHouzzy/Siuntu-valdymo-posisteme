@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Net.Http.Headers;
-using Bakalauras.API.Data;
+using Bakalauras.API.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 

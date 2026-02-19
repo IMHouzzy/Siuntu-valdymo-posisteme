@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using Bakalauras.API.Models;
 using Microsoft.EntityFrameworkCore;
 using Pomelo.EntityFrameworkCore.MySql.Scaffolding.Internal;
 
-namespace Bakalauras.API.Data;
+namespace Bakalauras.API.Models;
 
 public partial class AppDbContext : DbContext
 {
@@ -35,7 +34,7 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<productgroup> productgroups { get; set; }
 
-    public virtual DbSet<users> users { get; set; }
+    public virtual DbSet<user> users { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -139,6 +138,7 @@ public partial class AppDbContext : DbContext
                 .IsRequired()
                 .HasDefaultValueSql("'1'");
             entity.Property(e => e.position).HasMaxLength(255);
+            entity.Property(e => e.startDate).HasColumnType("datetime");
 
             entity.HasOne(d => d.id_UsersNavigation).WithOne(p => p.employee)
                 .HasForeignKey<employee>(d => d.id_Users)
@@ -156,7 +156,8 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => e.status, "status");
 
-            entity.Property(e => e.id_Orders).HasColumnType("int(11)").ValueGeneratedOnAdd();
+            entity.Property(e => e.id_Orders).HasColumnType("int(11)");
+            entity.Property(e => e.OrdersDate).HasColumnType("datetime");
             entity.Property(e => e.externalDocumentId).HasColumnType("int(11)");
             entity.Property(e => e.fk_Clientid_Users).HasColumnType("int(11)");
             entity.Property(e => e.fk_Reportid_Report).HasColumnType("int(11)");
@@ -184,12 +185,9 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => e.fk_Productid_Product, "fk_Productid_Product");
 
-            entity.Property(e => e.id_OrdersProduct)
-                .ValueGeneratedOnAdd()
-                .HasColumnType("int(11)");
+            entity.Property(e => e.id_OrdersProduct).HasColumnType("int(11)");
             entity.Property(e => e.fk_Ordersid_Orders).HasColumnType("int(11)");
             entity.Property(e => e.fk_Productid_Product).HasColumnType("int(11)");
-            entity.Property(e => e.quantity).HasColumnType("double");
 
             entity.HasOne(d => d.fk_Ordersid_OrdersNavigation).WithMany(p => p.ordersproducts)
                 .HasForeignKey(d => d.fk_Ordersid_Orders)
@@ -225,6 +223,8 @@ public partial class AppDbContext : DbContext
             entity.HasIndex(e => e.externalCode, "uq_product_externalCode").IsUnique();
 
             entity.Property(e => e.id_Product).HasColumnType("int(11)");
+            entity.Property(e => e.creationDate).HasColumnType("datetime");
+            entity.Property(e => e.currency).HasMaxLength(15);
             entity.Property(e => e.description).HasMaxLength(255);
             entity.Property(e => e.externalCode).HasColumnType("int(11)");
             entity.Property(e => e.name).HasMaxLength(255);
@@ -266,7 +266,7 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.name).HasMaxLength(255);
         });
 
-        modelBuilder.Entity<users>(entity =>
+        modelBuilder.Entity<user>(entity =>
         {
             entity.HasKey(e => e.id_Users).HasName("PRIMARY");
 
@@ -274,6 +274,7 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.authProvider)
                 .HasMaxLength(50)
                 .HasDefaultValueSql("'LOCAL'");
+            entity.Property(e => e.creationDate).HasColumnType("datetime");
             entity.Property(e => e.email).HasMaxLength(255);
             entity.Property(e => e.googleId).HasMaxLength(255);
             entity.Property(e => e.name).HasMaxLength(255);

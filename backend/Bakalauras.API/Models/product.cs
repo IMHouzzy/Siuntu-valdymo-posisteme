@@ -13,6 +13,8 @@ public partial class product
 
     public double? price { get; set; }
 
+    public string? currency { get; set; }
+
     public string? picture { get; set; }
 
     public bool canTheProductBeProductReturned { get; set; }
@@ -27,7 +29,7 @@ public partial class product
 
     public DateTime? creationDate { get; set; }
 
-    public int externalCode { get; set; }
+    public int? externalCode { get; set; }
 
     public virtual ICollection<ordersproduct> ordersproducts { get; set; } = new List<ordersproduct>();
 

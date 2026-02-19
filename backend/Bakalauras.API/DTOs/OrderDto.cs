@@ -2,6 +2,8 @@ public class OrderItemDto
 {
     public int ProductId { get; set; }
     public double Quantity { get; set; }
+    public double UnitPrice { get; set; }
+    public double VatValue { get; set; }
 }
 
 public class ClientInfoDto

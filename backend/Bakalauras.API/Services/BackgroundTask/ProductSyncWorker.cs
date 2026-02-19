@@ -1,4 +1,3 @@
-using Bakalauras.API.Data;
 using Bakalauras.API.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;

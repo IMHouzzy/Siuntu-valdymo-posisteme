@@ -1,7 +1,7 @@
 using Bakalauras.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Bakalauras.API.Data;
+
 
 [ApiController]
 [Route("api/products/")]
