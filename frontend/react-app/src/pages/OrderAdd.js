@@ -67,8 +67,6 @@ export default function OrderCreatePage() {
       options: statuses.map(s => ({ value: s.id_OrderStatus, label: s.name })),
     },
 
-    { name: "totalAmount", label: "Suma", type: "number", required: true, colSpan: 2 },
-
     { type: "section", title: "Kliento informacija" },
     {
       name: "clientUserId",
@@ -122,6 +120,16 @@ export default function OrderCreatePage() {
         },
       ],
     },
+    { type: "spacer", colSpan: 1 },
+
+    {
+      name: "totalAmount",
+      label: "Suma (su PVM)",
+      type: "display",
+      colSpan: 1,
+      render: (val) => `${Number(val ?? 0).toFixed(2)} €`,
+    },
+
   ], [statuses, userOptions, productOptions]);
 
   const initialValues = useMemo(() => ({
@@ -153,6 +161,7 @@ export default function OrderCreatePage() {
         onValuesChange={async (v) => {
           const cid = v.clientUserId;
 
+          // klientas pasikeitė -> fetch clientInfo
           if (!cid) {
             lastClientIdRef.current = null;
             setPatch({
@@ -162,7 +171,6 @@ export default function OrderCreatePage() {
               vat: "",
               bankCode: null,
             });
-            // ✅ NE return; kad toliau suveiktų items price auto-fill
           } else {
             if (lastClientIdRef.current !== cid) {
               lastClientIdRef.current = cid;
@@ -184,40 +192,54 @@ export default function OrderCreatePage() {
             }
           }
 
-          // ✅ preload price + calculate totalAmount (vienas patch)
+          // ✅ total skaičiavimas + preload price tik jei price 0
           try {
-            const items = v.items ?? [];
+            const toNum = (x) => {
+              const n = Number(x);
+              return Number.isFinite(n) ? n : 0;
+            };
+
+            const items = Array.isArray(v.items) ? v.items : [];
             const VAT_RATE = 0.21;
 
-            const nextItems = items.map(it => {
-              if (!it.productId) return it;
+            const nextItems = items.map((it) => {
+              if (!it?.productId) return it;
 
-              // preloadinam kainą tik jei price 0/tuščia (kad neperrašyt user įvestos)
-              const currentPrice = Number(it.price ?? 0);
-              if (currentPrice > 0) return it;
+              const currentPrice = toNum(it.price);
+              if (currentPrice > 0) return it; // ✅ istorinių kainų / user įvestos neperrašom
 
               const p = productPriceById.get(String(it.productId)) ?? 0;
               return { ...it, price: p };
             });
 
-            const total = nextItems.reduce((sum, it) => {
-              const qty = Number(it.quantity ?? 0);
-              const price = Number(it.price ?? 0);
+            const itemsTotal = nextItems.reduce((sum, it) => {
+              const qty = toNum(it?.quantity);
+              const price = toNum(it?.price);
               const net = qty * price;
               const vat = net * VAT_RATE;
-              return sum + net + vat; // suma su PVM
+              return sum + net + vat;
             }, 0);
+
+            const total = itemsTotal;
+
 
             const roundedTotal = Math.round(total * 100) / 100;
 
             const itemsChanged =
-              nextItems.length === items.length &&
-              nextItems.some((it, i) => Number(it.price ?? 0) !== Number(items[i]?.price ?? 0));
+              nextItems.length !== items.length ||
+              nextItems.some((it, i) => {
+                const old = items[i] ?? {};
+                return (
+                  String(it?.productId ?? "") !== String(old?.productId ?? "") ||
+                  toNum(it?.quantity) !== toNum(old?.quantity) ||
+                  toNum(it?.price) !== toNum(old?.price)
+                );
+              });
 
-            const totalChanged = Number(v.totalAmount ?? 0) !== roundedTotal;
+            const totalChanged = toNum(v.totalAmount) !== roundedTotal;
 
             if (itemsChanged || totalChanged) {
-              setPatch(prev => ({
+              setPatch((prev) => ({
                 ...(prev ?? {}),
                 items: nextItems,
                 totalAmount: roundedTotal,
@@ -226,7 +248,6 @@ export default function OrderCreatePage() {
           } catch (e) {
             console.error(e);
           }
-
         }}
 
         onSubmit={async (v) => {

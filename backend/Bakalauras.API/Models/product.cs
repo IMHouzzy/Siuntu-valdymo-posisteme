@@ -33,6 +33,8 @@ public partial class product
 
     public virtual ICollection<ordersproduct> ordersproducts { get; set; } = new List<ordersproduct>();
 
+    public virtual ICollection<product_image> product_images { get; set; } = new List<product_image>();
+
     public virtual ICollection<category> fk_Categoryid_Categories { get; set; } = new List<category>();
 
     public virtual ICollection<productgroup> fk_ProductGroupId_ProductGroups { get; set; } = new List<productgroup>();

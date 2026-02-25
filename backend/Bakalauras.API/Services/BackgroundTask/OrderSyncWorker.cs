@@ -117,8 +117,9 @@ public class OrderSyncWorker : BackgroundService
                 if (!productsByExternal.TryGetValue(it.Good_Id, out var productId))
                     continue;
 
+
                 var unitPrice = it.Price ?? 0.0;
-                var vatValue = unitPrice * VatRate;
+                var vatValue = Math.Round(unitPrice * VatRate, 2);
 
                 db.ordersproducts.Add(new ordersproduct
                 {

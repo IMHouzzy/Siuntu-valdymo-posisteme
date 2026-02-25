@@ -32,6 +32,8 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<product> products { get; set; }
 
+    public virtual DbSet<product_image> product_images { get; set; }
+
     public virtual DbSet<productgroup> productgroups { get; set; }
 
     public virtual DbSet<user> users { get; set; }
@@ -254,6 +256,29 @@ public partial class AppDbContext : DbContext
                         j.IndexerProperty<int>("fk_Productid_Product").HasColumnType("int(11)");
                         j.IndexerProperty<int>("fk_ProductGroupId_ProductGroup").HasColumnType("int(11)");
                     });
+        });
+
+        modelBuilder.Entity<product_image>(entity =>
+        {
+            entity.HasKey(e => e.id_ProductImage).HasName("PRIMARY");
+
+            entity.HasIndex(e => e.fk_Productid_Product, "IX_product_images_fk_Productid_Product");
+
+            entity.HasIndex(e => e.isPrimary, "IX_product_images_isPrimary");
+
+            entity.HasIndex(e => new { e.fk_Productid_Product, e.sortOrder }, "IX_product_images_sortOrder");
+
+            entity.Property(e => e.id_ProductImage).HasColumnType("int(11)");
+            entity.Property(e => e.createdAt)
+                .HasDefaultValueSql("current_timestamp()")
+                .HasColumnType("datetime");
+            entity.Property(e => e.fk_Productid_Product).HasColumnType("int(11)");
+            entity.Property(e => e.sortOrder).HasColumnType("int(11)");
+            entity.Property(e => e.url).HasMaxLength(500);
+
+            entity.HasOne(d => d.fk_Productid_ProductNavigation).WithMany(p => p.product_images)
+                .HasForeignKey(d => d.fk_Productid_Product)
+                .HasConstraintName("FK_product_images_product");
         });
 
         modelBuilder.Entity<productgroup>(entity =>

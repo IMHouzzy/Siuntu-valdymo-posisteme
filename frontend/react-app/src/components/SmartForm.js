@@ -1,7 +1,7 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import "../styles/SmartForm.css";
 import SearchSelect from "./SearchSelect";
-
+import { FaArrowLeft, FaArrowRight} from "react-icons/fa";
 /**
  * fields:
  *  - normal fields as before
@@ -28,6 +28,7 @@ export default function SmartForm({
   const [touched, setTouched] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
+  const API_BASE = "http://localhost:5065";
   // reset when initialValues changes (edit page)
   useEffect(() => {
     setValues({ ...initialValues });
@@ -200,6 +201,113 @@ export default function SmartForm({
   };
 
   const renderInput = (f, value, err, disabled, onChange, onBlur) => {
+    if (f.type === "display") {
+      return (
+        <div className="sf-display">
+          {typeof f.render === "function" ? f.render(value, values) : String(value ?? "")}
+        </div>
+      );
+    }
+    if (f.type === "file") {
+      return (
+        <input
+          className={`sf-input ${err ? "is-error" : ""}`}
+          type="file"
+          multiple={!!f.multiple}
+          accept={f.accept ?? "image/*"}
+          disabled={disabled}
+          onBlur={onBlur}
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? []);
+            onChange(f.multiple ? files : (files[0] ?? null));
+          }}
+        />
+      );
+    }
+    if (f.type === "images") {
+      const list = Array.isArray(value) ? value : [];
+      // item shape:
+      // { type:'existing', id, url }  OR  { type:'new', file, previewUrl, tempKey }
+
+      const move = (from, to) => {
+        if (to < 0 || to >= list.length) return;
+        const copy = [...list];
+        const [item] = copy.splice(from, 1);
+        copy.splice(to, 0, item);
+        onChange(copy);
+      };
+
+      const removeAt = (idx) => {
+        const copy = [...list];
+        copy.splice(idx, 1);
+        onChange(copy);
+      };
+
+      const addFiles = (files) => {
+        const added = files.map((file, i) => ({
+          type: "new",
+          file,
+          tempKey: `${Date.now()}-${i}-${file.name}`,
+          previewUrl: URL.createObjectURL(file),
+        }));
+        onChange([...list, ...added]);
+      };
+
+      return (
+        <div className="sf-images">
+          <input
+            className={`sf-input ${err ? "is-error" : ""}`}
+            type="file"
+            multiple
+            accept={f.accept ?? "image/*"}
+            disabled={disabled}
+            onBlur={onBlur}
+            onChange={(e) => {
+              const files = Array.from(e.target.files ?? []);
+              if (files.length) addFiles(files);
+              e.target.value = ""; // ✅ leidžia vėl pasirinkti tuos pačius failus
+            }}
+          />
+
+          {list.length === 0 ? (
+            <div className="sf-images-empty">Nuotraukų nėra</div>
+          ) : (
+            <div className="sf-images-grid">
+              {list.map((img, idx) => (
+                <div key={img.type === "existing" ? `ex-${img.id}` : img.tempKey} className="sf-img-card">
+                  <div className="sf-img-top">
+                    <div className="sf-img-index">{idx + 1}</div>
+                    {idx === 0 ? <div className="sf-img-badge">Pagrindinė</div> : null}
+                  </div>
+
+                  <img
+                    className="sf-img-thumb"
+                    src={
+                      img.type === "existing"
+                        ? (img.url?.startsWith("http") ? img.url : `${API_BASE}${img.url}`)
+                        : img.previewUrl
+                    }
+                    alt={`img-${idx}`}
+                  />
+
+                  <div className="sf-img-actions">
+                    <button type="button" className="sf-btn sf-btn-ghost" onClick={() => move(idx, idx - 1)} disabled={idx === 0}>
+                      <FaArrowLeft />
+                    </button>
+                    <button type="button" className="sf-btn sf-btn-ghost" onClick={() => move(idx, idx + 1)} disabled={idx === list.length - 1}>
+                      <FaArrowRight />
+                    </button>
+                    <button type="button" className="sf-btn sf-btn-ghost danger" onClick={() => removeAt(idx)}>
+                      Ištrinti
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
     if (f.type === "textarea") {
       return (
         <textarea
@@ -293,7 +401,15 @@ export default function SmartForm({
               </div>
             );
           }
-
+          // SPACER
+          if (f.type === "spacer") {
+            return (
+              <div
+                key={`spacer-${idx}`}
+                className={`sf-field ${f.colSpan === 2 ? "span-2" : ""}`}
+              />
+            );
+          }
           // ARRAY FIELD
           if (f.type === "array") {
             const arr = Array.isArray(values[f.name]) ? values[f.name] : [];

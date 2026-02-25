@@ -5,6 +5,7 @@ import RightDrawer from "../components/RightDrawerSidebar";
 import "../styles/UserPage.css";
 import TableToolbar from "../components/TableToolbar";
 import { FiTrash2, FiEdit } from "react-icons/fi";
+import NoImage from "../images/no-camera.png";
 function ProductList() {
     const navigate = useNavigate();
     const [products, setProducts] = useState([]);
@@ -61,6 +62,37 @@ function ProductList() {
     const columns = useMemo(
         () => [
 
+            {
+                key: "image",
+                header: "",
+                width: 70,
+                align: "left",
+                sortable: false,
+                accessor: (p) => {
+                    const first = (p.images ?? [])
+                        .slice()
+                        .sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0) || (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];
+                    return first?.url ?? null;
+                },
+                cell: (v, p) => (
+                    <div className="dt-img-wrap">
+                        {v ? (
+                            <img
+                                className="dt-img"
+                                src={`http://localhost:5065${v}`}  // ✅ svarbu, jei url yra "/uploads/..."
+                                alt={p.name ?? "product"}
+                                loading="lazy"
+                                onClick={(e) => e.stopPropagation()}
+                                onError={(e) => { e.currentTarget.style.display = "none"; }}
+                            />
+                        ) : (
+                            <div className="dt-img-placeholder">
+                                <img src={NoImage} alt="No image" />
+                            </div>
+                        )}
+                    </div>
+                ),
+            },
             {
                 key: "productName",
                 header: "Producto pavadinimas / ID",
@@ -191,6 +223,51 @@ function ProductList() {
                             : "-",
                     },
 
+                ],
+            },
+            {
+                title: "Nuotraukos",
+                rows: [
+                    {
+                        label: "",
+                        value: (
+                            
+                            <div className="rd-img-grid">
+                                {(selectedProduct.images ?? [])
+                                    .slice()
+                                    .sort(
+                                        (a, b) =>
+                                            (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0) ||
+                                            (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
+                                    )
+                                    .map((img) => (
+                                        <a
+                                            key={img.id_ProductImage}
+                                            className="rd-img-tile"
+                                            href={`http://localhost:5065${img.url}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            onClick={(e) => e.stopPropagation()}
+                                            title={img.isPrimary ? "Pagrindinė" : ""}
+                                        >
+                                            <img
+                                                src={`http://localhost:5065${img.url}`}
+                                                alt="product"
+                                                loading="lazy"
+                                                onError={(e) => {
+                                                    e.currentTarget.style.display = "none";
+                                                }}
+                                            />
+                                            {img.isPrimary ? <div className="rd-img-badge">Pagrindinė</div> : null}
+                                        </a>
+                                    ))}
+
+                                {(!selectedProduct.images || selectedProduct.images.length === 0) ? (
+                                    <div className="rd-empty">Nėra nuotraukų</div>
+                                ) : null}
+                            </div>
+                        ),
+                    },
                 ],
             },
             {

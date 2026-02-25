@@ -46,6 +46,7 @@ export default function ProductFormPage() {
     { name: "vat", label: "VAT", type: "checkbox", help: "Taikyti VAT" },
     { name: "canTheProductBeProductReturned", label: "Grąžinimas", type: "checkbox", help: "Galima grąžinti" },
     { name: "countableItem", label: "Ar prekė skaičiuojama?", type: "checkbox", help: "Prekė skaičiuojama" },
+    { name: "images", label: "Nuotraukos", type: "images", colSpan: 2 },
   ], [categories, groups]);
 
   const initialValues = useMemo(() => ({
@@ -59,6 +60,8 @@ export default function ProductFormPage() {
 
     categoryId: "",
     groupId: "",
+
+    images: [],
   }), []);
 
   return (
@@ -69,11 +72,35 @@ export default function ProductFormPage() {
         submitLabel="Sukurti"
         onCancel={() => navigate("/productList")}
         onSubmit={async (values) => {
+          const fd = new FormData();
+          fd.append("name", values.name ?? "");
+          fd.append("categoryId", String(values.categoryId ?? ""));
+          fd.append("groupId", String(values.groupId ?? ""));
+          fd.append("price", String(values.price ?? ""));
+          fd.append("unit", values.unit ?? "vnt");
+          fd.append("description", values.description ?? "");
+          fd.append("vat", String(!!values.vat));
+          fd.append("canTheProductBeProductReturned", String(!!values.canTheProductBeProductReturned));
+          fd.append("countableItem", String(!!values.countableItem));
+
+          const order = [];
+          const newFiles = [];
+
+          (values.images ?? []).forEach((img) => {
+            if (img.type === "new") {
+              order.push({ type: "new", tempKey: img.tempKey });
+              newFiles.push(img);
+            }
+          });
+
+          fd.append("imageOrderJson", JSON.stringify(order));
+          newFiles.forEach((img) => fd.append("images", img.file));
+
           await fetch("http://localhost:5065/api/products/createProduct", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(values),
+            body: fd,
           });
+
           navigate("/productList");
         }}
       />

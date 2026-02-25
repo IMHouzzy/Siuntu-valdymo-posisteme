@@ -210,7 +210,13 @@ public class OrderController : ControllerBase
 
         var items = await _db.ordersproducts
             .Where(x => x.fk_Ordersid_Orders == id)
-            .Select(x => new { productId = x.fk_Productid_Product, quantity = x.quantity })
+            .Select(x => new
+            {
+                productId = x.fk_Productid_Product,
+                quantity = x.quantity,
+                unitPrice = x.unitPrice,   // ✅ iš ordersproduct
+                vatValue = x.vatValue
+            })
             .ToListAsync();
 
         return Ok(new
@@ -279,7 +285,9 @@ public class OrderController : ControllerBase
                 {
                     fk_Ordersid_Orders = id,
                     fk_Productid_Product = it.ProductId,
-                    quantity = it.Quantity
+                    quantity = it.Quantity,
+                    unitPrice = it.UnitPrice,  
+                    vatValue = it.VatValue     
                 });
             }
 

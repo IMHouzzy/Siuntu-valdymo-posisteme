@@ -180,3 +180,35 @@
 .dt-icon-btn.danger:hover{
   background: rgba(239,68,68,.12);
 }
+
+.dt-img-wrap {
+  width: 62px;
+  height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dt-img {
+  width: 62px;
+  height: 62px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.dt-img-placeholder {
+  width: 62px;
+  height: 62px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+}
+.dt-img-placeholder img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}

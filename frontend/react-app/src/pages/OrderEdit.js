@@ -13,9 +13,15 @@ export default function OrderEditPage() {
 
     const [initialValues, setInitialValues] = useState(null);
     const [patch, setPatch] = useState(null);
+
     const lastClientIdRef = useRef(null);
 
-    // Load dropdown data + order data
+    const productPriceById = useMemo(() => {
+        const m = new Map();
+        products.forEach(p => m.set(String(p.id_Product), Number(p.price ?? 0)));
+        return m;
+    }, [products]);
+
     useEffect(() => {
         Promise.all([
             fetch("http://localhost:5065/api/orders/order-statuses").then(r => r.json()),
@@ -30,7 +36,7 @@ export default function OrderEditPage() {
 
                 const clientId = String(order.clientUserId);
 
-                // ✅ fetch client info immediately
+                // fetch client info
                 let clientData = null;
                 try {
                     const r = await fetch(`http://localhost:5065/api/orders/clientInfo/${clientId}`);
@@ -38,13 +44,34 @@ export default function OrderEditPage() {
                     clientData = text ? JSON.parse(text) : null;
                 } catch { }
 
+                // ✅ items: kainą imam iš ordersproduct.unitPrice (istorinė)
+                const VAT_RATE = 0.21;
+
+                const itemsWithPrice =
+                    order.items?.map(it => ({
+                        productId: String(it.productId),
+                        quantity: Number(it.quantity ?? 1),
+                        price: Number(it.unitPrice ?? 0), // ✅ čia svarbiausias pakeitimas
+                    })) ?? [{ productId: "", quantity: 1, price: 0 }];
+
+                // total iš itemų (kaip Add)
+                const total = itemsWithPrice.reduce((sum, it) => {
+                    const qty = Number(it.quantity ?? 0);
+                    const price = Number(it.price ?? 0);
+                    const net = qty * price;
+                    const vat = net * VAT_RATE;
+                    return sum + net + vat;
+                }, 0);
+
+                const roundedTotal = Math.round(total * 100) / 100;
+
                 setInitialValues({
                     clientUserId: clientId,
                     ordersDate: order.ordersDate?.slice(0, 10),
                     paymentMethod: order.paymentMethod ?? "",
                     deliveryPrice: order.deliveryPrice ?? 0,
-                    status: String(order.status),
-                    totalAmount: order.totalAmount ?? 0,
+                    status: String(order.status ?? ""),
+                    totalAmount: order.totalAmount ?? roundedTotal,
 
                     deliveryAddress: clientData?.deliveryAddress ?? "",
                     city: clientData?.city ?? "",
@@ -52,91 +79,115 @@ export default function OrderEditPage() {
                     vat: clientData?.vat ?? "",
                     bankCode: clientData?.bankCode ?? null,
 
-                    items: order.items?.map(it => ({
-                        productId: String(it.productId),
-                        quantity: it.quantity,
-                    })) ?? [{ productId: "", quantity: 1 }],
+                    items: itemsWithPrice,
                 });
             })
             .catch(console.error);
     }, [id]);
 
-    const userOptions = useMemo(() => (
-        users.map(u => ({
-            value: String(u.id_Users),
-            label: `${u.name} ${u.surname} (${u.email})`
-        }))
-    ), [users]);
+    const userOptions = useMemo(
+        () =>
+            users.map(u => ({
+                value: String(u.id_Users),
+                label: `${u.name} ${u.surname} (${u.email})`,
+            })),
+        [users]
+    );
 
-    const productOptions = useMemo(() => (
-        products.map(p => ({
-            value: String(p.id_Product),
-            label: p.name
-        }))
-    ), [products]);
+    const productOptions = useMemo(
+        () =>
+            products.map(p => ({
+                value: String(p.id_Product),
+                label: p.name,
+            })),
+        [products]
+    );
 
-    const fields = useMemo(() => [
-        { type: "section", title: "Užsakymo informacija" },
+    const fields = useMemo(
+        () => [
+            { type: "section", title: "Užsakymo informacija" },
 
-        {
-            name: "clientUserId",
-            label: "Klientas",
-            type: "searchselect",
-            required: true,
-            colSpan: 2,
-            options: userOptions,
-        },
+            { name: "ordersDate", label: "Data", type: "date", required: true, colSpan: 1 },
+            { name: "paymentMethod", label: "Mokėjimo būdas", required: true, colSpan: 1 },
+            { name: "deliveryPrice", label: "Pristatymo kaina", type: "number", required: true, colSpan: 1 },
 
-        { name: "ordersDate", label: "Data", type: "date", required: true, colSpan: 1 },
-        { name: "paymentMethod", label: "Mokėjimo būdas", required: true, colSpan: 1 },
-        { name: "deliveryPrice", label: "Pristatymo kaina", type: "number", required: true, colSpan: 1 },
+            {
+                name: "status",
+                label: "Statusas",
+                type: "select",
+                required: true,
+                colSpan: 1,
+                options: statuses.map(s => ({ value: s.id_OrderStatus, label: s.name })),
+            },
 
-        {
-            name: "status",
-            label: "Statusas",
-            type: "select",
-            required: true,
-            colSpan: 1,
-            options: statuses.map(s => ({ value: s.id_OrderStatus, label: s.name })),
-        },
+            { type: "section", title: "Kliento informacija" },
 
-        { name: "totalAmount", label: "Suma", type: "number", required: true, colSpan: 2 },
+            {
+                name: "clientUserId",
+                label: "Klientas",
+                type: "searchselect",
+                required: true,
+                colSpan: 2,
+                options: userOptions,
+                placeholder: "Pasirinkite klientą",
+            },
 
-        { type: "section", title: "Kliento informacija" },
+            { name: "deliveryAddress", label: "Pristatymo adresas", colSpan: 2, disabled: v => !v.clientUserId },
+            { name: "city", label: "Miestas", disabled: v => !v.clientUserId },
+            { name: "country", label: "Šalis", disabled: v => !v.clientUserId },
+            { name: "vat", label: "PVM kodas", disabled: v => !v.clientUserId },
+            { name: "bankCode", label: "Banko kodas", type: "number", disabled: v => !v.clientUserId },
 
-        { name: "deliveryAddress", label: "Pristatymo adresas", colSpan: 2, disabled: v => !v.clientUserId },
-        { name: "city", label: "Miestas", disabled: v => !v.clientUserId },
-        { name: "country", label: "Šalis", disabled: v => !v.clientUserId },
-        { name: "vat", label: "PVM kodas", disabled: v => !v.clientUserId },
-        { name: "bankCode", label: "Banko kodas", type: "number", disabled: v => !v.clientUserId },
+            { type: "section", title: "Prekės" },
 
-        { type: "section", title: "Prekės" },
+            {
+                type: "array",
+                name: "items",
+                label: "",
+                minRows: 1,
+                addLabel: "+ Pridėti prekę",
+                emptyRow: { productId: "", quantity: 1, price: 0 },
+                rowFields: [
+                    {
+                        name: "productId",
+                        label: "Prekė",
+                        type: "searchselect",
+                        required: true,
+                        colSpan: 2,
+                        options: productOptions,
+                        placeholder: "Pasirinkite prekę",
+                    },
+                    {
+                        name: "quantity",
+                        label: "Kiekis",
+                        type: "number",
+                        required: true,
+                        colSpan: 1,
+                        validate: v => (Number(v) <= 0 ? "Kiekis turi būti > 0" : null),
+                    },
+                    {
+                        name: "price",
+                        label: "Kaina",
+                        type: "number",
+                        required: true,
+                        colSpan: 1,
+                        validate: v => (Number(v) <= 0 ? "Kaina turi būti > 0" : null),
+                    },
+                ],
+            },
+            { type: "spacer", colSpan: 1 },
 
-        {
-            type: "array",
-            name: "items",
-            required: true,
-            minRows: 1,
-            addLabel: "+ Pridėti prekę",
-            emptyRow: { productId: "", quantity: 1 },
-            rowFields: [
-                {
-                    name: "productId",
-                    label: "Prekė",
-                    type: "searchselect",
-                    required: true,
-                    options: productOptions,
-                },
-                {
-                    name: "quantity",
-                    label: "Kiekis",
-                    type: "number",
-                    required: true,
-                    validate: (v) => (Number(v) <= 0 ? "Kiekis turi būti > 0" : null),
-                },
-            ],
-        },
-    ], [statuses, userOptions, productOptions]);
+            {
+                name: "totalAmount",
+                label: "Suma (su PVM)",
+                type: "display",
+                colSpan: 1,
+                render: (val) => `${Number(val ?? 0).toFixed(2)} €`,
+            },
+
+        ],
+        [statuses, userOptions, productOptions]
+    );
 
     if (!initialValues) return <div>Loading...</div>;
 
@@ -151,23 +202,90 @@ export default function OrderEditPage() {
                 onCancel={() => navigate("/orderList")}
                 onValuesChange={async (v) => {
                     const cid = v.clientUserId;
-                    if (!cid) return;
 
-                    if (lastClientIdRef.current === cid) return;
-                    lastClientIdRef.current = cid;
-
-                    try {
-                        const r = await fetch(`http://localhost:5065/api/orders/clientInfo/${cid}`);
-                        const text = await r.text();
-                        const data = text ? JSON.parse(text) : null;
-
+                    // klientas pasikeitė -> fetch clientInfo
+                    if (!cid) {
+                        lastClientIdRef.current = null;
                         setPatch({
-                            deliveryAddress: data?.deliveryAddress ?? "",
-                            city: data?.city ?? "",
-                            country: data?.country ?? "",
-                            vat: data?.vat ?? "",
-                            bankCode: data?.bankCode ?? null,
+                            deliveryAddress: "",
+                            city: "",
+                            country: "",
+                            vat: "",
+                            bankCode: null,
                         });
+                    } else {
+                        if (lastClientIdRef.current !== cid) {
+                            lastClientIdRef.current = cid;
+                            try {
+                                const r = await fetch(`http://localhost:5065/api/orders/clientInfo/${cid}`);
+                                const text = await r.text();
+                                const data = text ? JSON.parse(text) : null;
+
+                                setPatch({
+                                    deliveryAddress: data?.deliveryAddress ?? "",
+                                    city: data?.city ?? "",
+                                    country: data?.country ?? "",
+                                    vat: data?.vat ?? "",
+                                    bankCode: data?.bankCode ?? null,
+                                });
+                            } catch (e) {
+                                console.error(e);
+                            }
+                        }
+                    }
+
+                    // ✅ total skaičiavimas + preload price tik jei price 0
+                    try {
+                        const toNum = (x) => {
+                            const n = Number(x);
+                            return Number.isFinite(n) ? n : 0;
+                        };
+
+                        const items = Array.isArray(v.items) ? v.items : [];
+                        const VAT_RATE = 0.21;
+
+                        const nextItems = items.map((it) => {
+                            if (!it?.productId) return it;
+
+                            const currentPrice = toNum(it.price);
+                            if (currentPrice > 0) return it; // ✅ istorinių kainų / user įvestos neperrašom
+
+                            const p = productPriceById.get(String(it.productId)) ?? 0;
+                            return { ...it, price: p };
+                        });
+
+                        const itemsTotal = nextItems.reduce((sum, it) => {
+                            const qty = toNum(it?.quantity);
+                            const price = toNum(it?.price);
+                            const net = qty * price;
+                            const vat = net * VAT_RATE;
+                            return sum + net + vat;
+                        }, 0);
+
+                        const total = itemsTotal;
+
+                        const roundedTotal = Math.round(total * 100) / 100;
+
+                        const itemsChanged =
+                            nextItems.length !== items.length ||
+                            nextItems.some((it, i) => {
+                                const old = items[i] ?? {};
+                                return (
+                                    String(it?.productId ?? "") !== String(old?.productId ?? "") ||
+                                    toNum(it?.quantity) !== toNum(old?.quantity) ||
+                                    toNum(it?.price) !== toNum(old?.price)
+                                );
+                            });
+
+                        const totalChanged = toNum(v.totalAmount) !== roundedTotal;
+
+                        if (itemsChanged || totalChanged) {
+                            setPatch((prev) => ({
+                                ...(prev ?? {}),
+                                items: nextItems,
+                                totalAmount: roundedTotal,
+                            }));
+                        }
                     } catch (e) {
                         console.error(e);
                     }
@@ -189,10 +307,14 @@ export default function OrderEditPage() {
                             BankCode: v.bankCode === "" ? null : v.bankCode,
                         },
 
-                        Items: (v.items ?? []).map(it => ({
-                            ProductId: Number(it.productId),
-                            Quantity: Number(it.quantity),
-                        })),
+                        Items: (v.items ?? [])
+                            .filter(it => it.productId !== "" && Number(it.quantity) > 0)
+                            .map(it => ({
+                                ProductId: Number(it.productId),
+                                Quantity: Number(it.quantity),
+                                UnitPrice: Number(it.price ?? 0),
+                                VatValue: Number(it.price ?? 0) * 0.21, // vieneto PVM (kaip Add)
+                            })),
                     };
 
                     const res = await fetch(`http://localhost:5065/api/orders/editOrder/${id}`, {

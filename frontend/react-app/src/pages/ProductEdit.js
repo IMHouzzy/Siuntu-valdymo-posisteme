@@ -43,6 +43,7 @@ export default function ProductEditPage() {
     { name: "vat", label: "VAT", type: "checkbox", help: "Taikyti VAT" },
     { name: "canTheProductBeProductReturned", label: "Grąžinimas", type: "checkbox", help: "Galima grąžinti" },
     { name: "countableItem", label: "Ar prekė skaičiuojama?", type: "checkbox", help: "Prekė skaičiuojama" },
+    { name: "images", label: "Nuotraukos", type: "images", colSpan: 2 },
   ], [categories, groups]);
 
   const initialValues = useMemo(() => ({
@@ -55,6 +56,9 @@ export default function ProductEditPage() {
     vat: product?.vat ?? false,
     canTheProductBeProductReturned: product?.canTheProductBeProductReturned ?? false,
     countableItem: product?.countableItem ?? false,
+    images: (product?.images ?? [])
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+      .map(i => ({ type: "existing", id: i.id_ProductImage, url: i.url })),
   }), [product]);
 
   if (loading) return <div style={{ padding: 24 }}>Loading...</div>;
@@ -69,11 +73,33 @@ export default function ProductEditPage() {
         submitLabel="Išsaugoti"
         onCancel={() => navigate("/productList")}
         onSubmit={async (values) => {
+          const fd = new FormData();
+          fd.append("name", values.name ?? "");
+          fd.append("categoryId", String(values.categoryId ?? ""));
+          fd.append("groupId", String(values.groupId ?? ""));
+          fd.append("price", String(values.price ?? ""));
+          fd.append("unit", values.unit ?? "vnt");
+          fd.append("description", values.description ?? "");
+          fd.append("vat", String(!!values.vat));
+          fd.append("canTheProductBeProductReturned", String(!!values.canTheProductBeProductReturned));
+          fd.append("countableItem", String(!!values.countableItem));
+          const imgs = values.images ?? [];
+          const keepIdsInOrder = imgs.filter(x => x.type === "existing").map(x => x.id);
+          const newInOrder = imgs.filter(x => x.type === "new");
+
+          fd.append("keepImageIdsJson", JSON.stringify(keepIdsInOrder));
+          fd.append("imageOrderJson", JSON.stringify(
+            imgs.map(x => x.type === "existing"
+              ? { type: "existing", id: x.id }
+              : { type: "new", tempKey: x.tempKey }
+            )
+          ));
+          newInOrder.forEach(x => fd.append("images", x.file));
           await fetch(`http://localhost:5065/api/products/editProduct/${id}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(values),
+            body: fd,
           });
+
           navigate("/productList");
         }}
       />

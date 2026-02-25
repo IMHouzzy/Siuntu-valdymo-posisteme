@@ -23,7 +23,7 @@ public class OrderUpsertDto
     public double DeliveryPrice { get; set; }
     public int Status { get; set; }
     public int ClientUserId { get; set; }
-    public int ExternalDocumentId { get; set; }
+    public int? ExternalDocumentId { get; set; }
     public List<OrderItemDto> Items { get; set; } = new();
 
     public ClientInfoDto? ClientInfo { get; set; } // ✅ new
