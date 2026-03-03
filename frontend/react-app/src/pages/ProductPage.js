@@ -11,7 +11,7 @@ function ProductList() {
     const [products, setProducts] = useState([]);
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [q, setQ] = useState("");
-
+    const [group, setGroup] = useState("all");
     useEffect(() => {
         fetch("http://localhost:5065/api/products/allProductsFullInfo")
             .then((res) => {
@@ -39,26 +39,48 @@ function ProductList() {
         setProducts((prev) => prev.filter((x) => x.id_Product !== p.id_Product));
         setSelectedProduct(null);
     };
-    const filtered = useMemo(() => {
-        const s = q.trim().toLowerCase();
-        if (!s) return products;
+    const groupFilters = useMemo(() => {
+        const map = new Map();
+        for (const p of products) {
+            const gs = p.groups?.length ? p.groups : [{ name: "Be grupės" }];
+            for (const g of gs) {
+                const name = g?.name || "Be grupės";
+                map.set(name, (map.get(name) || 0) + 1);
+            }
+        }
 
-        return products.filter((p) => {
+        const items = [{ label: "Visi", value: "all", count: products.length }];
+        Array.from(map.entries())
+            .sort((a, b) => a[0].localeCompare(b[0], "lt"))
+            .forEach(([name, count]) => items.push({ label: name, value: name, count }));
+
+        return items;
+    }, [products]);
+    const filtered = useMemo(() => {
+        const byGroup = products.filter((p) => {
+            if (group === "all") return true;
+            const gs = p.groups?.length ? p.groups : [{ name: "Be grupės" }];
+            return gs.some((g) => (g?.name || "Be grupės") === group);
+        });
+
+        const s = q.trim().toLowerCase();
+        if (!s) return byGroup;
+
+        return byGroup.filter((p) => {
             const name = (p.name || "").toLowerCase();
             const code = String(p.externalCode ?? "").toLowerCase();
             const id = String(p.id_Product ?? "").toLowerCase();
             const date = String(p.creationDate ?? "").toLowerCase();
-            const group = (p.groups ?? [])
-                .map(g => g.name?.toLowerCase() || "")
-                .join(" ");
-            const type = (p.categories ?? [])
-                .map(c => c.name?.toLowerCase() || "")
-                .join(" ");
-
+            const grp = (p.groups ?? []).map(g => g.name?.toLowerCase() || "").join(" ");
+            const type = (p.categories ?? []).map(c => c.name?.toLowerCase() || "").join(" ");
             const price = String(p.price ?? "").toLowerCase();
-            return name.includes(s) || code.includes(s) || id.includes(s) || date.includes(s) || group.includes(s) || type.includes(s) || price.includes(s);
+
+            return (
+                name.includes(s) || code.includes(s) || id.includes(s) || date.includes(s) ||
+                grp.includes(s) || type.includes(s) || price.includes(s)
+            );
         });
-    }, [products, q]);
+    }, [products, q, group]);
     const columns = useMemo(
         () => [
 
@@ -231,7 +253,7 @@ function ProductList() {
                     {
                         label: "",
                         value: (
-                            
+
                             <div className="rd-img-grid">
                                 {(selectedProduct.images ?? [])
                                     .slice()
@@ -294,11 +316,14 @@ function ProductList() {
     return (
         <div className="user-cointainer">
             <TableToolbar
-                title="Produktai"
+                title="Prekės"
                 searchValue={q}
                 onSearchChange={setQ}
                 addLabel="Kurti prekę"
                 onAdd={() => navigate("/productAdd")}
+                filters={groupFilters}
+                filterValue={group}
+                onFilterChange={setGroup}
             />
             <DataTable
                 title={null}

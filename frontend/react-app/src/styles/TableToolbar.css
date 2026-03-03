@@ -1,26 +1,46 @@
-.tb {
+.tb-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+
+.tb-header {
+  margin-top: var(--space-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: 10px 10px; 
+}
+
+.tb-title {
+  font-size: var( --text-3xl);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.tb-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+
+.tb-tools {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
 
-  padding: var(--space-md) 0 var(--space-md) 0;
-  margin-bottom: var(--space-md);
+  background: var(--color-bg-card);
+  padding: var(--space-md);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border: 1px solid var(--color-border);
 }
 
-.tb-left {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  min-width: 0;
-}
-
-.tb-title {
-  font-size: var(--text-lg);
-  font-weight: var(--font-semibold);
-  color: var(--color-text-primary);
-  white-space: nowrap;
-}
 
 .tb-search {
   display: flex;
@@ -30,7 +50,7 @@
   padding: 10px 12px;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
-  background: var(--color-bg-card);
+  background: transparent;
   min-width: 280px;
 }
 
@@ -48,9 +68,47 @@
   font-size: var(--text-sm);
 }
 
-.tb-right {
+
+.tb-filters {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-sm);
+  flex-wrap: wrap;
 }
 
+.tb-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  padding: 8px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tb-pill:hover {
+  border-color: var(--color-text-muted);
+}
+
+.tb-pill.is-active {
+  border-color: var(--color-text-primary);
+}
+
+.tb-pill-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  font-size: 12px;
+  color: var(--color-text-muted);
+}

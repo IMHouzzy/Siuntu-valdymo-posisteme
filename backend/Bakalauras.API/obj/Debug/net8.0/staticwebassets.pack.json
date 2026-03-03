@@ -1,36 +1,20 @@
 {
   "Files": [
     {
-      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\48\\093f25b2e51c4dd6b1d6791865490327.jpg",
-      "PackagePath": "staticwebassets\\uploads\\products\\48\\093f25b2e51c4dd6b1d6791865490327.jpg"
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\55\\5678b273bcb04d0491e2e953cc90ce44.jpg",
+      "PackagePath": "staticwebassets\\uploads\\products\\55\\5678b273bcb04d0491e2e953cc90ce44.jpg"
     },
     {
-      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\48\\242c116f11a84b6da15ba36b32b61add.jpg",
-      "PackagePath": "staticwebassets\\uploads\\products\\48\\242c116f11a84b6da15ba36b32b61add.jpg"
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\55\\99035ca56fdf4cd8a57961e103f26fc9.jpg",
+      "PackagePath": "staticwebassets\\uploads\\products\\55\\99035ca56fdf4cd8a57961e103f26fc9.jpg"
     },
     {
-      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\49\\1fdecb52f625444fa2e2153240dbad7d.jpg",
-      "PackagePath": "staticwebassets\\uploads\\products\\49\\1fdecb52f625444fa2e2153240dbad7d.jpg"
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\55\\aa1a9bb21f144281b0bd9807b86449a3.jpg",
+      "PackagePath": "staticwebassets\\uploads\\products\\55\\aa1a9bb21f144281b0bd9807b86449a3.jpg"
     },
     {
-      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\49\\735d70f951814462bece7f44a8508c13.jpg",
-      "PackagePath": "staticwebassets\\uploads\\products\\49\\735d70f951814462bece7f44a8508c13.jpg"
-    },
-    {
-      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\50\\0111812f82d9497fa844c88459f40801.jpg",
-      "PackagePath": "staticwebassets\\uploads\\products\\50\\0111812f82d9497fa844c88459f40801.jpg"
-    },
-    {
-      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\50\\e8ee9a4da2e148e98c35d70fb302497f.jpg",
-      "PackagePath": "staticwebassets\\uploads\\products\\50\\e8ee9a4da2e148e98c35d70fb302497f.jpg"
-    },
-    {
-      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\51\\cf1fa69b193f43dd907f574e7ccb6e30.jpg",
-      "PackagePath": "staticwebassets\\uploads\\products\\51\\cf1fa69b193f43dd907f574e7ccb6e30.jpg"
-    },
-    {
-      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\51\\e4c2221fb4df4e43aa8f4ad4726861b9.jpg",
-      "PackagePath": "staticwebassets\\uploads\\products\\51\\e4c2221fb4df4e43aa8f4ad4726861b9.jpg"
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\55\\d5ee355a5a6b427798cabe8f559bff00.jpg",
+      "PackagePath": "staticwebassets\\uploads\\products\\55\\d5ee355a5a6b427798cabe8f559bff00.jpg"
     },
     {
       "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.Bakalauras.API.Microsoft.AspNetCore.StaticWebAssets.props",

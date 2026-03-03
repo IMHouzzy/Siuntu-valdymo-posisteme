@@ -38,6 +38,8 @@ public class UsersController : ControllerBase
     {
         var usersWithClients = await _db.users
             .Include(u => u.client)
+            .Include(u => u.employee)
+            .Include(u => u.admin)
             .Select(u => new
             {
                 u.id_Users,
@@ -47,6 +49,7 @@ public class UsersController : ControllerBase
                 u.phoneNumber,
                 u.creationDate,
                 u.authProvider,
+
                 client = u.client == null ? null : new
                 {
                     u.client.deliveryAddress,
@@ -58,6 +61,19 @@ public class UsersController : ControllerBase
                     u.client.daysSupplier,
                     u.client.maxDebt,
                     u.client.externalClientId
+                },
+
+                employee = u.employee == null ? null : new
+                {
+                    u.employee.position,
+                    u.employee.startDate,
+                    u.employee.active
+                },
+
+                admin = u.admin == null ? null : new
+                {
+                    // gali palikti taip, bet geriau duoti kažką prasmingo
+                    u.admin.id_Users
                 }
             })
             .ToListAsync();
@@ -237,7 +253,7 @@ public class UsersController : ControllerBase
                 employee.startDate = dto.StartDate ?? DateTime.Now;
                 employee.active = dto.Active;
             }
-            else    
+            else
             {
                 if (employee != null) _db.employees.Remove(employee);
             }

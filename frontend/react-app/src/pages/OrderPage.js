@@ -11,7 +11,7 @@ function OrdersList() {
     const [orders, setOrders] = useState([]);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [q, setQ] = useState("");
-
+    const [status, setStatus] = useState("all");
     useEffect(() => {
         fetch("http://localhost:5065/api/orders/allOrdersFullInfo")
             .then((res) => {
@@ -45,12 +45,30 @@ function OrdersList() {
             const vatUnit = Number(p.vatValue ?? 0); // darom prielaidą: vatValue = vieneto PVM
             return acc + vatUnit * qty;
         }, 0);
+    const statusFilters = useMemo(() => {
+        const map = new Map();
+        for (const o of orders) {
+            const key = o.statusName || "Nežinoma";
+            map.set(key, (map.get(key) || 0) + 1);
+        }
 
+        const items = [{ label: "Visi", value: "all", count: orders.length }];
+        Array.from(map.entries())
+            .sort((a, b) => a[0].localeCompare(b[0], "lt"))
+            .forEach(([name, count]) => items.push({ label: name, value: name, count }));
+
+        return items;
+    }, [orders]);
     const filtered = useMemo(() => {
-        const s = q.trim().toLowerCase();
-        if (!s) return orders;
+        const byStatus = orders.filter((o) => {
+            if (status === "all") return true;
+            return (o.statusName || "Nežinoma") === status;
+        });
 
-        return orders.filter((p) => {
+        const s = q.trim().toLowerCase();
+        if (!s) return byStatus;
+
+        return byStatus.filter((p) => {
             const code = String(p.externalCode ?? "").toLowerCase();
             const id = String(p.id_Orders ?? "").toLowerCase();
             const date = String(p.creationDate ?? "").toLowerCase();
@@ -60,16 +78,18 @@ function OrdersList() {
             const clientCity = String(p.client?.city ?? "").toLowerCase();
             const clientCountry = String(p.client?.country ?? "").toLowerCase();
             const clientDeliveryAddress = String(p.client?.deliveryAddress ?? "").toLowerCase();
-            const productName = String(p.products?.map(p => p.name ?? "").join(" ") ?? "").toLowerCase();
-            const status = String(p.statusName ?? "").toLowerCase();
+            const productName = String(p.products?.map(x => x.name ?? "").join(" ") ?? "").toLowerCase();
+            const st = String(p.statusName ?? "").toLowerCase();
             const totalAmmount = String(p.totalAmount ?? "").toLowerCase();
 
-            return productName.includes(s) || code.includes(s) || id.includes(s) || date.includes(s) || email.includes(s)
-                || clientName.includes(s) || clientSurname.includes(s) || clientCity.includes(s) || clientCountry.includes(s) || clientDeliveryAddress.includes(s)
-                || status.includes(s) || totalAmmount.includes(s);
+            return (
+                productName.includes(s) || code.includes(s) || id.includes(s) || date.includes(s) ||
+                email.includes(s) || clientName.includes(s) || clientSurname.includes(s) ||
+                clientCity.includes(s) || clientCountry.includes(s) || clientDeliveryAddress.includes(s) ||
+                st.includes(s) || totalAmmount.includes(s)
+            );
         });
-    }, [orders, q]);
-
+    }, [orders, q, status]);
     const columns = useMemo(
         () => [
             {
@@ -121,7 +141,7 @@ function OrdersList() {
             },
             {
                 key: "status",
-                header: "Statusas",
+                header: "Būsena",
                 sortable: true,
                 accessor: (o) => o.statusName,
                 cell: (_v, o) => <StatusBadge status={o.statusName} />,
@@ -174,7 +194,7 @@ function OrdersList() {
 
         if (!selectedOrder) return [];
         const o = selectedOrder;
-       const vatTotal = sumVatTotal(o);
+        const vatTotal = sumVatTotal(o);
         const orderRows = [
             { label: "Užsakymo ID", value: o.id_Orders || "-" },
             { label: "Dokumento ID", value: o.externalDocumentId || "-" },
@@ -183,10 +203,10 @@ function OrdersList() {
                     ? new Date(o.ordersDate).toLocaleDateString("lt-LT")
                     : "-",
             },
-            { label: "Statusas", value: <StatusBadge status={o.statusName} /> },
+            { label: "Būsena", value: <StatusBadge status={o.statusName} /> },
             { label: "Apmokėjimo būdas", value: o.paymentMethod || "-" },
             { label: "Pristatymo kaina", value: o.deliveryPrice != null ? Number(o.deliveryPrice).toFixed(2) : "-" },
-            { label: "Suma", value: o.totalAmount != null ? Number(o.totalAmount).toFixed(2) + " €": "-" },
+            { label: "Suma", value: o.totalAmount != null ? Number(o.totalAmount).toFixed(2) + " €" : "-" },
             {
                 label: "PVM",
                 value: Number(vatTotal ?? 0).toFixed(2) + " €"
@@ -225,12 +245,16 @@ function OrdersList() {
 
     return (
         <div className="user-cointainer">
+
             <TableToolbar
                 title="Užsakymai"
                 searchValue={q}
                 onSearchChange={setQ}
                 addLabel="Kurti užsakymą"
                 onAdd={() => navigate("/orderAdd")}
+                filters={statusFilters}
+                filterValue={status}
+                onFilterChange={setStatus}
             />
             <DataTable
                 columns={columns}

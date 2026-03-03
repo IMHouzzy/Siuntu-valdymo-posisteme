@@ -23,9 +23,15 @@ public partial class order
 
     public int? externalDocumentId { get; set; }
 
+    public int? fk_Companyid_Company { get; set; }
+
     public virtual client fk_Clientid_UsersNavigation { get; set; } = null!;
 
+    public virtual company? fk_Companyid_CompanyNavigation { get; set; }
+
     public virtual ICollection<ordersproduct> ordersproducts { get; set; } = new List<ordersproduct>();
+
+    public virtual ICollection<shipment> shipments { get; set; } = new List<shipment>();
 
     public virtual orderstatus statusNavigation { get; set; } = null!;
 }

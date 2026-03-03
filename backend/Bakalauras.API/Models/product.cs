@@ -31,6 +31,10 @@ public partial class product
 
     public int? externalCode { get; set; }
 
+    public int? fk_Companyid_Company { get; set; }
+
+    public virtual company? fk_Companyid_CompanyNavigation { get; set; }
+
     public virtual ICollection<ordersproduct> ordersproducts { get; set; } = new List<ordersproduct>();
 
     public virtual ICollection<product_image> product_images { get; set; } = new List<product_image>();

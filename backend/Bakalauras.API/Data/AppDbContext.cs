@@ -22,6 +22,12 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<client> clients { get; set; }
 
+    public virtual DbSet<company> companies { get; set; }
+
+    public virtual DbSet<company_user> company_users { get; set; }
+
+    public virtual DbSet<courier> couriers { get; set; }
+
     public virtual DbSet<employee> employees { get; set; }
 
     public virtual DbSet<order> orders { get; set; }
@@ -30,11 +36,25 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<orderstatus> orderstatuses { get; set; }
 
+    public virtual DbSet<package> packages { get; set; }
+
     public virtual DbSet<product> products { get; set; }
 
     public virtual DbSet<product_image> product_images { get; set; }
 
+    public virtual DbSet<product_return> product_returns { get; set; }
+
     public virtual DbSet<productgroup> productgroups { get; set; }
+
+    public virtual DbSet<return_item> return_items { get; set; }
+
+    public virtual DbSet<return_status_type> return_status_types { get; set; }
+
+    public virtual DbSet<shipment> shipments { get; set; }
+
+    public virtual DbSet<shipment_status> shipment_statuses { get; set; }
+
+    public virtual DbSet<shipment_status_type> shipment_status_types { get; set; }
 
     public virtual DbSet<user> users { get; set; }
 
@@ -127,6 +147,69 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("client_ibfk_1");
         });
 
+        modelBuilder.Entity<company>(entity =>
+        {
+            entity.HasKey(e => e.id_Company).HasName("PRIMARY");
+
+            entity.ToTable("company");
+
+            entity.HasIndex(e => e.companyCode, "UQ_company_code").IsUnique();
+
+            entity.Property(e => e.id_Company).HasColumnType("int(11)");
+            entity.Property(e => e.active)
+                .IsRequired()
+                .HasDefaultValueSql("'1'");
+            entity.Property(e => e.address).HasMaxLength(255);
+            entity.Property(e => e.companyCode).HasMaxLength(100);
+            entity.Property(e => e.creationDate)
+                .HasDefaultValueSql("current_timestamp()")
+                .HasColumnType("datetime");
+            entity.Property(e => e.documentCode).HasMaxLength(100);
+            entity.Property(e => e.email).HasMaxLength(255);
+            entity.Property(e => e.image).HasMaxLength(255);
+            entity.Property(e => e.name).HasMaxLength(255);
+            entity.Property(e => e.phoneNumber).HasMaxLength(255);
+            entity.Property(e => e.returnAddress).HasMaxLength(255);
+            entity.Property(e => e.shippingAddress).HasMaxLength(255);
+        });
+
+        modelBuilder.Entity<company_user>(entity =>
+        {
+            entity.HasKey(e => new { e.fk_Companyid_Company, e.fk_Usersid_Users })
+                .HasName("PRIMARY")
+                .HasAnnotation("MySql:IndexPrefixLength", new[] { 0, 0 });
+
+            entity.HasIndex(e => e.fk_Usersid_Users, "IX_company_users_user");
+
+            entity.Property(e => e.fk_Companyid_Company).HasColumnType("int(11)");
+            entity.Property(e => e.fk_Usersid_Users).HasColumnType("int(11)");
+            entity.Property(e => e.createdAt)
+                .HasDefaultValueSql("current_timestamp()")
+                .HasColumnType("datetime");
+            entity.Property(e => e.role).HasMaxLength(50);
+
+            entity.HasOne(d => d.fk_Companyid_CompanyNavigation).WithMany(p => p.company_users)
+                .HasForeignKey(d => d.fk_Companyid_Company)
+                .HasConstraintName("FK_company_users_company");
+
+            entity.HasOne(d => d.fk_Usersid_UsersNavigation).WithMany(p => p.company_users)
+                .HasForeignKey(d => d.fk_Usersid_Users)
+                .HasConstraintName("FK_company_users_users");
+        });
+
+        modelBuilder.Entity<courier>(entity =>
+        {
+            entity.HasKey(e => e.id_Courier).HasName("PRIMARY");
+
+            entity.ToTable("courier");
+
+            entity.HasIndex(e => e.name, "IX_courier_name");
+
+            entity.Property(e => e.id_Courier).HasColumnType("int(11)");
+            entity.Property(e => e.contactPhone).HasMaxLength(50);
+            entity.Property(e => e.deliveryTermDays).HasColumnType("int(11)");
+        });
+
         modelBuilder.Entity<employee>(entity =>
         {
             entity.HasKey(e => e.id_Users).HasName("PRIMARY");
@@ -152,6 +235,8 @@ public partial class AppDbContext : DbContext
         {
             entity.HasKey(e => e.id_Orders).HasName("PRIMARY");
 
+            entity.HasIndex(e => e.fk_Companyid_Company, "IX_orders_company");
+
             entity.HasIndex(e => e.externalDocumentId, "UX_orders_externalDocumentId").IsUnique();
 
             entity.HasIndex(e => e.fk_Clientid_Users, "fk_Clientid_Users");
@@ -162,6 +247,7 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.OrdersDate).HasColumnType("datetime");
             entity.Property(e => e.externalDocumentId).HasColumnType("int(11)");
             entity.Property(e => e.fk_Clientid_Users).HasColumnType("int(11)");
+            entity.Property(e => e.fk_Companyid_Company).HasColumnType("int(11)");
             entity.Property(e => e.fk_Reportid_Report).HasColumnType("int(11)");
             entity.Property(e => e.paymentMethod).HasMaxLength(255);
             entity.Property(e => e.status).HasColumnType("int(11)");
@@ -170,6 +256,11 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.fk_Clientid_Users)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("orders_ibfk_2");
+
+            entity.HasOne(d => d.fk_Companyid_CompanyNavigation).WithMany(p => p.orders)
+                .HasForeignKey(d => d.fk_Companyid_Company)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_orders_company");
 
             entity.HasOne(d => d.statusNavigation).WithMany(p => p.orders)
                 .HasForeignKey(d => d.status)
@@ -216,11 +307,33 @@ public partial class AppDbContext : DbContext
                 .IsFixedLength();
         });
 
+        modelBuilder.Entity<package>(entity =>
+        {
+            entity.HasKey(e => e.id_Package).HasName("PRIMARY");
+
+            entity.ToTable("package");
+
+            entity.HasIndex(e => e.fk_Shipmentid_Shipment, "IX_package_fk_Shipmentid_Shipment");
+
+            entity.Property(e => e.id_Package).HasColumnType("int(11)");
+            entity.Property(e => e.creationDate)
+                .HasDefaultValueSql("current_timestamp()")
+                .HasColumnType("datetime");
+            entity.Property(e => e.fk_Shipmentid_Shipment).HasColumnType("int(11)");
+            entity.Property(e => e.labelFile).HasMaxLength(500);
+
+            entity.HasOne(d => d.fk_Shipmentid_ShipmentNavigation).WithMany(p => p.packages)
+                .HasForeignKey(d => d.fk_Shipmentid_Shipment)
+                .HasConstraintName("FK_package_shipment");
+        });
+
         modelBuilder.Entity<product>(entity =>
         {
             entity.HasKey(e => e.id_Product).HasName("PRIMARY");
 
             entity.ToTable("product");
+
+            entity.HasIndex(e => e.fk_Companyid_Company, "IX_product_company");
 
             entity.HasIndex(e => e.externalCode, "uq_product_externalCode").IsUnique();
 
@@ -229,12 +342,18 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.currency).HasMaxLength(15);
             entity.Property(e => e.description).HasMaxLength(255);
             entity.Property(e => e.externalCode).HasColumnType("int(11)");
+            entity.Property(e => e.fk_Companyid_Company).HasColumnType("int(11)");
             entity.Property(e => e.name).HasMaxLength(255);
             entity.Property(e => e.picture).HasMaxLength(255);
             entity.Property(e => e.shipping_mode).HasMaxLength(255);
             entity.Property(e => e.unit)
                 .HasMaxLength(6)
                 .HasDefaultValueSql("'vnt'");
+
+            entity.HasOne(d => d.fk_Companyid_CompanyNavigation).WithMany(p => p.products)
+                .HasForeignKey(d => d.fk_Companyid_Company)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_product_company");
 
             entity.HasMany(d => d.fk_ProductGroupId_ProductGroups).WithMany(p => p.fk_Productid_Products)
                 .UsingEntity<Dictionary<string, object>>(
@@ -281,6 +400,48 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("FK_product_images_product");
         });
 
+        modelBuilder.Entity<product_return>(entity =>
+        {
+            entity.HasKey(e => e.id_Returns).HasName("PRIMARY");
+
+            entity.HasIndex(e => e.fk_Adminid_Users, "IX_returns_admin");
+
+            entity.HasIndex(e => e.fk_Clientid_Users, "IX_returns_client");
+
+            entity.HasIndex(e => e.fk_Companyid_Company, "IX_returns_company");
+
+            entity.HasIndex(e => e.fk_ReturnStatusTypeid_ReturnStatusType, "IX_returns_status");
+
+            entity.Property(e => e.id_Returns).HasColumnType("int(11)");
+            entity.Property(e => e.date)
+                .HasDefaultValueSql("current_timestamp()")
+                .HasColumnType("datetime");
+            entity.Property(e => e.fk_Adminid_Users).HasColumnType("int(11)");
+            entity.Property(e => e.fk_Clientid_Users).HasColumnType("int(11)");
+            entity.Property(e => e.fk_Companyid_Company).HasColumnType("int(11)");
+            entity.Property(e => e.fk_ReturnStatusTypeid_ReturnStatusType).HasColumnType("int(11)");
+
+            entity.HasOne(d => d.fk_Adminid_UsersNavigation).WithMany(p => p.product_returnfk_Adminid_UsersNavigations)
+                .HasForeignKey(d => d.fk_Adminid_Users)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_returns_admin_users");
+
+            entity.HasOne(d => d.fk_Clientid_UsersNavigation).WithMany(p => p.product_returnfk_Clientid_UsersNavigations)
+                .HasForeignKey(d => d.fk_Clientid_Users)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_returns_client_users");
+
+            entity.HasOne(d => d.fk_Companyid_CompanyNavigation).WithMany(p => p.product_returns)
+                .HasForeignKey(d => d.fk_Companyid_Company)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_returns_company");
+
+            entity.HasOne(d => d.fk_ReturnStatusTypeid_ReturnStatusTypeNavigation).WithMany(p => p.product_returns)
+                .HasForeignKey(d => d.fk_ReturnStatusTypeid_ReturnStatusType)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_returns_status_type");
+        });
+
         modelBuilder.Entity<productgroup>(entity =>
         {
             entity.HasKey(e => e.id_ProductGroup).HasName("PRIMARY");
@@ -291,9 +452,127 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.name).HasMaxLength(255);
         });
 
+        modelBuilder.Entity<return_item>(entity =>
+        {
+            entity.HasKey(e => e.id_ReturnItem).HasName("PRIMARY");
+
+            entity.ToTable("return_item");
+
+            entity.HasIndex(e => e.fk_OrdersProductid_OrdersProduct, "IX_return_item_ordersproduct");
+
+            entity.HasIndex(e => e.fk_Returnsid_Returns, "IX_return_item_return");
+
+            entity.Property(e => e.id_ReturnItem).HasColumnType("int(11)");
+            entity.Property(e => e.fk_OrdersProductid_OrdersProduct).HasColumnType("int(11)");
+            entity.Property(e => e.fk_Returnsid_Returns).HasColumnType("int(11)");
+            entity.Property(e => e.quantity).HasColumnType("int(11)");
+            entity.Property(e => e.reason).HasMaxLength(255);
+
+            entity.HasOne(d => d.fk_OrdersProductid_OrdersProductNavigation).WithMany(p => p.return_items)
+                .HasForeignKey(d => d.fk_OrdersProductid_OrdersProduct)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_return_item_ordersproduct");
+
+            entity.HasOne(d => d.fk_Returnsid_ReturnsNavigation).WithMany(p => p.return_items)
+                .HasForeignKey(d => d.fk_Returnsid_Returns)
+                .HasConstraintName("FK_return_item_returns");
+        });
+
+        modelBuilder.Entity<return_status_type>(entity =>
+        {
+            entity.HasKey(e => e.id_ReturnStatusType).HasName("PRIMARY");
+
+            entity.ToTable("return_status_type");
+
+            entity.HasIndex(e => e.name, "UQ_return_status_type_name").IsUnique();
+
+            entity.Property(e => e.id_ReturnStatusType).HasColumnType("int(11)");
+            entity.Property(e => e.name).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<shipment>(entity =>
+        {
+            entity.HasKey(e => e.id_Shipment).HasName("PRIMARY");
+
+            entity.ToTable("shipment");
+
+            entity.HasIndex(e => e.fk_Companyid_Company, "IX_shipment_company");
+
+            entity.HasIndex(e => e.fk_Courierid_Courier, "IX_shipment_fk_Courierid_Courier");
+
+            entity.HasIndex(e => e.fk_Ordersid_Orders, "IX_shipment_fk_Ordersid_Orders");
+
+            entity.HasIndex(e => e.trackingNumber, "UQ_shipment_trackingNumber").IsUnique();
+
+            entity.Property(e => e.id_Shipment).HasColumnType("int(11)");
+            entity.Property(e => e.estimatedDeliveryDate).HasColumnType("datetime");
+            entity.Property(e => e.fk_Companyid_Company).HasColumnType("int(11)");
+            entity.Property(e => e.fk_Courierid_Courier).HasColumnType("int(11)");
+            entity.Property(e => e.fk_Ordersid_Orders).HasColumnType("int(11)");
+            entity.Property(e => e.shippingDate).HasColumnType("datetime");
+            entity.Property(e => e.trackingNumber).HasMaxLength(100);
+
+            entity.HasOne(d => d.fk_Companyid_CompanyNavigation).WithMany(p => p.shipments)
+                .HasForeignKey(d => d.fk_Companyid_Company)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_shipment_company");
+
+            entity.HasOne(d => d.fk_Courierid_CourierNavigation).WithMany(p => p.shipments)
+                .HasForeignKey(d => d.fk_Courierid_Courier)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_shipment_courier");
+
+            entity.HasOne(d => d.fk_Ordersid_OrdersNavigation).WithMany(p => p.shipments)
+                .HasForeignKey(d => d.fk_Ordersid_Orders)
+                .HasConstraintName("FK_shipment_orders");
+        });
+
+        modelBuilder.Entity<shipment_status>(entity =>
+        {
+            entity.HasKey(e => e.id_ShipmentStatus).HasName("PRIMARY");
+
+            entity.ToTable("shipment_status");
+
+            entity.HasIndex(e => e.date, "IX_shipment_status_date");
+
+            entity.HasIndex(e => e.fk_Shipmentid_Shipment, "IX_shipment_status_fk_Shipmentid_Shipment");
+
+            entity.HasIndex(e => e.fk_ShipmentStatusTypeid_ShipmentStatusType, "IX_shipment_status_fk_type");
+
+            entity.Property(e => e.id_ShipmentStatus).HasColumnType("int(11)");
+            entity.Property(e => e.date)
+                .HasDefaultValueSql("current_timestamp()")
+                .HasColumnType("datetime");
+            entity.Property(e => e.fk_ShipmentStatusTypeid_ShipmentStatusType).HasColumnType("int(11)");
+            entity.Property(e => e.fk_Shipmentid_Shipment).HasColumnType("int(11)");
+
+            entity.HasOne(d => d.fk_ShipmentStatusTypeid_ShipmentStatusTypeNavigation).WithMany(p => p.shipment_statuses)
+                .HasForeignKey(d => d.fk_ShipmentStatusTypeid_ShipmentStatusType)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_shipment_status_type");
+
+            entity.HasOne(d => d.fk_Shipmentid_ShipmentNavigation).WithMany(p => p.shipment_statuses)
+                .HasForeignKey(d => d.fk_Shipmentid_Shipment)
+                .HasConstraintName("FK_shipment_status_shipment");
+        });
+
+        modelBuilder.Entity<shipment_status_type>(entity =>
+        {
+            entity.HasKey(e => e.id_ShipmentStatusType).HasName("PRIMARY");
+
+            entity.ToTable("shipment_status_type");
+
+            entity.HasIndex(e => e.name, "UQ_shipment_status_type_name").IsUnique();
+
+            entity.Property(e => e.id_ShipmentStatusType).HasColumnType("int(11)");
+            entity.Property(e => e.name).HasMaxLength(50);
+        });
+
         modelBuilder.Entity<user>(entity =>
         {
             entity.HasKey(e => e.id_Users).HasName("PRIMARY");
+
+            entity.HasIndex(e => e.fk_Companyid_Company, "IX_users_fk_Companyid_Company");
 
             entity.Property(e => e.id_Users).HasColumnType("int(11)");
             entity.Property(e => e.authProvider)
@@ -301,11 +580,17 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValueSql("'LOCAL'");
             entity.Property(e => e.creationDate).HasColumnType("datetime");
             entity.Property(e => e.email).HasMaxLength(255);
+            entity.Property(e => e.fk_Companyid_Company).HasColumnType("int(11)");
             entity.Property(e => e.googleId).HasMaxLength(255);
             entity.Property(e => e.name).HasMaxLength(255);
             entity.Property(e => e.password).HasMaxLength(255);
             entity.Property(e => e.phoneNumber).HasMaxLength(255);
             entity.Property(e => e.surname).HasMaxLength(255);
+
+            entity.HasOne(d => d.fk_Companyid_CompanyNavigation).WithMany(p => p.users)
+                .HasForeignKey(d => d.fk_Companyid_Company)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_users_company");
         });
 
         OnModelCreatingPartial(modelBuilder);

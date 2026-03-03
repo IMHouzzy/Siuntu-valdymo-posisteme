@@ -10,6 +10,7 @@ function UsersList() {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [q, setQ] = useState("");
+  const [userType, setUserType] = useState("all");
   useEffect(() => {
     fetch("http://localhost:5065/api/users/allUsersWithClients")
       .then((res) => {
@@ -35,11 +36,38 @@ function UsersList() {
     setUsers((prev) => prev.filter((x) => x.id_Users !== p.id_Users));
     setSelectedUser(null);
   };
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return users;
+  const userFilters = useMemo(() => {
+    const isClient = (u) => !!u.client;
+    const isAdmin = (u) => !!u.admin;      // jei pas tave API grąžina admin objektą
+    const isEmployee = (u) => !!u.employee;
 
-    return users.filter((p) => {
+    const counts = {
+      all: users.length,
+      client: users.filter(isClient).length,
+      admin: users.filter(isAdmin).length,
+      employee: users.filter(isEmployee).length,
+    };
+
+    return [
+      { label: "Visi", value: "all", count: counts.all },
+      { label: "Klientai", value: "client", count: counts.client },
+      { label: "Admin", value: "admin", count: counts.admin },
+      { label: "Darbuotojai", value: "employee", count: counts.employee },
+    ];
+  }, [users]);
+  const filtered = useMemo(() => {
+    const byType = users.filter((u) => {
+      if (userType === "all") return true;
+      if (userType === "client") return !!u.client;
+      if (userType === "admin") return !!u.admin;
+      if (userType === "employee") return !!u.employee;
+      return true;
+    });
+
+    const s = q.trim().toLowerCase();
+    if (!s) return byType;
+
+    return byType.filter((p) => {
       const name = (p.name || "").toLowerCase();
       const surname = (p.surname || "").toLowerCase();
       const date = String(p.creationDate ?? "").toLowerCase();
@@ -49,9 +77,13 @@ function UsersList() {
       const country = String(p.client?.country ?? "").toLowerCase();
       const deliveryAddress = String(p.client?.deliveryAddress ?? "").toLowerCase();
 
-      return name.includes(s) || surname.includes(s) || email.includes(s) || phoneNumber.includes(s) || city.includes(s) || country.includes(s) || deliveryAddress.includes(s) || date.includes(s);
+      return (
+        name.includes(s) || surname.includes(s) || email.includes(s) ||
+        phoneNumber.includes(s) || city.includes(s) || country.includes(s) ||
+        deliveryAddress.includes(s) || date.includes(s)
+      );
     });
-  }, [users, q]);
+  }, [users, q, userType]);
   const columns = useMemo(
     () => [
 
@@ -135,8 +167,8 @@ function UsersList() {
     []
   );
 
-  const drawerSections = selectedUser
-    ? [
+ const drawerSections = selectedUser
+  ? [
       {
         title: "Naudotojo duomenys",
         rows: [
@@ -153,22 +185,55 @@ function UsersList() {
           { label: "Auth", value: selectedUser.authProvider || "-" },
         ],
       },
+
       {
         title: "Kliento duomenys",
         rows: selectedUser.client
           ? [
-            { label: "Adresas", value: selectedUser.client.deliveryAddress || "-" },
-            { label: "Miestas", value: selectedUser.client.city || "-" },
-            { label: "Šalis", value: selectedUser.client.country || "-" },
-            { label: "VAT", value: selectedUser.client.vat || "-" },
-            { label: "Bank Code", value: selectedUser.client.bankCode || "-" },
-            { label: "Max Debt", value: selectedUser.client.maxDebt || "-" },
-          ]
+              { label: "Adresas", value: selectedUser.client.deliveryAddress || "-" },
+              { label: "Miestas", value: selectedUser.client.city || "-" },
+              { label: "Šalis", value: selectedUser.client.country || "-" },
+              { label: "VAT", value: selectedUser.client.vat || "-" },
+              { label: "Bank Code", value: selectedUser.client.bankCode || "-" },
+              { label: "Max Debt", value: selectedUser.client.maxDebt || "-" },
+              { label: "External Client ID", value: selectedUser.client.externalClientId || "-" },
+            ]
           : [],
         emptyText: "Šis naudotojas neturi kliento duomenų.",
       },
+
+      {
+        title: "Darbuotojo duomenys",
+        rows: selectedUser.employee
+          ? [
+              { label: "Pareigos", value: selectedUser.employee.position || "-" },
+              {
+                label: "Darbo pradžia",
+                value: selectedUser.employee.startDate
+                  ? new Date(selectedUser.employee.startDate).toLocaleDateString("lt-LT")
+                  : "-",
+              },
+              {
+                label: "Aktyvus",
+                value: selectedUser.employee.active ? "Taip" : "Ne",
+              },
+            ]
+          : [],
+        emptyText: "Šis naudotojas nėra darbuotojas.",
+      },
+
+      {
+        title: "Administratoriaus duomenys",
+        rows: selectedUser.admin
+          ? [
+              { label: "Administratorius", value: "Taip" },
+              { label: "Admin user ID", value: selectedUser.admin.id_Users ?? selectedUser.id_Users },
+            ]
+          : [],
+        emptyText: "Šis naudotojas nėra administratorius.",
+      },
     ]
-    : [];
+  : [];
 
   return (
     <div className="user-cointainer">
@@ -178,6 +243,9 @@ function UsersList() {
         onSearchChange={setQ}
         addLabel="Kurti naudotoją"
         onAdd={() => navigate("/userAdd")}
+        filters={userFilters}
+        filterValue={userType}
+        onFilterChange={setUserType}
       />
 
       <DataTable
