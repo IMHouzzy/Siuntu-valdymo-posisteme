@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "iE3GnxHj/YddKvYj2G2Qwc1toFWWwJDABWrB/SImWA8=",
+  "Hash": "ckQ7ZM1e77XHCGM/Edqn8T+GNA4I1BLCkwPwHLdneBg=",
   "Source": "Bakalauras.API",
   "BasePath": "_content/Bakalauras.API",
   "Mode": "Default",
@@ -16,6 +16,44 @@
     }
   ],
   "Assets": [
+    {
+      "Identity": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\4\\0a5fbec150fa44c0b9a9f9e2c5fec253.jpg",
+      "SourceId": "Bakalauras.API",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\",
+      "BasePath": "_content/Bakalauras.API",
+      "RelativePath": "uploads/products/4/0a5fbec150fa44c0b9a9f9e2c5fec253.jpg",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\uploads\\products\\4\\0a5fbec150fa44c0b9a9f9e2c5fec253.jpg"
+    },
+    {
+      "Identity": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\4\\1e1f132342d1495d92e144c513f07999.jpg",
+      "SourceId": "Bakalauras.API",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\",
+      "BasePath": "_content/Bakalauras.API",
+      "RelativePath": "uploads/products/4/1e1f132342d1495d92e144c513f07999.jpg",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\uploads\\products\\4\\1e1f132342d1495d92e144c513f07999.jpg"
+    },
     {
       "Identity": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\55\\5678b273bcb04d0491e2e953cc90ce44.jpg",
       "SourceId": "Bakalauras.API",

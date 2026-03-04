@@ -1,31 +1,43 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import DataTable from "../components/DataTable";
-import RightDrawer from "../components/RightDrawerSidebar";
-import "../styles/UserPage.css";
-import TableToolbar from "../components/TableToolbar";
+import DataTable from "../../components/DataTable";
+import RightDrawer from "../../components/RightDrawerSidebar";
+import "../../styles/UserPage.css";
+import TableToolbar from "../../components/TableToolbar";
 import { FiTrash2, FiEdit } from "react-icons/fi";
+import { useAuth } from "../../services/AuthContext";
 function UsersList() {
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [q, setQ] = useState("");
   const [userType, setUserType] = useState("all");
+  const { token, activeCompanyId } = useAuth();
   useEffect(() => {
-    fetch("http://localhost:5065/api/users/allUsersWithClients")
+    if (!token) return;
+
+    setUsers([]);
+    setSelectedUser(null);
+
+    fetch("http://localhost:5065/api/users/allUsersWithClients", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         return res.json();
       })
-      .then((data) => setUsers(data))
-      .catch((err) => console.error(err));
-  }, []);
+      .then(setUsers)
+      .catch(console.error);
+  }, [token, activeCompanyId]);
   const deleteUser = async (p) => {
     const ok = window.confirm(`Delete user "${p.name}"?`);
     if (!ok) return;
 
     const res = await fetch(`http://localhost:5065/api/users/deleteUser/${p.id_Users}`, {
       method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
     });
 
     if (!res.ok) {
@@ -167,8 +179,8 @@ function UsersList() {
     []
   );
 
- const drawerSections = selectedUser
-  ? [
+  const drawerSections = selectedUser
+    ? [
       {
         title: "Naudotojo duomenys",
         rows: [
@@ -190,14 +202,14 @@ function UsersList() {
         title: "Kliento duomenys",
         rows: selectedUser.client
           ? [
-              { label: "Adresas", value: selectedUser.client.deliveryAddress || "-" },
-              { label: "Miestas", value: selectedUser.client.city || "-" },
-              { label: "Šalis", value: selectedUser.client.country || "-" },
-              { label: "VAT", value: selectedUser.client.vat || "-" },
-              { label: "Bank Code", value: selectedUser.client.bankCode || "-" },
-              { label: "Max Debt", value: selectedUser.client.maxDebt || "-" },
-              { label: "External Client ID", value: selectedUser.client.externalClientId || "-" },
-            ]
+            { label: "Adresas", value: selectedUser.client.deliveryAddress || "-" },
+            { label: "Miestas", value: selectedUser.client.city || "-" },
+            { label: "Šalis", value: selectedUser.client.country || "-" },
+            { label: "VAT", value: selectedUser.client.vat || "-" },
+            { label: "Bank Code", value: selectedUser.client.bankCode || "-" },
+            { label: "Max Debt", value: selectedUser.client.maxDebt || "-" },
+            { label: "External Client ID", value: selectedUser.client.externalClientId || "-" },
+          ]
           : [],
         emptyText: "Šis naudotojas neturi kliento duomenų.",
       },
@@ -206,18 +218,18 @@ function UsersList() {
         title: "Darbuotojo duomenys",
         rows: selectedUser.employee
           ? [
-              { label: "Pareigos", value: selectedUser.employee.position || "-" },
-              {
-                label: "Darbo pradžia",
-                value: selectedUser.employee.startDate
-                  ? new Date(selectedUser.employee.startDate).toLocaleDateString("lt-LT")
-                  : "-",
-              },
-              {
-                label: "Aktyvus",
-                value: selectedUser.employee.active ? "Taip" : "Ne",
-              },
-            ]
+            { label: "Pareigos", value: selectedUser.employee.position || "-" },
+            {
+              label: "Darbo pradžia",
+              value: selectedUser.employee.startDate
+                ? new Date(selectedUser.employee.startDate).toLocaleDateString("lt-LT")
+                : "-",
+            },
+            {
+              label: "Aktyvus",
+              value: selectedUser.employee.active ? "Taip" : "Ne",
+            },
+          ]
           : [],
         emptyText: "Šis naudotojas nėra darbuotojas.",
       },
@@ -226,14 +238,14 @@ function UsersList() {
         title: "Administratoriaus duomenys",
         rows: selectedUser.admin
           ? [
-              { label: "Administratorius", value: "Taip" },
-              { label: "Admin user ID", value: selectedUser.admin.id_Users ?? selectedUser.id_Users },
-            ]
+            { label: "Administratorius", value: "Taip" },
+            { label: "Admin user ID", value: selectedUser.admin.id_Users ?? selectedUser.id_Users },
+          ]
           : [],
         emptyText: "Šis naudotojas nėra administratorius.",
       },
     ]
-  : [];
+    : [];
 
   return (
     <div className="user-cointainer">

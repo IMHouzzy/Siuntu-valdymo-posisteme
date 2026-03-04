@@ -1,6 +1,14 @@
 {
   "Files": [
     {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\4\\0a5fbec150fa44c0b9a9f9e2c5fec253.jpg",
+      "PackagePath": "staticwebassets\\uploads\\products\\4\\0a5fbec150fa44c0b9a9f9e2c5fec253.jpg"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\4\\1e1f132342d1495d92e144c513f07999.jpg",
+      "PackagePath": "staticwebassets\\uploads\\products\\4\\1e1f132342d1495d92e144c513f07999.jpg"
+    },
+    {
       "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\55\\5678b273bcb04d0491e2e953cc90ce44.jpg",
       "PackagePath": "staticwebassets\\uploads\\products\\55\\5678b273bcb04d0491e2e953cc90ce44.jpg"
     },

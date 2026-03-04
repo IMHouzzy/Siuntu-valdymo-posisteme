@@ -1,14 +1,14 @@
 import Navbar from "./Navbar";
 import SignInProfile from "./SignInProfile";
 import "../styles/Header.css";
-function header() {
+
+function Header() {
   return (
     <div className="header-container">
       <Navbar />
       <SignInProfile />
-
     </div>
   );
 }
 
-export default header;
+export default Header;

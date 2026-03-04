@@ -29,7 +29,11 @@ public partial class client
 
     public int? userId { get; set; }
 
+    public virtual ICollection<client_company> client_companies { get; set; } = new List<client_company>();
+
     public virtual user id_UsersNavigation { get; set; } = null!;
 
     public virtual ICollection<order> orders { get; set; } = new List<order>();
+
+    public virtual ICollection<product_return> product_returns { get; set; } = new List<product_return>();
 }

@@ -25,6 +25,8 @@ public partial class user
 
     public int? fk_Companyid_Company { get; set; }
 
+    public bool isMasterAdmin { get; set; }
+
     public virtual admin? admin { get; set; }
 
     public virtual client? client { get; set; }
@@ -35,7 +37,5 @@ public partial class user
 
     public virtual company? fk_Companyid_CompanyNavigation { get; set; }
 
-    public virtual ICollection<product_return> product_returnfk_Adminid_UsersNavigations { get; set; } = new List<product_return>();
-
-    public virtual ICollection<product_return> product_returnfk_Clientid_UsersNavigations { get; set; } = new List<product_return>();
+    public virtual ICollection<product_return> product_returns { get; set; } = new List<product_return>();
 }

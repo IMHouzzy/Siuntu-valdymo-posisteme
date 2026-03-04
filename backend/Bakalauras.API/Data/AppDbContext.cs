@@ -22,7 +22,11 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<client> clients { get; set; }
 
+    public virtual DbSet<client_company> client_companies { get; set; }
+
     public virtual DbSet<company> companies { get; set; }
+
+    public virtual DbSet<company_integration> company_integrations { get; set; }
 
     public virtual DbSet<company_user> company_users { get; set; }
 
@@ -124,8 +128,6 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("client");
 
-            entity.HasIndex(e => e.externalClientId, "externalClientId").IsUnique();
-
             entity.Property(e => e.id_Users)
                 .ValueGeneratedNever()
                 .HasColumnType("int(11)");
@@ -145,6 +147,39 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey<client>(d => d.id_Users)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("client_ibfk_1");
+        });
+
+        modelBuilder.Entity<client_company>(entity =>
+        {
+            entity.HasKey(e => new { e.fk_Clientid_Users, e.fk_Companyid_Company })
+                .HasName("PRIMARY")
+                .HasAnnotation("MySql:IndexPrefixLength", new[] { 0, 0 });
+
+            entity.ToTable("client_company");
+
+            entity.HasIndex(e => e.fk_Companyid_Company, "IX_client_company_company");
+
+            entity.HasIndex(e => new { e.fk_Companyid_Company, e.externalClientId }, "UX_client_company_externalClientId").IsUnique();
+
+            entity.Property(e => e.fk_Clientid_Users).HasColumnType("int(11)");
+            entity.Property(e => e.fk_Companyid_Company).HasColumnType("int(11)");
+            entity.Property(e => e.bankCode).HasColumnType("int(5)");
+            entity.Property(e => e.city).HasMaxLength(255);
+            entity.Property(e => e.country).HasMaxLength(255);
+            entity.Property(e => e.createdAt)
+                .HasDefaultValueSql("current_timestamp()")
+                .HasColumnType("datetime");
+            entity.Property(e => e.deliveryAddress).HasMaxLength(255);
+            entity.Property(e => e.externalClientId).HasColumnType("int(11)");
+            entity.Property(e => e.vat).HasMaxLength(255);
+
+            entity.HasOne(d => d.fk_Clientid_UsersNavigation).WithMany(p => p.client_companies)
+                .HasForeignKey(d => d.fk_Clientid_Users)
+                .HasConstraintName("FK_client_company_client");
+
+            entity.HasOne(d => d.fk_Companyid_CompanyNavigation).WithMany(p => p.client_companies)
+                .HasForeignKey(d => d.fk_Companyid_Company)
+                .HasConstraintName("FK_client_company_company");
         });
 
         modelBuilder.Entity<company>(entity =>
@@ -171,6 +206,32 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.phoneNumber).HasMaxLength(255);
             entity.Property(e => e.returnAddress).HasMaxLength(255);
             entity.Property(e => e.shippingAddress).HasMaxLength(255);
+        });
+
+        modelBuilder.Entity<company_integration>(entity =>
+        {
+            entity.HasKey(e => e.id_CompanyIntegration).HasName("PRIMARY");
+
+            entity.ToTable("company_integration");
+
+            entity.HasIndex(e => new { e.fk_Companyid_Company, e.type }, "UX_company_integration").IsUnique();
+
+            entity.Property(e => e.id_CompanyIntegration).HasColumnType("int(11)");
+            entity.Property(e => e.baseUrl).HasMaxLength(500);
+            entity.Property(e => e.enabled)
+                .IsRequired()
+                .HasDefaultValueSql("'1'");
+            entity.Property(e => e.encryptedSecrets).HasColumnType("text");
+            entity.Property(e => e.fk_Companyid_Company).HasColumnType("int(11)");
+            entity.Property(e => e.type).HasMaxLength(50);
+            entity.Property(e => e.updatedAt)
+                .ValueGeneratedOnAddOrUpdate()
+                .HasDefaultValueSql("current_timestamp()")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.fk_Companyid_CompanyNavigation).WithMany(p => p.company_integrations)
+                .HasForeignKey(d => d.fk_Companyid_Company)
+                .HasConstraintName("FK_company_integration_company");
         });
 
         modelBuilder.Entity<company_user>(entity =>
@@ -237,7 +298,7 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => e.fk_Companyid_Company, "IX_orders_company");
 
-            entity.HasIndex(e => e.externalDocumentId, "UX_orders_externalDocumentId").IsUnique();
+            entity.HasIndex(e => new { e.fk_Companyid_Company, e.externalDocumentId }, "UX_orders_company_externalDocumentId").IsUnique();
 
             entity.HasIndex(e => e.fk_Clientid_Users, "fk_Clientid_Users");
 
@@ -259,7 +320,7 @@ public partial class AppDbContext : DbContext
 
             entity.HasOne(d => d.fk_Companyid_CompanyNavigation).WithMany(p => p.orders)
                 .HasForeignKey(d => d.fk_Companyid_Company)
-                .OnDelete(DeleteBehavior.SetNull)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_orders_company");
 
             entity.HasOne(d => d.statusNavigation).WithMany(p => p.orders)
@@ -335,7 +396,7 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => e.fk_Companyid_Company, "IX_product_company");
 
-            entity.HasIndex(e => e.externalCode, "uq_product_externalCode").IsUnique();
+            entity.HasIndex(e => new { e.fk_Companyid_Company, e.externalCode }, "UX_product_company_externalCode").IsUnique();
 
             entity.Property(e => e.id_Product).HasColumnType("int(11)");
             entity.Property(e => e.creationDate).HasColumnType("datetime");
@@ -352,7 +413,7 @@ public partial class AppDbContext : DbContext
 
             entity.HasOne(d => d.fk_Companyid_CompanyNavigation).WithMany(p => p.products)
                 .HasForeignKey(d => d.fk_Companyid_Company)
-                .OnDelete(DeleteBehavior.SetNull)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_product_company");
 
             entity.HasMany(d => d.fk_ProductGroupId_ProductGroups).WithMany(p => p.fk_Productid_Products)
@@ -421,15 +482,15 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.fk_Companyid_Company).HasColumnType("int(11)");
             entity.Property(e => e.fk_ReturnStatusTypeid_ReturnStatusType).HasColumnType("int(11)");
 
-            entity.HasOne(d => d.fk_Adminid_UsersNavigation).WithMany(p => p.product_returnfk_Adminid_UsersNavigations)
+            entity.HasOne(d => d.fk_Adminid_UsersNavigation).WithMany(p => p.product_returns)
                 .HasForeignKey(d => d.fk_Adminid_Users)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("FK_returns_admin_users");
 
-            entity.HasOne(d => d.fk_Clientid_UsersNavigation).WithMany(p => p.product_returnfk_Clientid_UsersNavigations)
+            entity.HasOne(d => d.fk_Clientid_UsersNavigation).WithMany(p => p.product_returns)
                 .HasForeignKey(d => d.fk_Clientid_Users)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_returns_client_users");
+                .HasConstraintName("FK_returns_client");
 
             entity.HasOne(d => d.fk_Companyid_CompanyNavigation).WithMany(p => p.product_returns)
                 .HasForeignKey(d => d.fk_Companyid_Company)
@@ -514,7 +575,7 @@ public partial class AppDbContext : DbContext
 
             entity.HasOne(d => d.fk_Companyid_CompanyNavigation).WithMany(p => p.shipments)
                 .HasForeignKey(d => d.fk_Companyid_Company)
-                .OnDelete(DeleteBehavior.SetNull)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_shipment_company");
 
             entity.HasOne(d => d.fk_Courierid_CourierNavigation).WithMany(p => p.shipments)

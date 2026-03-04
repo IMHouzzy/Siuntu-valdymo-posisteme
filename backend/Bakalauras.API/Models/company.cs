@@ -29,6 +29,10 @@ public partial class company
 
     public string image { get; set; } = null!;
 
+    public virtual ICollection<client_company> client_companies { get; set; } = new List<client_company>();
+
+    public virtual ICollection<company_integration> company_integrations { get; set; } = new List<company_integration>();
+
     public virtual ICollection<company_user> company_users { get; set; } = new List<company_user>();
 
     public virtual ICollection<order> orders { get; set; } = new List<order>();

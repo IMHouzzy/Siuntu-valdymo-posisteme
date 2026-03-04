@@ -1,80 +1,92 @@
-import React, { useState } from "react";
-import { Routes, Route } from "react-router-dom";
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 
-import Header from "./components/header";
-import SidebarLeft from "./components/SidebarLeft";
+import AuthLayout from "./layouts/AuthLayout";
+import StaffLayout from "./layouts/StaffLayout";
+import ClientLayout from "./layouts/ClientLayout";
+
+import Login from "./pages/auth/Login";
+import Register from "./pages/auth/Register";
+import AccountConfirmationPassword from "./pages/auth/AccountConfirmationPassword";
+import ChangePassword from "./pages/auth/ChangePasswordPage";
 
 import HomePage from "./pages/HomePage";
 import NotFoundPage from "./pages/NotFoundPage";
 
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import AccountConfirmationPassword from "./pages/AccountConfirmationPassword";
-import ChangePassword from "./pages/ChangePasswordPage";
+import OrderPage from "./pages/orderCrud/OrderPage";
+import OrderAdd from "./pages/orderCrud/OrderAdd";
+import OrderEdit from "./pages/orderCrud/OrderEdit";
 
+import ProductPage from "./pages/productCrud/ProductPage";
+import ProductAdd from "./pages/productCrud/ProductAdd";
+import ProductEdit from "./pages/productCrud/ProductEdit";
 
+import UsersPage from "./pages/userCrud/UsersPage";
+import UserAdd from "./pages/userCrud/UserAdd";
+import UserEdit from "./pages/userCrud/UserEdit";
 
-import OrderPage from "./pages/OrderPage";
-import OrderAdd from "./pages/OrderAdd";
-import OrderEdit from "./pages/OrderEdit";
+// klientų puslapiai (pavyzdžiai)
+import UserHome from "./pages/userCrud/UserHome";
+import UserOrders from "./pages/userCrud/UserOrders";
 
-import ProductPage from "./pages/ProductPage";
-import ProductAdd from "./pages/ProductAdd";
-import ProductEdit from "./pages/ProductEdit";
+import RequireAuth from "./components/routing/RequireAuth";
+import RequireRole from "./components/routing/RequireRole";
 
-import UsersPage from "./pages/UsersPage";
-import UserAdd from "./pages/UserAdd";
-import UserEdit from "./pages/UserEdit";
-
-
-import "./App.css";
-
-function App() {
-  const [collapsed, setCollapsed] = useState(() => localStorage.getItem("sb") === "1");
-
-  const toggle = () => {
-    setCollapsed((v) => {
-      const next = !v;
-      localStorage.setItem("sb", next ? "1" : "0");
-      return next;
-    });
-  };
-
+export default function App() {
   return (
-    <div className={`layout-container ${collapsed ? "is-collapsed" : ""}`}>
-      <div className="layout-header"><Header /></div>
+    <Routes>
+      {/* AUTH (be sidebar/header) */}
+      <Route element={<AuthLayout />}>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/confirm" element={<AccountConfirmationPassword />} />
+        <Route path="/change-password" element={<ChangePassword />} />
+      </Route>
 
-      <div className="layout-menu">
-        <SidebarLeft collapsed={collapsed} onToggle={toggle} />
-      </div>
+      {/* STAFF (admin/staff UI) */}
+      <Route
+        element={
+          <RequireAuth>
+            <RequireRole allow={["MASTER", "ADMIN", "STAFF"]}>
+              <StaffLayout />
+            </RequireRole>
+          </RequireAuth>
+        }
+      >
+        <Route index element={<HomePage />} />
 
-      <div className="layout-content">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="*" element={<NotFoundPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/account-confirmation" element={<AccountConfirmationPassword />} />
-          <Route path="/change-password" element={<ChangePassword />} />
+        <Route path="productList" element={<ProductPage />} />
+        <Route path="productAdd" element={<ProductAdd />} />
+        <Route path="productEdit/:id" element={<ProductEdit />} />
 
-          <Route path="/productList" element={<ProductPage />} />
-          <Route path="/productAdd" element={<ProductAdd />} />
-          <Route path="/productEdit/:id" element={<ProductEdit />} />
+        <Route path="orderList" element={<OrderPage />} />
+        <Route path="orderAdd" element={<OrderAdd />} />
+        <Route path="orderEdit/:id" element={<OrderEdit />} />
 
-          <Route path="/orderList" element={<OrderPage />} />
-          <Route path="/orderAdd" element={<OrderAdd />} />
-          <Route path="/orderEdit/:id" element={<OrderEdit />} />
+        <Route path="usersList" element={<UsersPage />} />
+        <Route path="userAdd" element={<UserAdd />} />
+        <Route path="userEdit/:id" element={<UserEdit />} />
+      </Route>
 
-          <Route path="/usersList" element={<UsersPage />} />
-          <Route path="/userAdd" element={<UserAdd />} />
-          <Route path="/userEdit/:id" element={<UserEdit />} />
+      {/* CLIENT (kitas UI) */}
+      <Route
+        path="/client"
+        element={
+          <RequireAuth>
+            <RequireRole allow={["CLIENT"]}>
+              <ClientLayout />
+            </RequireRole>
+          </RequireAuth>
+        }
+      >
+        <Route index element={<UserHome />} />
+        <Route path="orders" element={<UserOrders />} />
+      </Route>
 
-        </Routes>
-      </div>
+      {/* default redirect (pvz. jei atidarė /) */}
+      <Route path="/" element={<Navigate to="/" replace />} />
 
-      <div className="layout-footer"></div>
-    </div>
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
   );
 }
-
-export default App;

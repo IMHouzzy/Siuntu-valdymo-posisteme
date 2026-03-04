@@ -1,4 +1,10 @@
+using System.Net.Http;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using System;
+
 public class ButentApiService
 {
     private readonly HttpClient _http;
@@ -7,72 +13,61 @@ public class ButentApiService
     {
         _http = http;
     }
+
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         PropertyNameCaseInsensitive = true
     };
 
-    public async Task<List<ButentClientDto>> GetClientsAsync()
+    // Small helper to reduce repetition and keep errors readable
+    private async Task<T?> GetJsonAsync<T>(string url, CancellationToken ct)
     {
-        var response = await _http.GetAsync("client");
-        response.EnsureSuccessStatusCode();
+        using var res = await _http.GetAsync(url, ct);
 
-        var json = await response.Content.ReadAsStringAsync();
-
-        var wrapper = JsonSerializer.Deserialize<ButentClientResponse>(json, new JsonSerializerOptions
+        // If Butent returns a body on error, include it for debugging
+        if (!res.IsSuccessStatusCode)
         {
-            PropertyNameCaseInsensitive = true
-        });
+            var body = await res.Content.ReadAsStringAsync(ct);
+            throw new HttpRequestException(
+                $"Butent API error {(int)res.StatusCode} {res.ReasonPhrase}. Url='{url}'. Body='{body}'"
+            );
+        }
 
+        var json = await res.Content.ReadAsStringAsync(ct);
+        if (string.IsNullOrWhiteSpace(json)) return default;
+
+        return JsonSerializer.Deserialize<T>(json, JsonOpts);
+    }
+
+    public async Task<List<ButentClientDto>> GetClientsAsync(CancellationToken ct = default)
+    {
+        var wrapper = await GetJsonAsync<ButentClientResponse>("client", ct);
         return wrapper?.Clients ?? new List<ButentClientDto>();
     }
+
     public async Task<List<ButentProductDto>> GetProductsAsync(CancellationToken ct = default)
     {
-        var response = await _http.GetAsync("good", ct); // endpoint is "good"
-        response.EnsureSuccessStatusCode();
-
-        var json = await response.Content.ReadAsStringAsync(ct);
-
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        var wrapper = JsonSerializer.Deserialize<ButentGoodsResponse>(json, options);
-
+        // endpoint is "good"
+        var wrapper = await GetJsonAsync<ButentGoodsResponse>("good", ct);
         return wrapper?.Goods ?? new List<ButentProductDto>();
     }
 
-   public async Task<List<ButentSaleDocDto>> GetSalesAsync(string dateFrom, CancellationToken ct)
+    public async Task<List<ButentSaleDocDto>> GetSalesAsync(string dateFrom, CancellationToken ct = default)
     {
-        var res = await _http.GetAsync($"trade/sale?dateFrom={Uri.EscapeDataString(dateFrom)}", ct);
-        res.EnsureSuccessStatusCode();
-
-        var json = await res.Content.ReadAsStringAsync(ct);
-        var opt = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-
-        var wrapper = JsonSerializer.Deserialize<ButentSalesResponse>(json, opt);
-        return wrapper?.Documents ?? new();
+        var url = $"trade/sale?dateFrom={Uri.EscapeDataString(dateFrom)}";
+        var wrapper = await GetJsonAsync<ButentSalesResponse>(url, ct);
+        return wrapper?.Documents ?? new List<ButentSaleDocDto>();
     }
 
-    public async Task<ButentDocumentDto> GetDocumentAsync(int id, CancellationToken ct)
+    public async Task<ButentDocumentDto?> GetDocumentAsync(int id, CancellationToken ct = default)
     {
-        var res = await _http.GetAsync($"document?id={id}", ct);
-        res.EnsureSuccessStatusCode();
-
-        var json = await res.Content.ReadAsStringAsync(ct);
-        var opt = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-
-        var wrapper = JsonSerializer.Deserialize<ButentDocumentResponse>(json, opt);
+        var wrapper = await GetJsonAsync<ButentDocumentResponse>($"document?id={id}", ct);
         return wrapper?.Documents?.FirstOrDefault();
     }
 
-    public async Task<List<ButentItemDto>> GetDocumentItemsAsync(int id, CancellationToken ct)
+    public async Task<List<ButentItemDto>> GetDocumentItemsAsync(int id, CancellationToken ct = default)
     {
-        var res = await _http.GetAsync($"document/{id}/item", ct);
-        res.EnsureSuccessStatusCode();
-
-        var json = await res.Content.ReadAsStringAsync(ct);
-        var opt = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-
-        var wrapper = JsonSerializer.Deserialize<ButentItemsResponse>(json, opt);
-        return wrapper?.Items ?? new();
+        var wrapper = await GetJsonAsync<ButentItemsResponse>($"document/{id}/item", ct);
+        return wrapper?.Items ?? new List<ButentItemDto>();
     }
 }
-

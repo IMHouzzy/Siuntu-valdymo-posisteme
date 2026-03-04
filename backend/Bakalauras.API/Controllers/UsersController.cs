@@ -1,10 +1,11 @@
 using Bakalauras.API.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Bakalauras.API.Models;
 
 [ApiController]
 [Route("api/users/")]
+[Authorize]
 public class UsersController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -14,32 +15,35 @@ public class UsersController : ControllerBase
         _db = db;
     }
 
+    // -------- Helpers --------
+
+    private int GetRequiredCompanyId()
+    {
+        var companyId = User.GetCompanyId();
+        if (companyId <= 0)
+            throw new UnauthorizedAccessException("No active company selected.");
+        return companyId;
+    }
+
+    private Task<bool> UserBelongsToCompany(int companyId, int userId)
+        => _db.company_users.AnyAsync(cu =>
+            cu.fk_Companyid_Company == companyId &&
+            cu.fk_Usersid_Users == userId);
+
+    // -------- Endpoints --------
+
     [HttpGet("allUsers")]
     public async Task<IActionResult> GetAllUsers()
     {
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
         var users = await _db.users
-            .Select(u => new
-            {
-                u.id_Users,
-                u.name,
-                u.surname,
-                u.email,
-                u.phoneNumber,
-                u.creationDate,
-                u.authProvider
-            })
-            .ToListAsync();
-
-        return Ok(users);
-    }
-
-    [HttpGet("allUsersWithClients")]
-    public async Task<IActionResult> GetAllUsersWithClients()
-    {
-        var usersWithClients = await _db.users
-            .Include(u => u.client)
-            .Include(u => u.employee)
-            .Include(u => u.admin)
+            .AsNoTracking()
+            .Where(u => _db.company_users.Any(cu =>
+                cu.fk_Companyid_Company == companyId &&
+                cu.fk_Usersid_Users == u.id_Users))
             .Select(u => new
             {
                 u.id_Users,
@@ -49,6 +53,41 @@ public class UsersController : ControllerBase
                 u.phoneNumber,
                 u.creationDate,
                 u.authProvider,
+                u.fk_Companyid_Company,
+                u.isMasterAdmin
+            })
+            .ToListAsync();
+
+        return Ok(users);
+    }
+
+    [HttpGet("allUsersWithClients")]
+    public async Task<IActionResult> GetAllUsersWithClients()
+    {
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
+        var q = _db.users
+            .AsNoTracking()
+            .Where(u => _db.company_users.Any(cu =>
+                cu.fk_Companyid_Company == companyId &&
+                cu.fk_Usersid_Users == u.id_Users))
+            .Include(u => u.client)
+            .Include(u => u.employee)
+            .Include(u => u.admin);
+
+        var usersWithClients = await q
+            .Select(u => new
+            {
+                u.id_Users,
+                u.name,
+                u.surname,
+                u.email,
+                u.phoneNumber,
+                u.creationDate,
+                u.authProvider,
+                u.fk_Companyid_Company,
 
                 client = u.client == null ? null : new
                 {
@@ -72,7 +111,6 @@ public class UsersController : ControllerBase
 
                 admin = u.admin == null ? null : new
                 {
-                    // gali palikti taip, bet geriau duoti kažką prasmingo
                     u.admin.id_Users
                 }
             })
@@ -80,9 +118,14 @@ public class UsersController : ControllerBase
 
         return Ok(usersWithClients);
     }
+
     [HttpPost("createUser")]
     public async Task<IActionResult> CreateUser([FromBody] CreateUserDto dto)
     {
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
         if (string.IsNullOrWhiteSpace(dto.Email))
             return BadRequest("Email is required.");
 
@@ -94,7 +137,7 @@ public class UsersController : ControllerBase
 
         try
         {
-            // 1) Create base user
+            // 1) Create base user and set active company
             var user = new user
             {
                 name = dto.Name,
@@ -103,13 +146,29 @@ public class UsersController : ControllerBase
                 phoneNumber = dto.PhoneNumber,
                 password = null,
                 authProvider = "LOCAL",
-                creationDate = DateTime.Now
+                creationDate = DateTime.Now,
+                fk_Companyid_Company = companyId, // ✅ always set selected company
+                isMasterAdmin = false
             };
 
             _db.users.Add(user);
             await _db.SaveChangesAsync();
 
+            // 2) Link user to company via company_users (membership)
+            var role = dto.IsEmployee
+                ? (dto.Position ?? "EMPLOYEE")
+                : (dto.IsClient ? "CLIENT" : "USER");
 
+            _db.company_users.Add(new company_user
+            {
+                fk_Companyid_Company = companyId,
+                fk_Usersid_Users = user.id_Users,
+                role = role
+            });
+
+            await _db.SaveChangesAsync();
+
+            // 3) Client
             if (dto.IsClient)
             {
                 var client = new client
@@ -119,15 +178,27 @@ public class UsersController : ControllerBase
                     city = dto.City,
                     country = dto.Country,
                     vat = dto.Vat,
-                    bankCode = dto.BankCode,
-
-
+                    bankCode = dto.BankCode
                 };
-
                 _db.clients.Add(client);
+                await _db.SaveChangesAsync();
+
+                // client_company membership row
+                _db.client_companies.Add(new client_company
+                {
+                    fk_Clientid_Users = user.id_Users,
+                    fk_Companyid_Company = companyId,
+                    externalClientId = null,
+                    deliveryAddress = dto.DeliveryAddress,
+                    city = dto.City,
+                    country = dto.Country,
+                    vat = dto.Vat,
+                    bankCode = dto.BankCode
+                });
                 await _db.SaveChangesAsync();
             }
 
+            // 4) Employee + optional Admin row
             if (dto.IsEmployee)
             {
                 if (string.IsNullOrWhiteSpace(dto.Position))
@@ -140,42 +211,43 @@ public class UsersController : ControllerBase
                     startDate = dto.StartDate ?? DateTime.Now,
                     active = dto.Active
                 };
-
                 _db.employees.Add(emp);
                 await _db.SaveChangesAsync();
 
-
                 if (dto.Position == "ADMIN")
                 {
-                    var admin = new admin
-                    {
-                        id_Users = user.id_Users
-                    };
-
-                    _db.admins.Add(admin);
+                    _db.admins.Add(new admin { id_Users = user.id_Users });
                     await _db.SaveChangesAsync();
                 }
             }
 
             await tx.CommitAsync();
-
             return Ok(new { userId = user.id_Users });
         }
         catch (Exception ex)
         {
             await tx.RollbackAsync();
-            return StatusCode(500, ex.Message);
+            return StatusCode(500, ex.InnerException?.Message ?? ex.Message);
         }
     }
-    [HttpGet("user/{id}")]
+
+    [HttpGet("user/{id:int}")]
     public async Task<IActionResult> GetUser(int id)
     {
-        var user = await _db.users.FirstOrDefaultAsync(u => u.id_Users == id);
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
+        // ✅ enforce tenant isolation for everyone (including master)
+        if (!await UserBelongsToCompany(companyId, id))
+            return StatusCode(403, "User is not in your company.");
+
+        var user = await _db.users.AsNoTracking().FirstOrDefaultAsync(u => u.id_Users == id);
         if (user == null) return NotFound();
 
-        var client = await _db.clients.FirstOrDefaultAsync(c => c.id_Users == id);
-        var employee = await _db.employees.FirstOrDefaultAsync(e => e.id_Users == id);
-        var admin = await _db.admins.FirstOrDefaultAsync(a => a.id_Users == id);
+        var client = await _db.clients.AsNoTracking().FirstOrDefaultAsync(c => c.id_Users == id);
+        var employee = await _db.employees.AsNoTracking().FirstOrDefaultAsync(e => e.id_Users == id);
+        var admin = await _db.admins.AsNoTracking().FirstOrDefaultAsync(a => a.id_Users == id);
 
         return Ok(new
         {
@@ -201,9 +273,17 @@ public class UsersController : ControllerBase
         });
     }
 
-    [HttpPut("editUser/{id}")]
+    [HttpPut("editUser/{id:int}")]
     public async Task<IActionResult> UpdateUser(int id, [FromBody] CreateUserDto dto)
     {
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
+        // ✅ tenant isolation for everyone
+        if (!await UserBelongsToCompany(companyId, id))
+            return StatusCode(403, "User is not in your company.");
+
         var user = await _db.users.FirstOrDefaultAsync(u => u.id_Users == id);
         if (user == null) return NotFound();
 
@@ -216,6 +296,9 @@ public class UsersController : ControllerBase
             user.email = dto.Email;
             user.phoneNumber = dto.PhoneNumber;
 
+            // keep the user's active company aligned with selected company (optional, but consistent)
+            user.fk_Companyid_Company = companyId;
+
             await _db.SaveChangesAsync();
 
             // CLIENT
@@ -224,7 +307,7 @@ public class UsersController : ControllerBase
             {
                 if (client == null)
                 {
-                    client = new client { id_Users = id, userId = id }; // if userId exists
+                    client = new client { id_Users = id, userId = id };
                     _db.clients.Add(client);
                 }
 
@@ -233,10 +316,42 @@ public class UsersController : ControllerBase
                 client.country = dto.Country;
                 client.vat = dto.Vat;
                 client.bankCode = dto.BankCode;
+
+                // ensure client_company exists/updated for selected company
+                var cc = await _db.client_companies.FirstOrDefaultAsync(x =>
+                    x.fk_Companyid_Company == companyId && x.fk_Clientid_Users == id);
+
+                if (cc == null)
+                {
+                    _db.client_companies.Add(new client_company
+                    {
+                        fk_Clientid_Users = id,
+                        fk_Companyid_Company = companyId,
+                        externalClientId = client.externalClientId,
+                        deliveryAddress = dto.DeliveryAddress,
+                        city = dto.City,
+                        country = dto.Country,
+                        vat = dto.Vat,
+                        bankCode = dto.BankCode
+                    });
+                }
+                else
+                {
+                    cc.deliveryAddress = dto.DeliveryAddress;
+                    cc.city = dto.City;
+                    cc.country = dto.Country;
+                    cc.vat = dto.Vat;
+                    cc.bankCode = dto.BankCode;
+                }
             }
             else
             {
                 if (client != null) _db.clients.Remove(client);
+
+                // remove client_company link for this company
+                var cc = await _db.client_companies.FirstOrDefaultAsync(x =>
+                    x.fk_Companyid_Company == companyId && x.fk_Clientid_Users == id);
+                if (cc != null) _db.client_companies.Remove(cc);
             }
 
             // EMPLOYEE
@@ -249,7 +364,7 @@ public class UsersController : ControllerBase
                     _db.employees.Add(employee);
                 }
 
-                employee.position = dto.Position;
+                employee.position = dto.Position ?? employee.position;
                 employee.startDate = dto.StartDate ?? DateTime.Now;
                 employee.active = dto.Active;
             }
@@ -264,13 +379,18 @@ public class UsersController : ControllerBase
             var admin = await _db.admins.FirstOrDefaultAsync(a => a.id_Users == id);
             var shouldBeAdmin = dto.IsEmployee && dto.Position == "ADMIN";
 
-            if (shouldBeAdmin && admin == null)
+            if (shouldBeAdmin && admin == null) _db.admins.Add(new admin { id_Users = id });
+            if (!shouldBeAdmin && admin != null) _db.admins.Remove(admin);
+
+            // company_users role update for selected company
+            var cu = await _db.company_users.FirstOrDefaultAsync(x =>
+                x.fk_Companyid_Company == companyId && x.fk_Usersid_Users == id);
+
+            if (cu != null)
             {
-                _db.admins.Add(new admin { id_Users = id });
-            }
-            if (!shouldBeAdmin && admin != null)
-            {
-                _db.admins.Remove(admin);
+                cu.role = dto.IsEmployee
+                    ? (dto.Position ?? "EMPLOYEE")
+                    : (dto.IsClient ? "CLIENT" : "USER");
             }
 
             await _db.SaveChangesAsync();
@@ -285,15 +405,24 @@ public class UsersController : ControllerBase
         }
     }
 
-    [HttpDelete("deleteUser/{id}")]
+    [HttpDelete("deleteUser/{id:int}")]
     public async Task<IActionResult> DeleteUser(int id)
     {
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
+        // ✅ tenant isolation for everyone
+        if (!await UserBelongsToCompany(companyId, id))
+            return StatusCode(403, "User is not in your company.");
+
         var user = await _db.users.FirstOrDefaultAsync(u => u.id_Users == id);
         if (user == null) return NotFound();
 
         await using var tx = await _db.Database.BeginTransactionAsync();
         try
         {
+            // remove role tables if present
             var admin = await _db.admins.FirstOrDefaultAsync(a => a.id_Users == id);
             if (admin != null) _db.admins.Remove(admin);
 
@@ -302,6 +431,13 @@ public class UsersController : ControllerBase
 
             var client = await _db.clients.FirstOrDefaultAsync(c => c.id_Users == id);
             if (client != null) _db.clients.Remove(client);
+
+            // remove tenant links for this user (all companies)
+            var cus = await _db.company_users.Where(x => x.fk_Usersid_Users == id).ToListAsync();
+            _db.company_users.RemoveRange(cus);
+
+            var ccs = await _db.client_companies.Where(x => x.fk_Clientid_Users == id).ToListAsync();
+            _db.client_companies.RemoveRange(ccs);
 
             _db.users.Remove(user);
 
@@ -315,8 +451,4 @@ public class UsersController : ControllerBase
             return StatusCode(500, ex.InnerException?.Message ?? ex.Message);
         }
     }
-
-
 }
-
-

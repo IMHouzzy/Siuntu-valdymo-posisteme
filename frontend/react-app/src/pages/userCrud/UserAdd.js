@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import SmartForm from "../components/SmartForm";
-import FormPageLayout from "../components/FormPageLayout";
+import SmartForm from "../../components/SmartForm";
+import FormPageLayout from "../../components/FormPageLayout";
 
 export default function UserCreatePage() {
     const navigate = useNavigate();
     const [live, setLive] = useState({ isClient: false, isEmployee: false });
+    
 
     const fields = useMemo(() => {
         const base = [
@@ -13,8 +14,8 @@ export default function UserCreatePage() {
 
             { name: "name", label: "Vardas", required: true, colSpan: 1 },
             { name: "surname", label: "Pavardė", required: true, colSpan: 1 },
-            { name: "email", label: "El. paštas", type:"email", required: true, colSpan: 2 },
-            { name: "phoneNumber", label: "Telefono nr.", type:"tel", required: true, colSpan: 2 },
+            { name: "email", label: "El. paštas", type: "email", required: true, colSpan: 2 },
+            { name: "phoneNumber", label: "Telefono nr.", type: "tel", required: true, colSpan: 2 },
 
 
             { type: "section", title: "Rolės" },
@@ -30,7 +31,7 @@ export default function UserCreatePage() {
                 { name: "city", label: "Miestas", colSpan: 1 },
                 { name: "country", label: "Šalis", colSpan: 1 },
                 { name: "vat", label: "PVM kodas", colSpan: 1 },
-                { name: "bankCode", label: "Banko kodas", type:"number", colSpan: 1 },
+                { name: "bankCode", label: "Banko kodas", type: "number", colSpan: 1 },
 
                 // {
                 //     name: "clientType", label: "Kliento tipas", type: "select", required: true, colSpan: 2,
@@ -130,7 +131,10 @@ export default function UserCreatePage() {
                 onSubmit={async (values) => {
                     await fetch("http://localhost:5065/api/users/createUser", {
                         method: "POST",
-                        headers: { "Content-Type": "application/json" },
+                        headers: {
+                            Authorization: `Bearer ${localStorage.getItem("token")}`,
+                            "Content-Type": "application/json",
+                        },
                         body: JSON.stringify(values),
                     });
                     navigate("/usersList");

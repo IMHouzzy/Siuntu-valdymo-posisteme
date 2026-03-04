@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import SmartForm from "../components/SmartForm";
-import FormPageLayout from "../components/FormPageLayout";
+import SmartForm from "../../components/SmartForm";
+import FormPageLayout from "../../components/FormPageLayout";
 
 export default function ProductFormPage() {
   const navigate = useNavigate();
@@ -11,8 +11,16 @@ export default function ProductFormPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("http://localhost:5065/api/products/categories").then(r => r.json()),
-      fetch("http://localhost:5065/api/products/productgroups").then(r => r.json()),
+      fetch("http://localhost:5065/api/products/categories", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }).then(r => r.json()),
+      fetch("http://localhost:5065/api/products/productgroups", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }).then(r => r.json()),
     ])
       .then(([cats, grps]) => {
         setCategories(cats);
@@ -98,6 +106,9 @@ export default function ProductFormPage() {
 
           await fetch("http://localhost:5065/api/products/createProduct", {
             method: "POST",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
             body: fd,
           });
 

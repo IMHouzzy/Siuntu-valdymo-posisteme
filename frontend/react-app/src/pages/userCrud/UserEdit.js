@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import SmartForm from "../components/SmartForm";
-import FormPageLayout from "../components/FormPageLayout";
+import SmartForm from "../../components/SmartForm";
+import FormPageLayout from "../../components/FormPageLayout";
 
 export default function UserEditPage() {
   const { id } = useParams();
@@ -11,7 +11,11 @@ export default function UserEditPage() {
   const [initialValues, setInitialValues] = useState(null);
 
   useEffect(() => {
-    fetch(`http://localhost:5065/api/users/user/${id}`)
+    fetch(`http://localhost:5065/api/users/user/${id}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    })
       .then(r => r.json())
       .then(data => {
 
@@ -46,8 +50,8 @@ export default function UserEditPage() {
       { type: "section", title: "Pagrindinė informacija" },
       { name: "name", label: "Vardas", required: true, colSpan: 1 },
       { name: "surname", label: "Pavardė", required: true, colSpan: 1 },
-      { name: "email", label: "El. paštas",type:"email", required: true, colSpan: 2 },
-      { name: "phoneNumber", label: "Telefono nr.", type:"tel",required: true, colSpan: 2 },
+      { name: "email", label: "El. paštas", type: "email", required: true, colSpan: 2 },
+      { name: "phoneNumber", label: "Telefono nr.", type: "tel", required: true, colSpan: 2 },
 
       { type: "section", title: "Rolės" },
       { name: "isClient", label: "Klientas", type: "checkbox", help: "Pridėti kliento duomenis", colSpan: 1 },
@@ -56,32 +60,32 @@ export default function UserEditPage() {
 
     const client = live.isClient
       ? [
-          { type: "section", title: "Kliento duomenys" },
-          { name: "deliveryAddress", label: "Pristatymo adresas", colSpan: 2 },
-          { name: "city", label: "Miestas", colSpan: 1 },
-          { name: "country", label: "Šalis", colSpan: 1 },
-          { name: "vat", label: "PVM kodas", colSpan: 1 },
-          { name: "bankCode", label: "Banko kodas", type: "number", colSpan: 1 },
-        ]
+        { type: "section", title: "Kliento duomenys" },
+        { name: "deliveryAddress", label: "Pristatymo adresas", colSpan: 2 },
+        { name: "city", label: "Miestas", colSpan: 1 },
+        { name: "country", label: "Šalis", colSpan: 1 },
+        { name: "vat", label: "PVM kodas", colSpan: 1 },
+        { name: "bankCode", label: "Banko kodas", type: "number", colSpan: 1 },
+      ]
       : [];
 
     const employee = live.isEmployee
       ? [
-          { type: "section", title: "Darbuotojo duomenys" },
-          {
-            name: "position",
-            label: "Pareigos",
-            type: "select",
-            required: true,
-            colSpan: 1,
-            options: [
-              { value: "ADMIN", label: "Administratorius" },
-              { value: "STAFF", label: "Darbuotojas" },
-            ],
-          },
-          { name: "startDate", label: "Įdarbinimo data", type: "date", colSpan: 1 },
-          { name: "active", label: "Aktyvus", type: "checkbox", help: "Ar darbuotojas aktyvus?", colSpan: 1 },
-        ]
+        { type: "section", title: "Darbuotojo duomenys" },
+        {
+          name: "position",
+          label: "Pareigos",
+          type: "select",
+          required: true,
+          colSpan: 1,
+          options: [
+            { value: "ADMIN", label: "Administratorius" },
+            { value: "STAFF", label: "Darbuotojas" },
+          ],
+        },
+        { name: "startDate", label: "Įdarbinimo data", type: "date", colSpan: 1 },
+        { name: "active", label: "Aktyvus", type: "checkbox", help: "Ar darbuotojas aktyvus?", colSpan: 1 },
+      ]
       : [];
 
     return [...base, ...client, ...employee];
@@ -107,7 +111,10 @@ export default function UserEditPage() {
 
           await fetch(`http://localhost:5065/api/users/editUser/${id}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+              "Content-Type": "application/json",
+            },
             body: JSON.stringify(payload),
           });
 

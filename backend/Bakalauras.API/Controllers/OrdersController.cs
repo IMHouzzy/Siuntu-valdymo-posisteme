@@ -1,10 +1,11 @@
 using Bakalauras.API.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-
 [ApiController]
 [Route("api/orders/")]
+[Authorize]
 public class OrderController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -14,10 +15,30 @@ public class OrderController : ControllerBase
         _db = db;
     }
 
+    // -------- Helpers --------
+
+    private int GetRequiredCompanyId()
+    {
+        var companyId = User.GetCompanyId();
+        if (companyId <= 0)
+            throw new UnauthorizedAccessException("No active company selected.");
+        return companyId;
+    }
+
+    // -------------------------
+    // READ (LIST)
+    // -------------------------
+
     [HttpGet("allOrders")]
     public async Task<IActionResult> GetAllOrders()
     {
-        var order = await _db.orders
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
+        var orders = await _db.orders
+            .AsNoTracking()
+            .Where(o => o.fk_Companyid_Company == companyId)
             .Select(o => new
             {
                 o.id_Orders,
@@ -27,19 +48,24 @@ public class OrderController : ControllerBase
                 o.deliveryPrice,
                 o.status,
                 o.fk_Clientid_Users,
-                o.externalDocumentId
-
+                o.externalDocumentId,
+                o.fk_Companyid_Company
             })
             .ToListAsync();
 
-        return Ok(order);
+        return Ok(orders);
     }
 
     [HttpGet("allOrdersFullInfo")]
     public async Task<IActionResult> GetAllOrdersFullInfo()
     {
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
         var orders = await _db.orders
             .AsNoTracking()
+            .Where(o => o.fk_Companyid_Company == companyId)
             .Select(o => new
             {
                 o.id_Orders,
@@ -50,6 +76,7 @@ public class OrderController : ControllerBase
                 o.status,
                 statusName = o.statusNavigation.name,
                 o.externalDocumentId,
+                o.fk_Companyid_Company,
 
                 client = new
                 {
@@ -70,7 +97,6 @@ public class OrderController : ControllerBase
                     externalClientId = o.fk_Clientid_UsersNavigation.externalClientId
                 },
 
-
                 products = o.ordersproducts.Select(op => new
                 {
                     quantity = op.quantity,
@@ -88,6 +114,11 @@ public class OrderController : ControllerBase
         return Ok(orders);
     }
 
+    // -------------------------
+    // LOOKUPS
+    // -------------------------
+
+    [AllowAnonymous]
     [HttpGet("order-statuses")]
     public async Task<IActionResult> GetOrderStatuses()
     {
@@ -98,11 +129,23 @@ public class OrderController : ControllerBase
         return Ok(statuses);
     }
 
-
+    // Tenant-safe client info (pagal aktyvią įmonę)
     [HttpGet("clientInfo/{userId:int}")]
     public async Task<IActionResult> GetClientInfo(int userId)
     {
-        var c = await _db.clients.FirstOrDefaultAsync(x => x.id_Users == userId);
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
+        // ✅ klientas turi priklausyti šitai įmonei
+        var allowed = await _db.client_companies.AnyAsync(cc =>
+            cc.fk_Companyid_Company == companyId &&
+            cc.fk_Clientid_Users == userId);
+
+        if (!allowed)
+            return StatusCode(403, "Client is not in your company.");
+
+        var c = await _db.clients.AsNoTracking().FirstOrDefaultAsync(x => x.id_Users == userId);
         if (c == null) return Ok(null);
 
         return Ok(new
@@ -118,9 +161,15 @@ public class OrderController : ControllerBase
     [HttpGet("products")]
     public async Task<IActionResult> SearchProducts([FromQuery] string? q)
     {
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
         q = (q ?? "").Trim();
 
         var products = await _db.products
+            .AsNoTracking()
+            .Where(p => p.fk_Companyid_Company == companyId)
             .Where(p => q == "" || p.name.Contains(q))
             .Select(p => new { p.id_Product, p.name, p.price })
             .ToListAsync();
@@ -128,17 +177,41 @@ public class OrderController : ControllerBase
         return Ok(products);
     }
 
+    // -------------------------
+    // CREATE
+    // -------------------------
 
     [HttpPost("createOrder")]
     public async Task<IActionResult> CreateOrder([FromBody] OrderUpsertDto dto)
     {
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
         if (dto.Items == null || dto.Items.Count == 0)
             return BadRequest("Order must have at least 1 product.");
+
+        // ✅ client must belong to this company via client_company
+        var allowedClient = await _db.client_companies.AnyAsync(cc =>
+            cc.fk_Companyid_Company == companyId &&
+            cc.fk_Clientid_Users == dto.ClientUserId);
+
+        if (!allowedClient)
+            return StatusCode(403, "Client is not in your company.");
+
+        // ✅ all products must belong to this company
+        var productIds = dto.Items.Select(i => i.ProductId).Distinct().ToList();
+
+        var okCount = await _db.products.AsNoTracking()
+            .CountAsync(p => productIds.Contains(p.id_Product) && p.fk_Companyid_Company == companyId);
+
+        if (okCount != productIds.Count)
+            return StatusCode(403, "One or more products are not in your company.");
 
         await using var tx = await _db.Database.BeginTransactionAsync();
         try
         {
-            // upsert client info if provided OR if client row missing
+            // upsert client info (base client row)
             var client = await _db.clients.FirstOrDefaultAsync(c => c.id_Users == dto.ClientUserId);
 
             if (client == null)
@@ -146,12 +219,11 @@ public class OrderController : ControllerBase
                 client = new client
                 {
                     id_Users = dto.ClientUserId,
-                    userId = dto.ClientUserId // if your table needs it
+                    userId = dto.ClientUserId
                 };
                 _db.clients.Add(client);
             }
 
-            // only overwrite if user filled something
             if (dto.ClientInfo != null)
             {
                 client.deliveryAddress = dto.ClientInfo.DeliveryAddress;
@@ -165,6 +237,7 @@ public class OrderController : ControllerBase
 
             var order = new order
             {
+                fk_Companyid_Company = companyId, // ✅ FIX: always active company
                 OrdersDate = dto.OrdersDate,
                 totalAmount = dto.TotalAmount,
                 paymentMethod = dto.PaymentMethod,
@@ -179,15 +252,14 @@ public class OrderController : ControllerBase
 
             foreach (var it in dto.Items)
             {
-                var op = new ordersproduct
+                _db.ordersproducts.Add(new ordersproduct
                 {
                     fk_Ordersid_Orders = order.id_Orders,
                     fk_Productid_Product = it.ProductId,
                     quantity = it.Quantity,
                     unitPrice = it.UnitPrice,
                     vatValue = it.VatValue
-                };
-                _db.ordersproducts.Add(op);
+                });
             }
 
             await _db.SaveChangesAsync();
@@ -202,19 +274,31 @@ public class OrderController : ControllerBase
         }
     }
 
-    [HttpGet("order/{id}")]
+    // -------------------------
+    // READ (SINGLE)
+    // -------------------------
+
+    [HttpGet("order/{id:int}")]
     public async Task<IActionResult> GetOrder(int id)
     {
-        var order = await _db.orders.FirstOrDefaultAsync(o => o.id_Orders == id);
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
+        var order = await _db.orders.AsNoTracking().FirstOrDefaultAsync(o => o.id_Orders == id);
         if (order == null) return NotFound();
 
-        var items = await _db.ordersproducts
+        // ✅ tenant isolation for everyone
+        if (order.fk_Companyid_Company != companyId)
+            return StatusCode(403, "Order is not in your company.");
+
+        var items = await _db.ordersproducts.AsNoTracking()
             .Where(x => x.fk_Ordersid_Orders == id)
             .Select(x => new
             {
                 productId = x.fk_Productid_Product,
                 quantity = x.quantity,
-                unitPrice = x.unitPrice,   // ✅ iš ordersproduct
+                unitPrice = x.unitPrice,
                 vatValue = x.vatValue
             })
             .ToListAsync();
@@ -229,14 +313,45 @@ public class OrderController : ControllerBase
             status = order.status,
             clientUserId = order.fk_Clientid_Users,
             externalDocumentId = order.externalDocumentId,
+            companyId = order.fk_Companyid_Company,
             items
         });
     }
-    [HttpPut("editOrder/{id}")]
+
+    // -------------------------
+    // UPDATE
+    // -------------------------
+
+    [HttpPut("editOrder/{id:int}")]
     public async Task<IActionResult> UpdateOrder(int id, [FromBody] OrderUpsertDto dto)
     {
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
         var order = await _db.orders.FirstOrDefaultAsync(o => o.id_Orders == id);
         if (order == null) return NotFound();
+
+        // ✅ tenant isolation for everyone
+        if (order.fk_Companyid_Company != companyId)
+            return StatusCode(403, "Order is not in your company.");
+
+        // ✅ client must belong to this company
+        var allowedClient = await _db.client_companies.AnyAsync(cc =>
+            cc.fk_Companyid_Company == companyId &&
+            cc.fk_Clientid_Users == dto.ClientUserId);
+
+        if (!allowedClient)
+            return StatusCode(403, "Client is not in your company.");
+
+        // ✅ all products must belong to this company
+        var productIds = dto.Items.Select(i => i.ProductId).Distinct().ToList();
+
+        var okCount = await _db.products.AsNoTracking()
+            .CountAsync(p => productIds.Contains(p.id_Product) && p.fk_Companyid_Company == companyId);
+
+        if (okCount != productIds.Count)
+            return StatusCode(403, "One or more products are not in your company.");
 
         await using var tx = await _db.Database.BeginTransactionAsync();
         try
@@ -249,9 +364,8 @@ public class OrderController : ControllerBase
             order.fk_Clientid_Users = dto.ClientUserId;
             order.externalDocumentId = dto.ExternalDocumentId;
 
-            // ✅ UPDATE OR CREATE CLIENT INFO
-            var client = await _db.clients
-                .FirstOrDefaultAsync(c => c.id_Users == dto.ClientUserId);
+            // client info upsert
+            var client = await _db.clients.FirstOrDefaultAsync(c => c.id_Users == dto.ClientUserId);
 
             if (client == null)
             {
@@ -286,8 +400,8 @@ public class OrderController : ControllerBase
                     fk_Ordersid_Orders = id,
                     fk_Productid_Product = it.ProductId,
                     quantity = it.Quantity,
-                    unitPrice = it.UnitPrice,  
-                    vatValue = it.VatValue     
+                    unitPrice = it.UnitPrice,
+                    vatValue = it.VatValue
                 });
             }
 
@@ -302,16 +416,31 @@ public class OrderController : ControllerBase
         }
     }
 
-    [HttpDelete("deleteOrder/{id}")]
+    // -------------------------
+    // DELETE
+    // -------------------------
+
+    [HttpDelete("deleteOrder/{id:int}")]
     public async Task<IActionResult> DeleteOrder(int id)
     {
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
         var order = await _db.orders.FirstOrDefaultAsync(o => o.id_Orders == id);
         if (order == null) return NotFound();
+
+        // ✅ tenant isolation for everyone
+        if (order.fk_Companyid_Company != companyId)
+            return StatusCode(403, "Order is not in your company.");
 
         await using var tx = await _db.Database.BeginTransactionAsync();
         try
         {
-            var lines = await _db.ordersproducts.Where(x => x.fk_Ordersid_Orders == id).ToListAsync();
+            var lines = await _db.ordersproducts
+                .Where(x => x.fk_Ordersid_Orders == id)
+                .ToListAsync();
+
             _db.ordersproducts.RemoveRange(lines);
             _db.orders.Remove(order);
 
@@ -325,6 +454,4 @@ public class OrderController : ControllerBase
             return StatusCode(500, ex.InnerException?.Message ?? ex.Message);
         }
     }
-
-
 }

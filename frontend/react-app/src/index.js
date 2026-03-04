@@ -5,6 +5,7 @@ import App from "./App";
 import "./index.css";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider } from "./services/AuthContext";
+import  CompanySwitchGuard  from "./services/CompanySwitchGuard";
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
 
@@ -12,6 +13,7 @@ root.render(
   <BrowserRouter>
     <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID}>
       <AuthProvider>
+        <CompanySwitchGuard />
         <App />
       </AuthProvider>
     </GoogleOAuthProvider>

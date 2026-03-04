@@ -17,9 +17,9 @@ public partial class shipment
 
     public int fk_Ordersid_Orders { get; set; }
 
-    public int? fk_Companyid_Company { get; set; }
+    public int fk_Companyid_Company { get; set; }
 
-    public virtual company? fk_Companyid_CompanyNavigation { get; set; }
+    public virtual company fk_Companyid_CompanyNavigation { get; set; } = null!;
 
     public virtual courier? fk_Courierid_CourierNavigation { get; set; }
 

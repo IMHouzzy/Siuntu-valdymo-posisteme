@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import SmartForm from "../components/SmartForm";
-import FormPageLayout from "../components/FormPageLayout";
+import SmartForm from "../../components/SmartForm";
+import FormPageLayout from "../../components/FormPageLayout";
 
 export default function OrderEditPage() {
     const navigate = useNavigate();
@@ -24,10 +24,26 @@ export default function OrderEditPage() {
 
     useEffect(() => {
         Promise.all([
-            fetch("http://localhost:5065/api/orders/order-statuses").then(r => r.json()),
-            fetch("http://localhost:5065/api/users/allUsers").then(r => r.json()),
-            fetch("http://localhost:5065/api/orders/products?q=").then(r => r.json()),
-            fetch(`http://localhost:5065/api/orders/order/${id}`).then(r => r.json()),
+            fetch("http://localhost:5065/api/orders/order-statuses", {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+            }).then(r => r.json()),
+            fetch("http://localhost:5065/api/users/allUsers", {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+            }).then(r => r.json()),
+            fetch("http://localhost:5065/api/orders/products?q=", {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+            }).then(r => r.json()),
+            fetch(`http://localhost:5065/api/orders/order/${id}`, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+            }).then(r => r.json()),
         ])
             .then(async ([sts, us, pr, order]) => {
                 setStatuses(sts);
@@ -39,7 +55,11 @@ export default function OrderEditPage() {
                 // fetch client info
                 let clientData = null;
                 try {
-                    const r = await fetch(`http://localhost:5065/api/orders/clientInfo/${clientId}`);
+                    const r = await fetch(`http://localhost:5065/api/orders/clientInfo/${clientId}`, {
+                        headers: {
+                            Authorization: `Bearer ${localStorage.getItem("token")}`,
+                        },
+                    });
                     const text = await r.text();
                     clientData = text ? JSON.parse(text) : null;
                 } catch { }
@@ -217,7 +237,11 @@ export default function OrderEditPage() {
                         if (lastClientIdRef.current !== cid) {
                             lastClientIdRef.current = cid;
                             try {
-                                const r = await fetch(`http://localhost:5065/api/orders/clientInfo/${cid}`);
+                                const r = await fetch(`http://localhost:5065/api/orders/clientInfo/${cid}`, {
+                                    headers: {
+                                        Authorization: `Bearer ${localStorage.getItem("token")}`,
+                                    },
+                                });
                                 const text = await r.text();
                                 const data = text ? JSON.parse(text) : null;
 
@@ -319,7 +343,10 @@ export default function OrderEditPage() {
 
                     const res = await fetch(`http://localhost:5065/api/orders/editOrder/${id}`, {
                         method: "PUT",
-                        headers: { "Content-Type": "application/json" },
+                        headers: {
+                            Authorization: `Bearer ${localStorage.getItem("token")}`,
+                            "Content-Type": "application/json",
+                        },
                         body: JSON.stringify(payload),
                     });
 

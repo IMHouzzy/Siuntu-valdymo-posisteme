@@ -1,8 +1,8 @@
-import "../styles/Auth.css";
+import "../../styles/Auth.css";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
-import { useAuth } from "../services/AuthContext";
+import { useAuth } from "../../services/AuthContext";
 
 function Login() {
     const location = useLocation();

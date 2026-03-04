@@ -1,45 +1,101 @@
-import { createContext, useContext, useState } from "react";
+// services/AuthContext.js
+import { createContext, useContext, useMemo, useState } from "react";
 import { jwtDecode } from "jwt-decode";
 
 const AuthContext = createContext();
 
-function decodeUser(token) {
+function safeJsonParse(value, fallback) {
+  try { return JSON.parse(value); } catch { return fallback; }
+}
+
+function decodeAuth(token) {
   try {
     const p = jwtDecode(token);
-    console.log("JWT payload:", p); // ✅
+
+    const companies = typeof p.companies === "string"
+      ? safeJsonParse(p.companies, [])
+      : Array.isArray(p.companies) ? p.companies : [];
+
+    const activeCompany = {
+      id: Number(p.companyId || 0),
+      name: p.companyName || "",
+      code: p.companyCode || "",
+    };
+
     return {
-      id: p.sub,
-      email: p.email,
-      provider: p.provider,
-      fullName: p.fullName || `${p.name || ""} ${p.surname || ""}`.trim(),
+      user: {
+        id: p.sub,
+        email: p.email,
+        provider: p.provider,
+        fullName: p.fullName || `${p.name || ""} ${p.surname || ""}`.trim(),
+        isMasterAdmin: String(p.isMasterAdmin || "0") === "1",
+      },
+      companies,
+      activeCompany,
+      companyRole: p.companyRole || "", // ✅
     };
   } catch (e) {
     console.log("JWT decode error:", e);
-    return null;
+    return { user: null, companies: [], activeCompany: null, companyRole: "" };
   }
 }
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(localStorage.getItem("token"));
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem("token");
-    return saved ? decodeUser(saved) : null;
-  });
+  const [token, setToken] = useState(localStorage.getItem("token") || null);
+
+  // ✅ global lock for company switching (used by forms)
+  const [companySwitchLocked, setCompanySwitchLocked] = useState(false);
+
+  const decoded = useMemo(() => {
+    return token ? decodeAuth(token) : { user: null, companies: [], activeCompany: null };
+  }, [token]);
 
   const login = (newToken) => {
     localStorage.setItem("token", newToken);
     setToken(newToken);
-    setUser(decodeUser(newToken));
   };
 
   const logout = () => {
     localStorage.removeItem("token");
     setToken(null);
-    setUser(null);
+  };
+
+  const switchCompany = async (companyId) => {
+    if (companySwitchLocked) return; // ✅ hard guard
+    if (!token) throw new Error("No token");
+
+    const res = await fetch(`http://localhost:5065/api/auth/switch-company/${companyId}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(t || "Switch company failed");
+    }
+
+    const data = await res.json();
+    if (!data?.token) throw new Error("No token in response");
+    login(data.token);
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        token,
+        user: decoded.user,
+        companies: decoded.companies,
+        activeCompany: decoded.activeCompany, // ✅ grąžink objektą (reikia Sidebarui)
+        activeCompanyId: decoded.activeCompany?.id || 0,
+        companyRole: decoded.companyRole,
+        login,
+        logout,
+        switchCompany,
+
+        companySwitchLocked,
+        setCompanySwitchLocked,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

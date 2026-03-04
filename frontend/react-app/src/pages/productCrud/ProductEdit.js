@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import SmartForm from "../components/SmartForm";
-import FormPageLayout from "../components/FormPageLayout";
+import SmartForm from "../../components/SmartForm";
+import FormPageLayout from "../../components/FormPageLayout";
 
 export default function ProductEditPage() {
   const navigate = useNavigate();
@@ -14,9 +14,21 @@ export default function ProductEditPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("http://localhost:5065/api/products/categories").then(r => r.json()),
-      fetch("http://localhost:5065/api/products/productgroups").then(r => r.json()),
-      fetch(`http://localhost:5065/api/products/product/${id}`).then(r => r.json()),
+      fetch("http://localhost:5065/api/products/categories", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }).then(r => r.json()),
+      fetch("http://localhost:5065/api/products/productgroups", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }).then(r => r.json()),
+      fetch(`http://localhost:5065/api/products/product/${id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }).then(r => r.json()),
     ])
       .then(([cats, grps, p]) => {
         setCategories(cats);
@@ -97,6 +109,9 @@ export default function ProductEditPage() {
           newInOrder.forEach(x => fd.append("images", x.file));
           await fetch(`http://localhost:5065/api/products/editProduct/${id}`, {
             method: "PUT",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`
+            },
             body: fd,
           });
 

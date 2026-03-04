@@ -1,34 +1,44 @@
 import { useEffect, useMemo, useState, } from "react";
 import { useNavigate } from "react-router-dom";
-import DataTable from "../components/DataTable";
-import RightDrawer from "../components/RightDrawerSidebar";
-import "../styles/UserPage.css";
-import TableToolbar from "../components/TableToolbar";
+import DataTable from "../../components/DataTable";
+import RightDrawer from "../../components/RightDrawerSidebar";
+import "../../styles/UserPage.css";
+import TableToolbar from "../../components/TableToolbar";
 import { FiTrash2, FiEdit } from "react-icons/fi";
-import NoImage from "../images/no-camera.png";
+import NoImage from "../../images/no-camera.png";
+import { useAuth } from "../../services/AuthContext";
 function ProductList() {
     const navigate = useNavigate();
     const [products, setProducts] = useState([]);
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [q, setQ] = useState("");
     const [group, setGroup] = useState("all");
+    const { token, activeCompanyId } = useAuth();
     useEffect(() => {
-        fetch("http://localhost:5065/api/products/allProductsFullInfo")
+        if (!token) return;
+
+        setProducts([]);
+        setSelectedProduct(null);
+
+        fetch("http://localhost:5065/api/products/allProductsFullInfo", {
+            headers: { Authorization: `Bearer ${token}` },
+        })
             .then((res) => {
                 if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
                 return res.json();
-
             })
-            .then((data) => setProducts(data))
-            .catch((err) => console.error(err));
-
-    }, []);
+            .then(setProducts)
+            .catch(console.error);
+    }, [token, activeCompanyId]);
     const deleteProduct = async (p) => {
         const ok = window.confirm(`Delete product "${p.name}"?`);
         if (!ok) return;
 
         const res = await fetch(`http://localhost:5065/api/products/deleteProduct/${p.id_Product}`, {
             method: "DELETE",
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
         });
 
         if (!res.ok) {

@@ -1,10 +1,12 @@
 using Bakalauras.API.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
 [ApiController]
 [Route("api/products/")]
+[Authorize]
 public class ProductController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -14,10 +16,28 @@ public class ProductController : ControllerBase
         _db = db;
     }
 
+    // -------- Helpers --------
+
+    private int GetRequiredCompanyId()
+    {
+        var companyId = User.GetCompanyId();
+        if (companyId <= 0)
+            throw new UnauthorizedAccessException("No active company selected.");
+        return companyId;
+    }
+
+    // -------- READ (LIST) --------
+
     [HttpGet("allProducts")]
     public async Task<IActionResult> GetAllProducts()
     {
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
         var products = await _db.products
+            .AsNoTracking()
+            .Where(p => p.fk_Companyid_Company == companyId)
             .Select(p => new
             {
                 p.id_Product,
@@ -32,7 +52,6 @@ public class ProductController : ControllerBase
                 p.vat,
                 p.creationDate,
                 p.externalCode,
-
             })
             .ToListAsync();
 
@@ -42,8 +61,13 @@ public class ProductController : ControllerBase
     [HttpGet("allProductsFullInfo")]
     public async Task<IActionResult> GetAllProductsFullInfo()
     {
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
         var products = await _db.products
             .AsNoTracking()
+            .Where(p => p.fk_Companyid_Company == companyId)
             .Select(p => new
             {
                 p.id_Product,
@@ -74,15 +98,21 @@ public class ProductController : ControllerBase
                         c.name
                     })
                     .ToList(),
+
                 images = p.product_images
                     .OrderBy(i => i.sortOrder)
                     .Select(i => new { i.id_ProductImage, i.url, i.isPrimary, i.sortOrder })
                     .ToList(),
             })
-                .ToListAsync();
+            .ToListAsync();
 
         return Ok(products);
     }
+
+    // -------- LOOKUPS --------
+    // (palikau be Authorize kaip pas tave; jei nori tenant-only, uždėk [Authorize] ir filtravimą)
+
+    [AllowAnonymous]
     [HttpGet("categories")]
     public async Task<IActionResult> GetCategories()
     {
@@ -94,6 +124,7 @@ public class ProductController : ControllerBase
         return Ok(categories);
     }
 
+    [AllowAnonymous]
     [HttpGet("productgroups")]
     public async Task<IActionResult> GetProductGroups()
     {
@@ -105,16 +136,23 @@ public class ProductController : ControllerBase
         return Ok(groups);
     }
 
+    // -------- CREATE --------
+
     [HttpPost("createProduct")]
     [RequestSizeLimit(50_000_000)]
     public async Task<IActionResult> CreateProduct([FromForm] CreateProductDto dto)
     {
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
         var cat = await _db.categories.FindAsync(dto.categoryId);
         var grp = await _db.productgroups.FindAsync(dto.groupId);
         if (cat == null || grp == null) return BadRequest("Invalid category/group");
 
         var p = new product
         {
+            fk_Companyid_Company = companyId, // ✅ always selected company
             name = dto.name,
             price = dto.price,
             unit = dto.unit ?? "vnt",
@@ -129,12 +167,18 @@ public class ProductController : ControllerBase
         p.fk_ProductGroupId_ProductGroups.Add(grp);
 
         _db.products.Add(p);
-        await _db.SaveChangesAsync(); // ✅ gaunam p.id_Product
+        await _db.SaveChangesAsync(); // gaunam p.id_Product
 
-        // ✅ save images
+        // save images
         if (dto.images != null && dto.images.Count > 0)
         {
-            var uploadsRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "products", p.id_Product.ToString());
+            var uploadsRoot = Path.Combine(
+                Directory.GetCurrentDirectory(),
+                "wwwroot",
+                "uploads",
+                "products",
+                p.id_Product.ToString()
+            );
             Directory.CreateDirectory(uploadsRoot);
 
             var order = 0;
@@ -175,12 +219,19 @@ public class ProductController : ControllerBase
 
         return Ok(new { p.id_Product });
     }
-    [HttpGet("product/{id}")]
+
+    // -------- READ (SINGLE) --------
+
+    [HttpGet("product/{id:int}")]
     public async Task<IActionResult> GetProductForEdit(int id)
     {
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
         var p = await _db.products
             .AsNoTracking()
-            .Where(x => x.id_Product == id)
+            .Where(x => x.id_Product == id && x.fk_Companyid_Company == companyId) // ✅ tenant isolation
             .Select(x => new
             {
                 x.id_Product,
@@ -191,6 +242,7 @@ public class ProductController : ControllerBase
                 x.vat,
                 x.canTheProductBeProductReturned,
                 x.countableItem,
+                x.fk_Companyid_Company,
 
                 categoryId = x.fk_Categoryid_Categories
                     .Select(c => (int?)c.id_Category)
@@ -199,6 +251,7 @@ public class ProductController : ControllerBase
                 groupId = x.fk_ProductGroupId_ProductGroups
                     .Select(g => (int?)g.id_ProductGroup)
                     .FirstOrDefault(),
+
                 images = x.product_images
                     .OrderBy(i => i.sortOrder)
                     .Select(i => new { i.id_ProductImage, i.url, i.sortOrder })
@@ -209,10 +262,17 @@ public class ProductController : ControllerBase
         if (p == null) return NotFound();
         return Ok(p);
     }
-    [HttpPut("editProduct/{id}")]
+
+    // -------- UPDATE --------
+
+    [HttpPut("editProduct/{id:int}")]
     [RequestSizeLimit(50_000_000)]
     public async Task<IActionResult> UpdateProduct(int id, [FromForm] CreateProductDto dto)
     {
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
         var p = await _db.products
             .Include(x => x.fk_Categoryid_Categories)
             .Include(x => x.fk_ProductGroupId_ProductGroups)
@@ -221,6 +281,9 @@ public class ProductController : ControllerBase
 
         if (p == null) return NotFound();
 
+        // ✅ tenant isolation for everyone
+        if (p.fk_Companyid_Company != companyId)
+            return StatusCode(403, "Product not in your company.");
 
         p.name = dto.name;
         p.price = dto.price;
@@ -229,7 +292,6 @@ public class ProductController : ControllerBase
         p.vat = dto.vat;
         p.canTheProductBeProductReturned = dto.canTheProductBeProductReturned;
         p.countableItem = dto.countableItem;
-
 
         p.fk_Categoryid_Categories.Clear();
         p.fk_ProductGroupId_ProductGroups.Clear();
@@ -241,60 +303,59 @@ public class ProductController : ControllerBase
         p.fk_Categoryid_Categories.Add(cat);
         p.fk_ProductGroupId_ProductGroups.Add(grp);
 
-
+        // ----- images: keep list -----
         List<int> keepIds = new();
         bool keepListProvided = !string.IsNullOrWhiteSpace(dto.keepImageIdsJson);
 
         if (keepListProvided)
         {
-            try
-            {
-                keepIds = JsonSerializer.Deserialize<List<int>>(dto.keepImageIdsJson!) ?? new();
-            }
+            try { keepIds = JsonSerializer.Deserialize<List<int>>(dto.keepImageIdsJson!) ?? new(); }
             catch
             {
-
                 keepListProvided = false;
                 keepIds = new();
             }
         }
 
-
         if (!keepListProvided)
-        {
             keepIds = p.product_images.Select(i => i.id_ProductImage).ToList();
-        }
 
         var keepSet = keepIds.ToHashSet();
-
 
         var toDelete = p.product_images.Where(img => !keepSet.Contains(img.id_ProductImage)).ToList();
 
         foreach (var img in toDelete)
         {
-            var physical = Path.Combine(
-                Directory.GetCurrentDirectory(),
-                "wwwroot",
-                img.url.TrimStart('/').Replace("/", Path.DirectorySeparatorChar.ToString())
-            );
+            if (!string.IsNullOrWhiteSpace(img.url))
+            {
+                var physical = Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    "wwwroot",
+                    img.url.TrimStart('/').Replace("/", Path.DirectorySeparatorChar.ToString())
+                );
 
-            if (System.IO.File.Exists(physical))
-                System.IO.File.Delete(physical);
+                if (System.IO.File.Exists(physical))
+                    System.IO.File.Delete(physical);
+            }
 
             _db.Remove(img);
         }
 
-        var dir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "products", p.id_Product.ToString());
+        var dir = Path.Combine(
+            Directory.GetCurrentDirectory(),
+            "wwwroot",
+            "uploads",
+            "products",
+            p.id_Product.ToString()
+        );
+
         if (Directory.Exists(dir) && !Directory.EnumerateFileSystemEntries(dir).Any())
-        {
             Directory.Delete(dir, true);
-        }
 
         await _db.SaveChangesAsync();
 
-
+        // ----- images: order json -----
         List<ImageOrderItem> orderItems = new();
-
         if (!string.IsNullOrWhiteSpace(dto.imageOrderJson))
         {
             try { orderItems = JsonSerializer.Deserialize<List<ImageOrderItem>>(dto.imageOrderJson) ?? new(); }
@@ -319,8 +380,13 @@ public class ProductController : ControllerBase
             if (string.Equals(orderItems[i].type, "new", StringComparison.OrdinalIgnoreCase))
                 newPositions.Add(i);
 
-
-        var uploadsRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "products", p.id_Product.ToString());
+        var uploadsRoot = Path.Combine(
+            Directory.GetCurrentDirectory(),
+            "wwwroot",
+            "uploads",
+            "products",
+            p.id_Product.ToString()
+        );
         Directory.CreateDirectory(uploadsRoot);
 
         for (int fi = 0; fi < newFiles.Count; fi++)
@@ -335,7 +401,6 @@ public class ProductController : ControllerBase
                 await file.CopyToAsync(fs);
 
             var url = $"/uploads/products/{p.id_Product}/{filename}";
-
             int sortOrder = (fi < newPositions.Count) ? newPositions[fi] : (orderItems.Count + fi);
 
             _db.Add(new product_image
@@ -349,6 +414,7 @@ public class ProductController : ControllerBase
 
         await _db.SaveChangesAsync();
 
+        // reorder existing
         var allAfter = await _db.Set<product_image>()
             .Where(x => x.fk_Productid_Product == p.id_Product)
             .ToListAsync();
@@ -362,17 +428,19 @@ public class ProductController : ControllerBase
             var img = allAfter.FirstOrDefault(x => x.id_ProductImage == it.id.Value);
             if (img != null) img.sortOrder = pos;
         }
+
         allAfter = allAfter.OrderBy(x => x.sortOrder).ThenBy(x => x.id_ProductImage).ToList();
         for (int i = 0; i < allAfter.Count; i++)
             allAfter[i].sortOrder = i;
 
         await _db.SaveChangesAsync();
 
+        // set primary = first by sort order
         allAfter = await _db.Set<product_image>()
-         .Where(x => x.fk_Productid_Product == p.id_Product)
-         .OrderBy(x => x.sortOrder)
-         .ThenBy(x => x.id_ProductImage)
-         .ToListAsync();
+            .Where(x => x.fk_Productid_Product == p.id_Product)
+            .OrderBy(x => x.sortOrder)
+            .ThenBy(x => x.id_ProductImage)
+            .ToListAsync();
 
         if (allAfter.Count > 0)
         {
@@ -384,18 +452,29 @@ public class ProductController : ControllerBase
 
         return Ok();
     }
-    [HttpDelete("deleteProduct/{id}")]
+
+    // -------- DELETE --------
+
+    [HttpDelete("deleteProduct/{id:int}")]
     public async Task<IActionResult> DeleteProduct(int id)
     {
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
         var p = await _db.products
             .Include(x => x.fk_Categoryid_Categories)
             .Include(x => x.fk_ProductGroupId_ProductGroups)
-            .Include(x => x.product_images) // ✅ svarbu
+            .Include(x => x.product_images)
             .FirstOrDefaultAsync(x => x.id_Product == id);
 
         if (p == null) return NotFound();
 
-        // ✅ 1) Ištrinam nuotraukų failus iš disko
+        // ✅ tenant isolation for everyone
+        if (p.fk_Companyid_Company != companyId)
+            return StatusCode(403, "Product not in your company.");
+
+        // 1) delete files
         foreach (var img in p.product_images.ToList())
         {
             if (string.IsNullOrWhiteSpace(img.url)) continue;
@@ -417,6 +496,7 @@ public class ProductController : ControllerBase
 
         await _db.SaveChangesAsync();
 
+        // 2) delete folder if exists
         var dir = Path.Combine(
             Directory.GetCurrentDirectory(),
             "wwwroot",

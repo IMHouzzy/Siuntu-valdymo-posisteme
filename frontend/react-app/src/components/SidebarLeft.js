@@ -7,17 +7,22 @@ import {
   FiChevronDown,
   FiMenu,
   FiBriefcase,
+  FiLock,
 } from "react-icons/fi";
 import { LuLayoutDashboard } from "react-icons/lu";
 import "../styles/SidebarLeft.css";
 
 import TrackSyncBig from "../images/TrackSync_Big.png";
 import TrackSyncSmall from "../images/TrackSync_Small.png";
+import { useAuth } from "../services/AuthContext";
 
 const LS_KEY = "sidebar_open_groups_v1";
 
 export default function SidebarLeft({ collapsed, onToggle }) {
   const location = useLocation();
+  const { token, companies, activeCompany, switchCompany, companySwitchLocked } = useAuth();
+
+  const [companyOpen, setCompanyOpen] = useState(false);
 
   const nav = useMemo(
     () => [
@@ -66,16 +71,29 @@ export default function SidebarLeft({ collapsed, onToggle }) {
     []
   );
 
-  // 1) Init: pabandom loadinti iš localStorage, jei nėra – atidarom pagal active route
   const [openGroups, setOpenGroups] = useState(() => {
     try {
       const raw = localStorage.getItem(LS_KEY);
       if (raw) return new Set(JSON.parse(raw));
-    } catch { }
-    return new Set(); // vėliau useEffect atidarys pagal route
+    } catch {}
+    return new Set();
   });
 
-  // 2) Kai pasikeičia route (ir po refresh), atidaryk grupę, kuri turi aktyvų path
+  // ✅ derive permission INSIDE component (uses token/companies/lock)
+  const canSwitchCompany = useMemo(() => {
+    return (
+      !!token &&
+      Array.isArray(companies) &&
+      companies.length > 1 &&
+      !companySwitchLocked
+    );
+  }, [token, companies, companySwitchLocked]);
+
+  // close menu when sidebar collapses / lock enabled
+  useEffect(() => {
+    if (collapsed || !canSwitchCompany) setCompanyOpen(false);
+  }, [collapsed, canSwitchCompany]);
+
   useEffect(() => {
     const path = location.pathname;
 
@@ -88,21 +106,17 @@ export default function SidebarLeft({ collapsed, onToggle }) {
     if (!activeGroup) return;
 
     setOpenGroups((prev) => {
-      // jei jau atidaryta kažkas ranka ir aktyvi grupė jau yra – nieko nelaužom
       if (prev.has(activeGroup.id)) return prev;
-
-      // atidarom aktyvią grupę (paliekam ir kitas, jei buvo)
       const next = new Set(prev);
       next.add(activeGroup.id);
       return next;
     });
   }, [location.pathname, nav]);
 
-  // 3) Persistinam openGroups į localStorage
   useEffect(() => {
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(Array.from(openGroups)));
-    } catch { }
+    } catch {}
   }, [openGroups]);
 
   const toggleGroup = (id) => {
@@ -115,7 +129,7 @@ export default function SidebarLeft({ collapsed, onToggle }) {
 
   const handleGroupClick = (id) => {
     if (collapsed) {
-      onToggle?.(); // expand sidebar
+      onToggle?.();
       setOpenGroups((prev) => {
         const next = new Set(prev);
         next.add(id);
@@ -125,6 +139,12 @@ export default function SidebarLeft({ collapsed, onToggle }) {
     }
     toggleGroup(id);
   };
+
+  const companyTitle = companySwitchLocked
+    ? "Negalima keisti įmonės redaguojant/kuriant"
+    : canSwitchCompany
+    ? "Keisti įmonę"
+    : undefined;
 
   return (
     <aside className={`sidebar ${collapsed ? "is-collapsed" : ""}`}>
@@ -140,7 +160,12 @@ export default function SidebarLeft({ collapsed, onToggle }) {
         </button>
 
         <div className="sidebar-logo">
-          <img className="sidebar-logo-small" src={TrackSyncSmall} alt="TrackSync" draggable="false" />
+          <img
+            className="sidebar-logo-small"
+            src={TrackSyncSmall}
+            alt="TrackSync"
+            draggable="false"
+          />
           <img
             className={`sidebar-logo-big ${collapsed ? "is-hidden" : "is-visible"}`}
             src={TrackSyncBig}
@@ -204,15 +229,85 @@ export default function SidebarLeft({ collapsed, onToggle }) {
           );
         })}
       </nav>
-      <div className="sidebar-bottom">
+
+      {/* Bottom: company select */}
+      <div className="sidebar-bottom" onMouseLeave={() => setCompanyOpen(false)}>
         <div className="sidebar-bottom-left">
           <div className="sidebar-bottom-image">
             <img src={TrackSyncSmall} alt="TrackSync" draggable="false" />
           </div>
         </div>
+
         <div className="sidebar-bottom-right">
-          <h4>Company name</h4>
-          <span>company-code</span>
+          <div className={`sb-select ${(!canSwitchCompany || collapsed) ? "is-disabled" : ""}`}>
+            <button
+              type="button"
+              className={`sb-select-trigger ${companyOpen ? "is-open" : ""}`}
+              onClick={() => {
+                if (!canSwitchCompany || collapsed) return;
+                setCompanyOpen((v) => !v);
+              }}
+              disabled={!canSwitchCompany || collapsed}
+              title={companyTitle}
+              aria-haspopup="listbox"
+              aria-expanded={companyOpen ? "true" : "false"}
+            >
+              <div className="sb-select-value">
+                <div className="sb-select-name">{activeCompany?.name || "— Įmonė —"}</div>
+                <div className="sb-select-meta">
+                  {activeCompany?.code || (activeCompany?.id ? `ID: ${activeCompany.id}` : "—")}
+                </div>
+              </div>
+
+              {!collapsed && (
+                <>
+                  {companySwitchLocked ? (
+                    <FiLock className="sb-select-lock" size={16} />
+                  ) : canSwitchCompany ? (
+                    <FiChevronDown
+                      className={`sb-select-chev ${companyOpen ? "open" : ""}`}
+                      size={16}
+                    />
+                  ) : null}
+                </>
+              )}
+            </button>
+
+            {canSwitchCompany && companyOpen && !collapsed && (
+              <div className="sb-select-menu" role="listbox">
+                {companies.map((c) => {
+                  const isActive = String(c.id_Company) === String(activeCompany?.id);
+                  return (
+                    <button
+                      key={c.id_Company}
+                      type="button"
+                      role="option"
+                      aria-selected={isActive ? "true" : "false"}
+                      className={`sb-select-item ${isActive ? "is-active" : ""}`}
+                      onClick={async () => {
+                        try {
+                          if (isActive) {
+                            setCompanyOpen(false);
+                            return;
+                          }
+                          await switchCompany(c.id_Company);
+                          setCompanyOpen(false);
+                        } catch (e) {
+                          console.error(e);
+                          alert("Nepavyko pakeisti įmonės");
+                        }
+                      }}
+                    >
+                      <div className="sb-select-item-name">{c.name}</div>
+                      <div className="sb-select-item-meta">
+                        {c.companyCode || c.code || `ID: ${c.id_Company}`}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </aside>

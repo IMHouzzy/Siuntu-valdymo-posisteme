@@ -31,9 +31,9 @@ public partial class product
 
     public int? externalCode { get; set; }
 
-    public int? fk_Companyid_Company { get; set; }
+    public int fk_Companyid_Company { get; set; }
 
-    public virtual company? fk_Companyid_CompanyNavigation { get; set; }
+    public virtual company fk_Companyid_CompanyNavigation { get; set; } = null!;
 
     public virtual ICollection<ordersproduct> ordersproducts { get; set; } = new List<ordersproduct>();
 

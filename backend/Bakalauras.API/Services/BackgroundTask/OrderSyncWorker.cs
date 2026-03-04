@@ -1,26 +1,33 @@
-
+using System.Globalization;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 using Bakalauras.API.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Globalization;
 
 public class OrderSyncWorker : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ButentApiService _butent;
+    private readonly IHttpClientFactory _httpClientFactory;
 
-    public OrderSyncWorker(IServiceScopeFactory scopeFactory, ButentApiService butent)
+    public OrderSyncWorker(
+        IServiceScopeFactory scopeFactory,
+        IHttpClientFactory httpClientFactory)
     {
         _scopeFactory = scopeFactory;
-        _butent = butent;
+        _httpClientFactory = httpClientFactory;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        try { await SyncAllCompanies(stoppingToken); }
+        catch (Exception ex) { Console.WriteLine($"[OrderSyncWorker] Startup error: {ex}"); }
+
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                await SyncOrders(stoppingToken);
+                await SyncAllCompanies(stoppingToken);
             }
             catch (Exception ex)
             {
@@ -31,84 +38,121 @@ public class OrderSyncWorker : BackgroundService
         }
     }
 
-    private static DateTime? ParseButentDate(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value)) return null;
-
-        // "2023-05-03 00:00:00"
-        if (DateTime.TryParseExact(value.Trim(), "yyyy-MM-dd HH:mm:ss",
-            CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
-            return dt;
-
-        return null;
-    }
-
-    private async Task SyncOrders(CancellationToken ct)
+    // ===============================
+    // MULTI COMPANY LOOP
+    // ===============================
+    private async Task SyncAllCompanies(CancellationToken ct)
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        // 1) pull sales docs (bills)
-        var sales = await _butent.GetSalesAsync("2000-10-01", ct);
-        Console.WriteLine($"[OrderSyncWorker] Sales docs: {sales.Count}");
+        var integrations = await db.company_integrations
+            .AsNoTracking()
+            .Where(x => x.enabled == true && x.type == "BUTENT")
+            .ToListAsync(ct);
+
+        foreach (var integ in integrations)
+        {
+            var secrets = ParseSecrets(integ.encryptedSecrets);
+
+            if (string.IsNullOrWhiteSpace(secrets.Username) ||
+                string.IsNullOrWhiteSpace(secrets.Password))
+                continue;
+
+            await SyncCompanyOrders(
+                integ.fk_Companyid_Company,
+                integ.baseUrl!,
+                secrets.Username!,
+                secrets.Password!,
+                ct);
+        }
+    }
+
+    // ===============================
+    // COMPANY SYNC
+    // ===============================
+    private async Task SyncCompanyOrders(
+        int companyId,
+        string baseUrl,
+        string username,
+        string password,
+        CancellationToken ct)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var http = _httpClientFactory.CreateClient();
+        http.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
+
+        var auth = Convert.ToBase64String(
+            Encoding.UTF8.GetBytes($"{username}:{password}")
+        );
+
+        http.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Basic", auth);
+
+        var butent = new ButentApiService(http);
+
+        var sales = await butent.GetSalesAsync("2000-10-01", ct);
+        Console.WriteLine($"[OrderSyncWorker] Company={companyId} docs={sales.Count}");
         if (sales.Count == 0) return;
 
-        // existing orders by external id
+        // Existing orders PER COMPANY
         var existing = (await db.orders
-                .AsNoTracking()
+                .Where(o => o.fk_Companyid_Company == companyId)
                 .Select(o => o.externalDocumentId)
                 .ToListAsync(ct))
             .ToHashSet();
 
-        var clientsByExternal = await db.clients
-            .AsNoTracking()
-            .Where(c => c.externalClientId.HasValue)
-            .ToDictionaryAsync(c => c.externalClientId!.Value, c => c.id_Users, ct);
+        // CLIENT mapping via client_company
+        var clientsByExternal = await db.client_companies
+            .Where(cc => cc.fk_Companyid_Company == companyId &&
+                         cc.externalClientId.HasValue)
+            .ToDictionaryAsync(
+                cc => cc.externalClientId!.Value,
+                cc => cc.fk_Clientid_Users,
+                ct);
 
         var productsByExternal = await db.products
-            .AsNoTracking()
-            .Where(p => p.externalCode.HasValue)
-            .ToDictionaryAsync(p => p.externalCode!.Value, p => p.id_Product, ct);
-
+            .Where(p => p.fk_Companyid_Company == companyId &&
+                        p.externalCode.HasValue)
+            .ToDictionaryAsync(
+                p => p.externalCode!.Value,
+                p => p.id_Product,
+                ct);
 
         foreach (var bill in sales)
         {
             var extDocId = bill.DocumentID;
-            if (existing.Contains(extDocId)) continue;
+            if (existing.Contains(extDocId))
+                continue;
 
-            // 2) get document -> to read client_id
-            var doc = await _butent.GetDocumentAsync(extDocId, ct);
+            var doc = await butent.GetDocumentAsync(extDocId, ct);
             if (doc?.Client_Id == null)
+                continue;
+
+            if (!clientsByExternal.TryGetValue(doc.Client_Id.Value, out var clientUserId))
             {
-                Console.WriteLine($"[OrderSyncWorker] Skipping doc {extDocId}: no client_id");
+                Console.WriteLine($"Client missing for company {companyId}");
                 continue;
             }
 
-            if (!clientsByExternal.TryGetValue(doc.Client_Id.Value, out var fkClientUserId))
-            {
-                Console.WriteLine($"[OrderSyncWorker] Skipping doc {extDocId}: client {doc.Client_Id} not in DB yet");
-                continue;
-            }
-
-            // 3) create order and save FIRST -> get DB id_Orders
             var order = new order
             {
+                fk_Companyid_Company = companyId,
                 externalDocumentId = extDocId,
                 OrdersDate = ParseButentDate(doc.Date)?.Date ?? DateTime.UtcNow.Date,
                 totalAmount = doc.Total ?? bill.Total ?? 0,
-                paymentMethod = "butent",     // or null if allowed
-                deliveryPrice = 0,            // or null if allowed
+                paymentMethod = "butent",
+                deliveryPrice = 0,
                 status = 4,
-                fk_Clientid_Users = fkClientUserId,
-                fk_Reportid_Report = 0         // ONLY if required; otherwise remove
+                fk_Clientid_Users = clientUserId
             };
 
             db.orders.Add(order);
-            await db.SaveChangesAsync(ct); // IMPORTANT: now order.id_Orders exists
+            await db.SaveChangesAsync(ct);
 
-            // 4) items -> insert ordersproduct rows referencing order.id_Orders
-            // now insert items
-            var items = await _butent.GetDocumentItemsAsync(extDocId, ct);
+            var items = await butent.GetDocumentItemsAsync(extDocId, ct);
 
             const double VatRate = 0.21;
 
@@ -117,8 +161,7 @@ public class OrderSyncWorker : BackgroundService
                 if (!productsByExternal.TryGetValue(it.Good_Id, out var productId))
                     continue;
 
-
-                var unitPrice = it.Price ?? 0.0;
+                var unitPrice = it.Price ?? 0;
                 var vatValue = Math.Round(unitPrice * VatRate, 2);
 
                 db.ordersproducts.Add(new ordersproduct
@@ -126,16 +169,56 @@ public class OrderSyncWorker : BackgroundService
                     fk_Ordersid_Orders = order.id_Orders,
                     fk_Productid_Product = productId,
                     quantity = it.Quantity,
-
                     unitPrice = unitPrice,
                     vatValue = vatValue
                 });
             }
 
-
             await db.SaveChangesAsync(ct);
 
-            Console.WriteLine($"[OrderSyncWorker] Inserted order ext={extDocId} dbId={order.id_Orders} items={items.Count}");
+            Console.WriteLine(
+                $"[OrderSyncWorker] Company={companyId} inserted order ext={extDocId}");
         }
+    }
+
+    // ===============================
+    private static DateTime? ParseButentDate(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+
+        if (DateTime.TryParseExact(
+            value.Trim(),
+            "yyyy-MM-dd HH:mm:ss",
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.None,
+            out var dt))
+            return dt;
+
+        return null;
+    }
+
+    // ===============================
+    private static ButentSecrets ParseSecrets(string json)
+    {
+        try
+        {
+            var doc = JsonDocument.Parse(json).RootElement;
+
+            return new ButentSecrets
+            {
+                Username = doc.GetProperty("username").GetString(),
+                Password = doc.GetProperty("password").GetString()
+            };
+        }
+        catch
+        {
+            return new ButentSecrets();
+        }
+    }
+
+    private class ButentSecrets
+    {
+        public string? Username { get; set; }
+        public string? Password { get; set; }
     }
 }

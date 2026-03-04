@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import SmartForm from "../components/SmartForm";
-import FormPageLayout from "../components/FormPageLayout";
+import SmartForm from "../../components/SmartForm";
+import FormPageLayout from "../../components/FormPageLayout";
 
 export default function OrderCreatePage() {
   const navigate = useNavigate();
@@ -17,9 +17,21 @@ export default function OrderCreatePage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("http://localhost:5065/api/orders/order-statuses").then(r => r.json()),
-      fetch("http://localhost:5065/api/users/allUsers").then(r => r.json()),
-      fetch("http://localhost:5065/api/orders/products?q=").then(r => r.json()),
+      fetch("http://localhost:5065/api/orders/order-statuses", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }).then(r => r.json()),
+      fetch("http://localhost:5065/api/users/allUsers", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }).then(r => r.json()),
+      fetch("http://localhost:5065/api/orders/products?q=", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }).then(r => r.json()),
     ])
       .then(([sts, us, pr]) => {
         setStatuses(sts);
@@ -175,7 +187,11 @@ export default function OrderCreatePage() {
             if (lastClientIdRef.current !== cid) {
               lastClientIdRef.current = cid;
               try {
-                const r = await fetch(`http://localhost:5065/api/orders/clientInfo/${cid}`);
+                const r = await fetch(`http://localhost:5065/api/orders/clientInfo/${cid}`, {
+                  headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                  },
+                });
                 const text = await r.text();
                 const data = text ? JSON.parse(text) : null;
 
@@ -279,7 +295,10 @@ export default function OrderCreatePage() {
 
           const res = await fetch("http://localhost:5065/api/orders/createOrder", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+              "Content-Type": "application/json",
+            },
             body: JSON.stringify(payload),
           });
 
