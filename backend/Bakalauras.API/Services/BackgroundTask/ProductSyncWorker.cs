@@ -1,9 +1,8 @@
-using Bakalauras.API.Models;
-using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
-using System.Text.Json;
+using Bakalauras.API.Models;
+using Microsoft.EntityFrameworkCore;
 
 public class ProductSyncWorker : BackgroundService
 {
@@ -18,27 +17,16 @@ public class ProductSyncWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await RunOnce(stoppingToken);
+        try { await SyncProductsForAllCompanies(stoppingToken); }
+        catch (Exception ex) { Console.WriteLine($"[ProductSyncWorker] Startup sync error: {ex}"); }
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            try
-            {
-                await SyncProductsForAllCompanies(stoppingToken);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[ProductSyncWorker] Error: {ex}");
-            }
+            try { await SyncProductsForAllCompanies(stoppingToken); }
+            catch (Exception ex) { Console.WriteLine($"[ProductSyncWorker] Error: {ex}"); }
 
             await Task.Delay(TimeSpan.FromMinutes(60), stoppingToken);
         }
-    }
-
-    private async Task RunOnce(CancellationToken ct)
-    {
-        try { await SyncProductsForAllCompanies(ct); }
-        catch (Exception ex) { Console.WriteLine($"[ProductSyncWorker] Startup sync error: {ex}"); }
     }
 
     private static DateTime? ParseButentTime(string? value)
@@ -60,16 +48,10 @@ public class ProductSyncWorker : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        // Load enabled BUTENT integrations (one per company)
         var integrations = await db.company_integrations
             .AsNoTracking()
             .Where(ci => ci.enabled == true && ci.type == "BUTENT")
-            .Select(ci => new
-            {
-                ci.fk_Companyid_Company,
-                ci.baseUrl,
-                ci.encryptedSecrets
-            })
+            .Select(ci => new { ci.fk_Companyid_Company, ci.baseUrl, ci.encryptedSecrets })
             .ToListAsync(ct);
 
         if (integrations.Count == 0)
@@ -78,36 +60,42 @@ public class ProductSyncWorker : BackgroundService
             return;
         }
 
-        // Shared lookups (same tables for all companies)
-        var categoriesById = await db.categories
-            .AsNoTracking()
+        var categoriesById = await db.categories.AsNoTracking()
             .ToDictionaryAsync(c => c.id_Category, ct);
 
-        var groupsById = await db.productgroups
-            .AsNoTracking()
+        var groupsById = await db.productgroups.AsNoTracking()
             .ToDictionaryAsync(g => g.id_ProductGroup, ct);
 
         foreach (var integ in integrations)
         {
-            if (ct.IsCancellationRequested) break;
+            ct.ThrowIfCancellationRequested();
 
-            var companyId = integ.fk_Companyid_Company;
+            var (u, p, b) = IntegrationSecrets.TryUnpack(integ.encryptedSecrets);
+            var baseUrl = !string.IsNullOrWhiteSpace(integ.baseUrl) ? integ.baseUrl : b;
+
+            if (string.IsNullOrWhiteSpace(baseUrl) ||
+                string.IsNullOrWhiteSpace(u) ||
+                string.IsNullOrWhiteSpace(p))
+            {
+                Console.WriteLine($"[ProductSyncWorker] Skipping company {integ.fk_Companyid_Company}: missing baseUrl/username/password.");
+                continue;
+            }
 
             try
             {
                 await SyncProductsForCompany(
                     db,
-                    companyId,
-                    integ.baseUrl,
-                    integ.encryptedSecrets,
+                    integ.fk_Companyid_Company,
+                    baseUrl!,
+                    u!,
+                    p!,
                     categoriesById,
                     groupsById,
-                    ct
-                );
+                    ct);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ProductSyncWorker] Company {companyId} sync failed: {ex.Message}");
+                Console.WriteLine($"[ProductSyncWorker] Company {integ.fk_Companyid_Company} sync failed: {ex.Message}");
             }
         }
     }
@@ -115,22 +103,15 @@ public class ProductSyncWorker : BackgroundService
     private async Task SyncProductsForCompany(
         AppDbContext db,
         int companyId,
-        string? baseUrl,
-        string encryptedSecrets,
+        string baseUrl,
+        string username,
+        string password,
         Dictionary<int, category> categoriesById,
         Dictionary<int, productgroup> groupsById,
         CancellationToken ct)
     {
-        // IMPORTANT:
-        // "encryptedSecrets" is your column. Here I assume it can be decrypted to JSON like:
-        // { "username": "...", "password": "..." }
-        // Replace DecryptSecrets(...) with your real decrypt implementation.
-        var (username, password) = DecryptSecrets(encryptedSecrets);
-
         var http = _httpClientFactory.CreateClient();
-        http.BaseAddress = new Uri(string.IsNullOrWhiteSpace(baseUrl)
-            ? "http://94.176.235.151:3001/api/v1/"
-            : baseUrl.TrimEnd('/') + "/");
+        http.BaseAddress = new Uri(baseUrl.Trim().TrimEnd('/') + "/");
 
         var authValue = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}"));
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authValue);
@@ -141,9 +122,7 @@ public class ProductSyncWorker : BackgroundService
         Console.WriteLine($"[ProductSyncWorker] Company {companyId} API goods: {externalProducts.Count}");
         if (externalProducts.Count == 0) return;
 
-        // Existing codes MUST be per-company, because your DB allows same externalCode in different companies
-        var existingExternalCodes = (await db.products
-                .AsNoTracking()
+        var existingExternalCodes = (await db.products.AsNoTracking()
                 .Where(p => p.fk_Companyid_Company == companyId)
                 .Select(p => p.externalCode)
                 .ToListAsync(ct))
@@ -163,13 +142,14 @@ public class ProductSyncWorker : BackgroundService
 
             var p = new product
             {
-                fk_Companyid_Company = companyId, // ✅ CRITICAL FIX
+                fk_Companyid_Company = companyId,
                 externalCode = ext.Code,
                 name = string.IsNullOrWhiteSpace(ext.Name) ? $"Prekė {ext.Code}" : ext.Name.Trim(),
 
                 description = null,
-                price = null,
+                price = GeneratePrice(ext.Code),
                 picture = null,
+                currency = "EUR",
 
                 canTheProductBeProductReturned = canReturn,
                 countableItem = ext.CountableItem,
@@ -179,12 +159,9 @@ public class ProductSyncWorker : BackgroundService
                 creationDate = ParseButentTime(ext.InpTime)
             };
 
-            // NOTE: categories/groups are global tables in your dump (not per-company).
-            // If later you make them per-company, you must also add fk_Company in those tables and filter.
             var catId = ext.Type?.Id;
             if (catId.HasValue && categoriesById.TryGetValue(catId.Value, out var catEntity))
             {
-                // attach so EF doesn't try to insert category again
                 db.Attach(catEntity);
                 p.fk_Categoryid_Categories.Add(catEntity);
             }
@@ -214,45 +191,14 @@ public class ProductSyncWorker : BackgroundService
         }
         catch (DbUpdateException ex)
         {
-            // If two workers run or API duplicates exist, unique index (companyId, externalCode) can throw.
-            // This log helps you see the real reason quickly.
             Console.WriteLine($"[ProductSyncWorker] Company {companyId}: DB update failed: {ex.InnerException?.Message ?? ex.Message}");
             throw;
         }
     }
-
-    // =========================
-    // Replace this with REAL decrypt logic.
-    // For now, it supports:
-    // 1) plain JSON in encryptedSecrets
-    // 2) or "username:password" format
-    // =========================
-    private static (string username, string password) DecryptSecrets(string encryptedSecrets)
-    {
-        if (string.IsNullOrWhiteSpace(encryptedSecrets))
-            return ("", "");
-
-        // Try JSON first
-        try
-        {
-            using var doc = JsonDocument.Parse(encryptedSecrets);
-            var root = doc.RootElement;
-
-            var u = root.TryGetProperty("username", out var uEl) ? (uEl.GetString() ?? "") : "";
-            var p = root.TryGetProperty("password", out var pEl) ? (pEl.GetString() ?? "") : "";
-
-            if (!string.IsNullOrWhiteSpace(u) || !string.IsNullOrWhiteSpace(p))
-                return (u, p);
-        }
-        catch
-        {
-            // ignore
-        }
-
-        // Fallback: "username:password"
-        var parts = encryptedSecrets.Split(':', 2);
-        if (parts.Length == 2) return (parts[0], parts[1]);
-
-        return ("", "");
-    }
+    private static double GeneratePrice(int code)
+{
+    // pvz: deterministic (tas pats code -> ta pati kaina)
+    var baseVal = (code % 90) + 10;      // 10..99
+    return Math.Round(baseVal + 0.99, 2);
+}
 }

@@ -9,7 +9,13 @@ public partial class company_user
 
     public int fk_Usersid_Users { get; set; }
 
-    public string? role { get; set; }
+    public string role { get; set; } = null!;
+
+    public string? position { get; set; }
+
+    public DateTime? startDate { get; set; }
+
+    public bool? active { get; set; }
 
     public DateTime createdAt { get; set; }
 

@@ -216,34 +216,25 @@ function UsersList() {
 
       {
         title: "Darbuotojo duomenys",
-        rows: selectedUser.employee
+        rows: selectedUser.membership
           ? [
-            { label: "Pareigos", value: selectedUser.employee.position || "-" },
+            { label: "Pareigos", value: selectedUser.membership.position || "-" },
             {
               label: "Darbo pradžia",
-              value: selectedUser.employee.startDate
-                ? new Date(selectedUser.employee.startDate).toLocaleDateString("lt-LT")
+              value: selectedUser.membership.startDate
+                ? new Date(selectedUser.membership.startDate).toLocaleDateString("lt-LT")
                 : "-",
             },
             {
               label: "Aktyvus",
-              value: selectedUser.employee.active ? "Taip" : "Ne",
+              value: selectedUser.membership.active ? "Taip" : "Ne",
             },
           ]
           : [],
         emptyText: "Šis naudotojas nėra darbuotojas.",
       },
 
-      {
-        title: "Administratoriaus duomenys",
-        rows: selectedUser.admin
-          ? [
-            { label: "Administratorius", value: "Taip" },
-            { label: "Admin user ID", value: selectedUser.admin.id_Users ?? selectedUser.id_Users },
-          ]
-          : [],
-        emptyText: "Šis naudotojas nėra administratorius.",
-      },
+      
     ]
     : [];
 

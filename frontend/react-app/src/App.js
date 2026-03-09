@@ -25,17 +25,21 @@ import UsersPage from "./pages/userCrud/UsersPage";
 import UserAdd from "./pages/userCrud/UserAdd";
 import UserEdit from "./pages/userCrud/UserEdit";
 
-// klientų puslapiai (pavyzdžiai)
+// client UI
 import UserHome from "./pages/userCrud/UserHome";
 import UserOrders from "./pages/userCrud/UserOrders";
 
 import RequireAuth from "./components/routing/RequireAuth";
 import RequireRole from "./components/routing/RequireRole";
 
+import CompaniesList from "./pages/companyCrud/CompaniesList";
+import CompanyEdit from "./pages/companyCrud/CompanyEdit";
+import CompanyMembers from "./pages/companyCrud/CompanyMembers";
+import CompanyIntegrations from "./pages/companyCrud/CompanyIntegrations";
 export default function App() {
   return (
     <Routes>
-      {/* AUTH (be sidebar/header) */}
+      {/* AUTH */}
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -43,8 +47,9 @@ export default function App() {
         <Route path="/change-password" element={<ChangePassword />} />
       </Route>
 
-      {/* STAFF (admin/staff UI) */}
+      {/* STAFF (MASTER/ADMIN/STAFF) */}
       <Route
+        path="/"
         element={
           <RequireAuth>
             <RequireRole allow={["MASTER", "ADMIN", "STAFF"]}>
@@ -53,22 +58,33 @@ export default function App() {
           </RequireAuth>
         }
       >
+        {/* / */}
         <Route index element={<HomePage />} />
 
+        {/* /products... */}
         <Route path="productList" element={<ProductPage />} />
         <Route path="productAdd" element={<ProductAdd />} />
         <Route path="productEdit/:id" element={<ProductEdit />} />
 
+        {/* /orders... */}
         <Route path="orderList" element={<OrderPage />} />
         <Route path="orderAdd" element={<OrderAdd />} />
         <Route path="orderEdit/:id" element={<OrderEdit />} />
 
+        {/* /users... */}
         <Route path="usersList" element={<UsersPage />} />
         <Route path="userAdd" element={<UserAdd />} />
         <Route path="userEdit/:id" element={<UserEdit />} />
+
+        {/* /companies... */}
+        <Route path="companiesList" element={<CompaniesList />} />
+        <Route path="companyAdd" element={<CompanyEdit />} />
+        <Route path="companyEdit/:id" element={<CompanyEdit />} />
+        <Route path="companyMembers/:id" element={<CompanyMembers />} />
+        <Route path="/companyIntegrations/:companyId" element={<CompanyIntegrations />} />
       </Route>
 
-      {/* CLIENT (kitas UI) */}
+      {/* CLIENT */}
       <Route
         path="/client"
         element={
@@ -83,9 +99,7 @@ export default function App() {
         <Route path="orders" element={<UserOrders />} />
       </Route>
 
-      {/* default redirect (pvz. jei atidarė /) */}
-      <Route path="/" element={<Navigate to="/" replace />} />
-
+      {/* fallback */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

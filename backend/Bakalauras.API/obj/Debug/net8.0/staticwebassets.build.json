@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "ckQ7ZM1e77XHCGM/Edqn8T+GNA4I1BLCkwPwHLdneBg=",
+  "Hash": "tqKOFOh4Nvh9PbIVpjmpBfusz0KyAIi59aXjV3g/4LE=",
   "Source": "Bakalauras.API",
   "BasePath": "_content/Bakalauras.API",
   "Mode": "Default",
@@ -129,6 +129,44 @@
       "CopyToOutputDirectory": "Never",
       "CopyToPublishDirectory": "PreserveNewest",
       "OriginalItemSpec": "wwwroot\\uploads\\products\\55\\d5ee355a5a6b427798cabe8f559bff00.jpg"
+    },
+    {
+      "Identity": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\85\\3792a270f354446588e8340f1f2a84ea.jpg",
+      "SourceId": "Bakalauras.API",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\",
+      "BasePath": "_content/Bakalauras.API",
+      "RelativePath": "uploads/products/85/3792a270f354446588e8340f1f2a84ea.jpg",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\uploads\\products\\85\\3792a270f354446588e8340f1f2a84ea.jpg"
+    },
+    {
+      "Identity": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\85\\75f9cdd984cf4e5bb56589c47dcfa51c.jpg",
+      "SourceId": "Bakalauras.API",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\",
+      "BasePath": "_content/Bakalauras.API",
+      "RelativePath": "uploads/products/85/75f9cdd984cf4e5bb56589c47dcfa51c.jpg",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\uploads\\products\\85\\75f9cdd984cf4e5bb56589c47dcfa51c.jpg"
     }
   ]
 }

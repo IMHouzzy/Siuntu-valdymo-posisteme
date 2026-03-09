@@ -18,14 +18,35 @@ import { useAuth } from "../services/AuthContext";
 
 const LS_KEY = "sidebar_open_groups_v1";
 
+function normalizeRole(r) {
+  return String(r || "").trim().toUpperCase();
+}
+
 export default function SidebarLeft({ collapsed, onToggle }) {
   const location = useLocation();
-  const { token, companies, activeCompany, switchCompany, companySwitchLocked } = useAuth();
-
+  const { token, companies, activeCompany, switchCompany, companySwitchLocked, user } = useAuth();
   const [companyOpen, setCompanyOpen] = useState(false);
 
-  const nav = useMemo(
-    () => [
+  const isMaster = !!user?.isMasterAdmin;
+
+  // role aktyvioj įmonėj (ateina iš JWT claim companies[])
+  const myCompanyRole = useMemo(() => {
+    if (!Array.isArray(companies) || !activeCompany?.id) return "";
+    const found = companies.find((c) => String(c.id_Company) === String(activeCompany.id));
+    return normalizeRole(found?.role);
+  }, [companies, activeCompany?.id]);
+
+  // Staff -> nemato Companies grupės. Admin/Owner -> mato. Master -> mato.
+  const canSeeCompaniesGroup = useMemo(() => {
+    if (isMaster) return true;
+    return myCompanyRole === "ADMIN" || myCompanyRole === "OWNER";
+  }, [isMaster, myCompanyRole]);
+
+  // tik master kuria įmones
+  const canCreateCompany = isMaster;
+
+  const nav = useMemo(() => {
+    const base = [
       { type: "link", id: "Dashboard", label: "Dashboard", icon: <LuLayoutDashboard />, to: "/" },
       {
         type: "group",
@@ -57,19 +78,23 @@ export default function SidebarLeft({ collapsed, onToggle }) {
           { label: "Kurti naudotoją", to: "/userAdd" },
         ],
       },
-      {
+    ];
+
+    if (canSeeCompaniesGroup) {
+      base.push({
         type: "group",
         id: "Įmonės",
         label: "Įmonės",
         icon: <FiBriefcase />,
         children: [
           { label: "Įmonių sąrašas", to: "/companiesList" },
-          { label: "Kurti įmonę", to: "/companyAdd" },
+          ...(canCreateCompany ? [{ label: "Kurti įmonę", to: "/companyAdd" }] : []),
         ],
-      },
-    ],
-    []
-  );
+      });
+    }
+
+    return base;
+  }, [canSeeCompaniesGroup, canCreateCompany]);
 
   const [openGroups, setOpenGroups] = useState(() => {
     try {
@@ -79,17 +104,17 @@ export default function SidebarLeft({ collapsed, onToggle }) {
     return new Set();
   });
 
-  // ✅ derive permission INSIDE component (uses token/companies/lock)
+  // Company switching: tik master + >1 įmonė + ne lock
   const canSwitchCompany = useMemo(() => {
     return (
       !!token &&
+      isMaster &&
       Array.isArray(companies) &&
       companies.length > 1 &&
       !companySwitchLocked
     );
-  }, [token, companies, companySwitchLocked]);
+  }, [token, isMaster, companies, companySwitchLocked]);
 
-  // close menu when sidebar collapses / lock enabled
   useEffect(() => {
     if (collapsed || !canSwitchCompany) setCompanyOpen(false);
   }, [collapsed, canSwitchCompany]);
@@ -160,12 +185,7 @@ export default function SidebarLeft({ collapsed, onToggle }) {
         </button>
 
         <div className="sidebar-logo">
-          <img
-            className="sidebar-logo-small"
-            src={TrackSyncSmall}
-            alt="TrackSync"
-            draggable="false"
-          />
+          <img className="sidebar-logo-small" src={TrackSyncSmall} alt="TrackSync" draggable="false" />
           <img
             className={`sidebar-logo-big ${collapsed ? "is-hidden" : "is-visible"}`}
             src={TrackSyncBig}
@@ -230,7 +250,7 @@ export default function SidebarLeft({ collapsed, onToggle }) {
         })}
       </nav>
 
-      {/* Bottom: company select */}
+      {/* Bottom: company select (tik master) */}
       <div className="sidebar-bottom" onMouseLeave={() => setCompanyOpen(false)}>
         <div className="sidebar-bottom-left">
           <div className="sidebar-bottom-image">
@@ -264,10 +284,7 @@ export default function SidebarLeft({ collapsed, onToggle }) {
                   {companySwitchLocked ? (
                     <FiLock className="sb-select-lock" size={16} />
                   ) : canSwitchCompany ? (
-                    <FiChevronDown
-                      className={`sb-select-chev ${companyOpen ? "open" : ""}`}
-                      size={16}
-                    />
+                    <FiChevronDown className={`sb-select-chev ${companyOpen ? "open" : ""}`} size={16} />
                   ) : null}
                 </>
               )}

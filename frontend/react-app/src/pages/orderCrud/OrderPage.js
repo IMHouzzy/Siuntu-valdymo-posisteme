@@ -26,6 +26,7 @@ function OrdersList() {
             .then((res) => {
                 if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
                 return res.json();
+                
             })
             .then(setOrders)
             .catch(console.error);
@@ -227,17 +228,17 @@ function OrdersList() {
 
         const clientRows = o.client
             ? [
-                { label: "Kliento ID", value: o.client.id_Users || "-" },
+                { label: "Kliento ID", value: o.client.companyData?.id_Users || "-" },
                 { label: "Vardas", value: `${o.client.name || ""} ${o.client.surname || ""}`.trim() || "-" },
                 { label: "El. paštas", value: o.client.email || "-" },
 
 
-                { label: "Adresas", value: o.client.deliveryAddress || "-" },
-                { label: "Miestas", value: o.client.city || "-" },
-                { label: "Šalis", value: o.client.country || "-" },
-                { label: "VAT", value: o.client.vat || "-" },
-                { label: "Bank Code", value: o.client.bankCode || "-" },
-                { label: "Max Debt", value: o.client.maxDebt || "-" },
+                { label: "Adresas", value: o.client.companyData?.deliveryAddress || "-" },
+                { label: "Miestas", value: o.client.companyData?.city || "-" },
+                { label: "Šalis", value: o.client.companyData?.country || "-" },
+                { label: "VAT", value: o.client.companyData?.vat || "-" },
+                { label: "Bank Code", value: o.client.companyData?.bankCode || "-" },
+                { label: "Max Debt", value: o.client.companyData?.maxDebt || "-" },
                 { label: "External Client ID", value: o.client.externalClientId || "-" },
             ]
             : [];

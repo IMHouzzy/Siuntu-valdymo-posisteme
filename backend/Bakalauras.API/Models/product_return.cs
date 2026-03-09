@@ -19,7 +19,7 @@ public partial class product_return
 
     public virtual user? fk_Adminid_UsersNavigation { get; set; }
 
-    public virtual client fk_Clientid_UsersNavigation { get; set; } = null!;
+    public virtual user fk_Clientid_UsersNavigation { get; set; } = null!;
 
     public virtual company fk_Companyid_CompanyNavigation { get; set; } = null!;
 

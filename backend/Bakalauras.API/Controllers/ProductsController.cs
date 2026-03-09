@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
-
+using Bakalauras.API.Dtos;
 [ApiController]
 [Route("api/products/")]
 [Authorize]

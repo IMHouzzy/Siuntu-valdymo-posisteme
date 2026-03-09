@@ -2,7 +2,7 @@ using Bakalauras.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-
+using Bakalauras.API.Dtos;
 [ApiController]
 [Route("api/orders/")]
 [Authorize]
@@ -15,7 +15,7 @@ public class OrderController : ControllerBase
         _db = db;
     }
 
-    // -------- Helpers --------
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private int GetRequiredCompanyId()
     {
@@ -25,9 +25,7 @@ public class OrderController : ControllerBase
         return companyId;
     }
 
-    // -------------------------
-    // READ (LIST)
-    // -------------------------
+    // ── READ (LIST) ───────────────────────────────────────────────────────────
 
     [HttpGet("allOrders")]
     public async Task<IActionResult> GetAllOrders()
@@ -41,15 +39,9 @@ public class OrderController : ControllerBase
             .Where(o => o.fk_Companyid_Company == companyId)
             .Select(o => new
             {
-                o.id_Orders,
-                o.OrdersDate,
-                o.totalAmount,
-                o.paymentMethod,
-                o.deliveryPrice,
-                o.status,
-                o.fk_Clientid_Users,
-                o.externalDocumentId,
-                o.fk_Companyid_Company
+                o.id_Orders, o.OrdersDate, o.totalAmount, o.paymentMethod,
+                o.deliveryPrice, o.status, o.fk_Clientid_Users,
+                o.externalDocumentId, o.fk_Companyid_Company
             })
             .ToListAsync();
 
@@ -68,55 +60,57 @@ public class OrderController : ControllerBase
             .Where(o => o.fk_Companyid_Company == companyId)
             .Select(o => new
             {
-                o.id_Orders,
-                o.OrdersDate,
-                o.totalAmount,
-                o.paymentMethod,
-                o.deliveryPrice,
-                o.status,
-                statusName = o.statusNavigation.name,
+                o.id_Orders, o.OrdersDate, o.totalAmount, o.paymentMethod,
+                o.deliveryPrice, o.status,
+                statusName          = o.statusNavigation.name,
                 o.externalDocumentId,
                 o.fk_Companyid_Company,
 
                 client = new
                 {
-                    id_Users = o.fk_Clientid_UsersNavigation.id_Users,
+                    id_Users = o.fk_Clientid_Users,
+                    // user fields come directly from users navigation
+                    name    = o.fk_Clientid_UsersNavigation.name,
+                    surname = o.fk_Clientid_UsersNavigation.surname,
+                    email   = o.fk_Clientid_UsersNavigation.email,
 
-                    // from users table
-                    name = o.fk_Clientid_UsersNavigation.id_UsersNavigation.name,
-                    surname = o.fk_Clientid_UsersNavigation.id_UsersNavigation.surname,
-                    email = o.fk_Clientid_UsersNavigation.id_UsersNavigation.email,
-
-                    // from client table
-                    deliveryAddress = o.fk_Clientid_UsersNavigation.deliveryAddress,
-                    city = o.fk_Clientid_UsersNavigation.city,
-                    country = o.fk_Clientid_UsersNavigation.country,
-                    vat = o.fk_Clientid_UsersNavigation.vat,
-                    bankCode = o.fk_Clientid_UsersNavigation.bankCode,
-                    maxDebt = o.fk_Clientid_UsersNavigation.maxDebt,
-                    externalClientId = o.fk_Clientid_UsersNavigation.externalClientId
+                    // per-company client data from client_company
+                    companyData = _db.client_companies
+                        .AsNoTracking()
+                        .Where(cc =>
+                            cc.fk_Companyid_Company == companyId &&
+                            cc.fk_Clientid_Users    == o.fk_Clientid_Users)
+                        .Select(cc => new
+                        {
+                            cc.deliveryAddress,
+                            cc.city,
+                            cc.country,
+                            cc.vat,
+                            cc.bankCode,
+                            cc.externalClientId
+                        })
+                        .FirstOrDefault()
                 },
 
                 products = o.ordersproducts.Select(op => new
                 {
-                    quantity = op.quantity,
-                    unitPrice = op.unitPrice,
-                    vatValue = op.vatValue,
-                    productId = op.fk_Productid_Product,
-                    name = op.fk_Productid_ProductNavigation.name,
-                    price = op.fk_Productid_ProductNavigation.price,
-                    unit = op.fk_Productid_ProductNavigation.unit,
+                    op.quantity,
+                    op.unitPrice,
+                    op.vatValue,
+                    productId    = op.fk_Productid_Product,
+                    name         = op.fk_Productid_ProductNavigation.name,
+                    price        = op.fk_Productid_ProductNavigation.price,
+                    unit         = op.fk_Productid_ProductNavigation.unit,
                     externalCode = op.fk_Productid_ProductNavigation.externalCode
                 }).ToList()
             })
+            .OrderByDescending(x => x.id_Orders)
             .ToListAsync();
 
         return Ok(orders);
     }
 
-    // -------------------------
-    // LOOKUPS
-    // -------------------------
+    // ── LOOKUPS ───────────────────────────────────────────────────────────────
 
     [AllowAnonymous]
     [HttpGet("order-statuses")]
@@ -129,7 +123,7 @@ public class OrderController : ControllerBase
         return Ok(statuses);
     }
 
-    // Tenant-safe client info (pagal aktyvią įmonę)
+    // Returns client_company data for a given user within the active company
     [HttpGet("clientInfo/{userId:int}")]
     public async Task<IActionResult> GetClientInfo(int userId)
     {
@@ -137,24 +131,23 @@ public class OrderController : ControllerBase
         try { companyId = GetRequiredCompanyId(); }
         catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
 
-        // ✅ klientas turi priklausyti šitai įmonei
-        var allowed = await _db.client_companies.AnyAsync(cc =>
-            cc.fk_Companyid_Company == companyId &&
-            cc.fk_Clientid_Users == userId);
+        var cc = await _db.client_companies
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x =>
+                x.fk_Companyid_Company == companyId &&
+                x.fk_Clientid_Users    == userId);
 
-        if (!allowed)
+        if (cc == null)
             return StatusCode(403, "Client is not in your company.");
-
-        var c = await _db.clients.AsNoTracking().FirstOrDefaultAsync(x => x.id_Users == userId);
-        if (c == null) return Ok(null);
 
         return Ok(new
         {
-            deliveryAddress = c.deliveryAddress,
-            city = c.city,
-            country = c.country,
-            vat = c.vat,
-            bankCode = c.bankCode
+            cc.deliveryAddress,
+            cc.city,
+            cc.country,
+            cc.vat,
+            cc.bankCode,
+            cc.externalClientId
         });
     }
 
@@ -177,9 +170,7 @@ public class OrderController : ControllerBase
         return Ok(products);
     }
 
-    // -------------------------
-    // CREATE
-    // -------------------------
+    // ── CREATE ────────────────────────────────────────────────────────────────
 
     [HttpPost("createOrder")]
     public async Task<IActionResult> CreateOrder([FromBody] OrderUpsertDto dto)
@@ -191,18 +182,18 @@ public class OrderController : ControllerBase
         if (dto.Items == null || dto.Items.Count == 0)
             return BadRequest("Order must have at least 1 product.");
 
-        // ✅ client must belong to this company via client_company
-        var allowedClient = await _db.client_companies.AnyAsync(cc =>
-            cc.fk_Companyid_Company == companyId &&
-            cc.fk_Clientid_Users == dto.ClientUserId);
+        // Client must have a client_company row for this company
+        var cc = await _db.client_companies
+            .FirstOrDefaultAsync(x =>
+                x.fk_Companyid_Company == companyId &&
+                x.fk_Clientid_Users    == dto.ClientUserId);
 
-        if (!allowedClient)
+        if (cc == null)
             return StatusCode(403, "Client is not in your company.");
 
-        // ✅ all products must belong to this company
+        // All products must belong to this company
         var productIds = dto.Items.Select(i => i.ProductId).Distinct().ToList();
-
-        var okCount = await _db.products.AsNoTracking()
+        var okCount    = await _db.products.AsNoTracking()
             .CountAsync(p => productIds.Contains(p.id_Product) && p.fk_Companyid_Company == companyId);
 
         if (okCount != productIds.Count)
@@ -211,40 +202,27 @@ public class OrderController : ControllerBase
         await using var tx = await _db.Database.BeginTransactionAsync();
         try
         {
-            // upsert client info (base client row)
-            var client = await _db.clients.FirstOrDefaultAsync(c => c.id_Users == dto.ClientUserId);
-
-            if (client == null)
-            {
-                client = new client
-                {
-                    id_Users = dto.ClientUserId,
-                    userId = dto.ClientUserId
-                };
-                _db.clients.Add(client);
-            }
-
+            // Update client_company info if provided
             if (dto.ClientInfo != null)
             {
-                client.deliveryAddress = dto.ClientInfo.DeliveryAddress;
-                client.city = dto.ClientInfo.City;
-                client.country = dto.ClientInfo.Country;
-                client.vat = dto.ClientInfo.Vat;
-                client.bankCode = dto.ClientInfo.BankCode;
+                cc.deliveryAddress = dto.ClientInfo.DeliveryAddress;
+                cc.city            = dto.ClientInfo.City;
+                cc.country         = dto.ClientInfo.Country;
+                cc.vat             = dto.ClientInfo.Vat;
+                cc.bankCode        = dto.ClientInfo.BankCode;
+                await _db.SaveChangesAsync();
             }
-
-            await _db.SaveChangesAsync();
 
             var order = new order
             {
-                fk_Companyid_Company = companyId, // ✅ FIX: always active company
-                OrdersDate = dto.OrdersDate,
-                totalAmount = dto.TotalAmount,
-                paymentMethod = dto.PaymentMethod,
-                deliveryPrice = dto.DeliveryPrice,
-                status = dto.Status,
-                fk_Clientid_Users = dto.ClientUserId,
-                externalDocumentId = dto.ExternalDocumentId,
+                fk_Companyid_Company = companyId,
+                OrdersDate           = dto.OrdersDate,
+                totalAmount          = dto.TotalAmount,
+                paymentMethod        = dto.PaymentMethod,
+                deliveryPrice        = dto.DeliveryPrice,
+                status               = dto.Status,
+                fk_Clientid_Users    = dto.ClientUserId,
+                externalDocumentId   = dto.ExternalDocumentId
             };
 
             _db.orders.Add(order);
@@ -254,11 +232,11 @@ public class OrderController : ControllerBase
             {
                 _db.ordersproducts.Add(new ordersproduct
                 {
-                    fk_Ordersid_Orders = order.id_Orders,
+                    fk_Ordersid_Orders   = order.id_Orders,
                     fk_Productid_Product = it.ProductId,
-                    quantity = it.Quantity,
-                    unitPrice = it.UnitPrice,
-                    vatValue = it.VatValue
+                    quantity             = it.Quantity,
+                    unitPrice            = it.UnitPrice,
+                    vatValue             = it.VatValue
                 });
             }
 
@@ -274,9 +252,7 @@ public class OrderController : ControllerBase
         }
     }
 
-    // -------------------------
-    // READ (SINGLE)
-    // -------------------------
+    // ── READ (SINGLE) ─────────────────────────────────────────────────────────
 
     [HttpGet("order/{id:int}")]
     public async Task<IActionResult> GetOrder(int id)
@@ -288,7 +264,6 @@ public class OrderController : ControllerBase
         var order = await _db.orders.AsNoTracking().FirstOrDefaultAsync(o => o.id_Orders == id);
         if (order == null) return NotFound();
 
-        // ✅ tenant isolation for everyone
         if (order.fk_Companyid_Company != companyId)
             return StatusCode(403, "Order is not in your company.");
 
@@ -297,30 +272,26 @@ public class OrderController : ControllerBase
             .Select(x => new
             {
                 productId = x.fk_Productid_Product,
-                quantity = x.quantity,
-                unitPrice = x.unitPrice,
-                vatValue = x.vatValue
+                x.quantity, x.unitPrice, x.vatValue
             })
             .ToListAsync();
 
         return Ok(new
         {
-            id = order.id_Orders,
-            ordersDate = order.OrdersDate,
-            totalAmount = order.totalAmount,
-            paymentMethod = order.paymentMethod,
-            deliveryPrice = order.deliveryPrice,
-            status = order.status,
-            clientUserId = order.fk_Clientid_Users,
+            id                 = order.id_Orders,
+            ordersDate         = order.OrdersDate,
+            totalAmount        = order.totalAmount,
+            paymentMethod      = order.paymentMethod,
+            deliveryPrice      = order.deliveryPrice,
+            status             = order.status,
+            clientUserId       = order.fk_Clientid_Users,
             externalDocumentId = order.externalDocumentId,
-            companyId = order.fk_Companyid_Company,
+            companyId          = order.fk_Companyid_Company,
             items
         });
     }
 
-    // -------------------------
-    // UPDATE
-    // -------------------------
+    // ── UPDATE ────────────────────────────────────────────────────────────────
 
     [HttpPut("editOrder/{id:int}")]
     public async Task<IActionResult> UpdateOrder(int id, [FromBody] OrderUpsertDto dto)
@@ -332,22 +303,19 @@ public class OrderController : ControllerBase
         var order = await _db.orders.FirstOrDefaultAsync(o => o.id_Orders == id);
         if (order == null) return NotFound();
 
-        // ✅ tenant isolation for everyone
         if (order.fk_Companyid_Company != companyId)
             return StatusCode(403, "Order is not in your company.");
 
-        // ✅ client must belong to this company
-        var allowedClient = await _db.client_companies.AnyAsync(cc =>
-            cc.fk_Companyid_Company == companyId &&
-            cc.fk_Clientid_Users == dto.ClientUserId);
+        var cc = await _db.client_companies
+            .FirstOrDefaultAsync(x =>
+                x.fk_Companyid_Company == companyId &&
+                x.fk_Clientid_Users    == dto.ClientUserId);
 
-        if (!allowedClient)
+        if (cc == null)
             return StatusCode(403, "Client is not in your company.");
 
-        // ✅ all products must belong to this company
         var productIds = dto.Items.Select(i => i.ProductId).Distinct().ToList();
-
-        var okCount = await _db.products.AsNoTracking()
+        var okCount    = await _db.products.AsNoTracking()
             .CountAsync(p => productIds.Contains(p.id_Product) && p.fk_Companyid_Company == companyId);
 
         if (okCount != productIds.Count)
@@ -356,37 +324,25 @@ public class OrderController : ControllerBase
         await using var tx = await _db.Database.BeginTransactionAsync();
         try
         {
-            order.OrdersDate = dto.OrdersDate;
-            order.totalAmount = dto.TotalAmount;
-            order.paymentMethod = dto.PaymentMethod;
-            order.deliveryPrice = dto.DeliveryPrice;
-            order.status = dto.Status;
-            order.fk_Clientid_Users = dto.ClientUserId;
+            order.OrdersDate         = dto.OrdersDate;
+            order.totalAmount        = dto.TotalAmount;
+            order.paymentMethod      = dto.PaymentMethod;
+            order.deliveryPrice      = dto.DeliveryPrice;
+            order.status             = dto.Status;
+            order.fk_Clientid_Users  = dto.ClientUserId;
             order.externalDocumentId = dto.ExternalDocumentId;
 
-            // client info upsert
-            var client = await _db.clients.FirstOrDefaultAsync(c => c.id_Users == dto.ClientUserId);
-
-            if (client == null)
-            {
-                client = new client
-                {
-                    id_Users = dto.ClientUserId,
-                    userId = dto.ClientUserId
-                };
-                _db.clients.Add(client);
-            }
-
+            // Update client_company info if provided
             if (dto.ClientInfo != null)
             {
-                client.deliveryAddress = dto.ClientInfo.DeliveryAddress;
-                client.city = dto.ClientInfo.City;
-                client.country = dto.ClientInfo.Country;
-                client.vat = dto.ClientInfo.Vat;
-                client.bankCode = dto.ClientInfo.BankCode;
+                cc.deliveryAddress = dto.ClientInfo.DeliveryAddress;
+                cc.city            = dto.ClientInfo.City;
+                cc.country         = dto.ClientInfo.Country;
+                cc.vat             = dto.ClientInfo.Vat;
+                cc.bankCode        = dto.ClientInfo.BankCode;
             }
 
-            // replace items
+            // Replace order lines
             var old = await _db.ordersproducts
                 .Where(x => x.fk_Ordersid_Orders == id)
                 .ToListAsync();
@@ -397,11 +353,11 @@ public class OrderController : ControllerBase
             {
                 _db.ordersproducts.Add(new ordersproduct
                 {
-                    fk_Ordersid_Orders = id,
+                    fk_Ordersid_Orders   = id,
                     fk_Productid_Product = it.ProductId,
-                    quantity = it.Quantity,
-                    unitPrice = it.UnitPrice,
-                    vatValue = it.VatValue
+                    quantity             = it.Quantity,
+                    unitPrice            = it.UnitPrice,
+                    vatValue             = it.VatValue
                 });
             }
 
@@ -416,9 +372,7 @@ public class OrderController : ControllerBase
         }
     }
 
-    // -------------------------
-    // DELETE
-    // -------------------------
+    // ── DELETE ────────────────────────────────────────────────────────────────
 
     [HttpDelete("deleteOrder/{id:int}")]
     public async Task<IActionResult> DeleteOrder(int id)
@@ -430,7 +384,6 @@ public class OrderController : ControllerBase
         var order = await _db.orders.FirstOrDefaultAsync(o => o.id_Orders == id);
         if (order == null) return NotFound();
 
-        // ✅ tenant isolation for everyone
         if (order.fk_Companyid_Company != companyId)
             return StatusCode(403, "Order is not in your company.");
 

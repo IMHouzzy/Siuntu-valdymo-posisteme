@@ -25,7 +25,7 @@ public partial class product
 
     public string? shipping_mode { get; set; }
 
-    public bool vat { get; set; }
+    public bool? vat { get; set; }
 
     public DateTime? creationDate { get; set; }
 

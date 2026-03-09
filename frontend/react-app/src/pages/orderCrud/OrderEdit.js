@@ -29,7 +29,7 @@ export default function OrderEditPage() {
                     Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
             }).then(r => r.json()),
-            fetch("http://localhost:5065/api/users/allUsers", {
+            fetch("http://localhost:5065/api/users/allUsersWithClients", {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
@@ -53,16 +53,8 @@ export default function OrderEditPage() {
                 const clientId = String(order.clientUserId);
 
                 // fetch client info
-                let clientData = null;
-                try {
-                    const r = await fetch(`http://localhost:5065/api/orders/clientInfo/${clientId}`, {
-                        headers: {
-                            Authorization: `Bearer ${localStorage.getItem("token")}`,
-                        },
-                    });
-                    const text = await r.text();
-                    clientData = text ? JSON.parse(text) : null;
-                } catch { }
+                const clientUser = (us || []).find((u) => String(u.id_Users) === String(clientId));
+                const clientData = clientUser?.client ?? null;
 
                 // ✅ items: kainą imam iš ordersproduct.unitPrice (istorinė)
                 const VAT_RATE = 0.21;
@@ -107,10 +99,12 @@ export default function OrderEditPage() {
 
     const userOptions = useMemo(
         () =>
-            users.map(u => ({
-                value: String(u.id_Users),
-                label: `${u.name} ${u.surname} (${u.email})`,
-            })),
+            (users || [])
+                .filter((u) => !!u.client) // ✅ tik klientai
+                .map((u) => ({
+                    value: String(u.id_Users),
+                    label: `${u.name ?? ""} ${u.surname ?? ""} (${u.email ?? "-"})`.trim(),
+                })),
         [users]
     );
 
@@ -236,25 +230,17 @@ export default function OrderEditPage() {
                     } else {
                         if (lastClientIdRef.current !== cid) {
                             lastClientIdRef.current = cid;
-                            try {
-                                const r = await fetch(`http://localhost:5065/api/orders/clientInfo/${cid}`, {
-                                    headers: {
-                                        Authorization: `Bearer ${localStorage.getItem("token")}`,
-                                    },
-                                });
-                                const text = await r.text();
-                                const data = text ? JSON.parse(text) : null;
 
-                                setPatch({
-                                    deliveryAddress: data?.deliveryAddress ?? "",
-                                    city: data?.city ?? "",
-                                    country: data?.country ?? "",
-                                    vat: data?.vat ?? "",
-                                    bankCode: data?.bankCode ?? null,
-                                });
-                            } catch (e) {
-                                console.error(e);
-                            }
+                            const clientUser = (users || []).find((u) => String(u.id_Users) === String(cid));
+                            const data = clientUser?.client ?? null;
+
+                            setPatch({
+                                deliveryAddress: data?.deliveryAddress ?? "",
+                                city: data?.city ?? "",
+                                country: data?.country ?? "",
+                                vat: data?.vat ?? "",
+                                bankCode: data?.bankCode ?? null,
+                            });
                         }
                     }
 

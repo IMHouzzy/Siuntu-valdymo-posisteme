@@ -1,4 +1,3 @@
-// services/AuthContext.js
 import { createContext, useContext, useMemo, useState } from "react";
 import { jwtDecode } from "jwt-decode";
 
@@ -12,9 +11,12 @@ function decodeAuth(token) {
   try {
     const p = jwtDecode(token);
 
-    const companies = typeof p.companies === "string"
-      ? safeJsonParse(p.companies, [])
-      : Array.isArray(p.companies) ? p.companies : [];
+    const companies =
+      typeof p.companies === "string"
+        ? safeJsonParse(p.companies, [])
+        : Array.isArray(p.companies)
+        ? p.companies
+        : [];
 
     const activeCompany = {
       id: Number(p.companyId || 0),
@@ -24,7 +26,7 @@ function decodeAuth(token) {
 
     return {
       user: {
-        id: p.sub,
+        id: Number(p.sub || 0),
         email: p.email,
         provider: p.provider,
         fullName: p.fullName || `${p.name || ""} ${p.surname || ""}`.trim(),
@@ -32,7 +34,7 @@ function decodeAuth(token) {
       },
       companies,
       activeCompany,
-      companyRole: p.companyRole || "", // ✅
+      companyRole: p.companyRole || "",
     };
   } catch (e) {
     console.log("JWT decode error:", e);
@@ -42,12 +44,10 @@ function decodeAuth(token) {
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem("token") || null);
-
-  // ✅ global lock for company switching (used by forms)
   const [companySwitchLocked, setCompanySwitchLocked] = useState(false);
 
   const decoded = useMemo(() => {
-    return token ? decodeAuth(token) : { user: null, companies: [], activeCompany: null };
+    return token ? decodeAuth(token) : { user: null, companies: [], activeCompany: null, companyRole: "" };
   }, [token]);
 
   const login = (newToken) => {
@@ -61,7 +61,7 @@ export function AuthProvider({ children }) {
   };
 
   const switchCompany = async (companyId) => {
-    if (companySwitchLocked) return; // ✅ hard guard
+    if (companySwitchLocked) return;
     if (!token) throw new Error("No token");
 
     const res = await fetch(`http://localhost:5065/api/auth/switch-company/${companyId}`, {
@@ -70,11 +70,11 @@ export function AuthProvider({ children }) {
     });
 
     if (!res.ok) {
-      const t = await res.text();
+      const t = await res.text().catch(() => "");
       throw new Error(t || "Switch company failed");
     }
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!data?.token) throw new Error("No token in response");
     login(data.token);
   };
@@ -85,9 +85,10 @@ export function AuthProvider({ children }) {
         token,
         user: decoded.user,
         companies: decoded.companies,
-        activeCompany: decoded.activeCompany, // ✅ grąžink objektą (reikia Sidebarui)
+        activeCompany: decoded.activeCompany,
         activeCompanyId: decoded.activeCompany?.id || 0,
         companyRole: decoded.companyRole,
+
         login,
         logout,
         switchCompany,

@@ -25,7 +25,7 @@ public partial class order
 
     public int fk_Companyid_Company { get; set; }
 
-    public virtual client fk_Clientid_UsersNavigation { get; set; } = null!;
+    public virtual user fk_Clientid_UsersNavigation { get; set; } = null!;
 
     public virtual company fk_Companyid_CompanyNavigation { get; set; } = null!;
 

@@ -4,7 +4,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System;
-
+using System.Linq;
+using Bakalauras.API.Dtos;
 public class ButentApiService
 {
     private readonly HttpClient _http;

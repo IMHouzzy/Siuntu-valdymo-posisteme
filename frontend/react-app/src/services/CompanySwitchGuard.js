@@ -16,7 +16,10 @@ export default function CompanySwitchGuard() {
       pathname.startsWith("/productAdd") ||
       pathname.startsWith("/productEdit") ||
       pathname.startsWith("/orderAdd") ||
-      pathname.startsWith("/orderEdit")
+      pathname.startsWith("/orderEdit")||
+      pathname.startsWith("/companyAdd")||
+      pathname.startsWith("/companyEdit")||
+      pathname.startsWith("/companyMembers")
     );
   }, [pathname]);
 

@@ -21,21 +21,21 @@ public partial class user
 
     public string? googleId { get; set; }
 
-    public string? authProvider { get; set; }
+    public string authProvider { get; set; } = null!;
 
     public int? fk_Companyid_Company { get; set; }
 
     public bool isMasterAdmin { get; set; }
 
-    public virtual admin? admin { get; set; }
-
-    public virtual client? client { get; set; }
+    public virtual ICollection<client_company> client_companies { get; set; } = new List<client_company>();
 
     public virtual ICollection<company_user> company_users { get; set; } = new List<company_user>();
 
-    public virtual employee? employee { get; set; }
-
     public virtual company? fk_Companyid_CompanyNavigation { get; set; }
 
-    public virtual ICollection<product_return> product_returns { get; set; } = new List<product_return>();
+    public virtual ICollection<order> orders { get; set; } = new List<order>();
+
+    public virtual ICollection<product_return> product_returnfk_Adminid_UsersNavigations { get; set; } = new List<product_return>();
+
+    public virtual ICollection<product_return> product_returnfk_Clientid_UsersNavigations { get; set; } = new List<product_return>();
 }

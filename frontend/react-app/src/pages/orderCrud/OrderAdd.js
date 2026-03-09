@@ -22,7 +22,7 @@ export default function OrderCreatePage() {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       }).then(r => r.json()),
-      fetch("http://localhost:5065/api/users/allUsers", {
+       fetch("http://localhost:5065/api/users/allUsersWithClients", {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -41,12 +41,14 @@ export default function OrderCreatePage() {
       .catch(console.error);
   }, []);
 
-  const userOptions = useMemo(() => (
-    users.map(u => ({
+const userOptions = useMemo(
+  () =>
+    (users || []).map((u) => ({
       value: String(u.id_Users),
-      label: `${u.name} ${u.surname} (${u.email})`
-    }))
-  ), [users]);
+      label: `${u.name ?? ""} ${u.surname ?? ""} (${u.email ?? "-"})`.trim(),
+    })),
+  [users]
+);
 
   const productOptions = useMemo(() => (
     products.map(p => ({
@@ -186,25 +188,16 @@ export default function OrderCreatePage() {
           } else {
             if (lastClientIdRef.current !== cid) {
               lastClientIdRef.current = cid;
-              try {
-                const r = await fetch(`http://localhost:5065/api/orders/clientInfo/${cid}`, {
-                  headers: {
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                  },
-                });
-                const text = await r.text();
-                const data = text ? JSON.parse(text) : null;
+              const clientUser = (users || []).find((u) => String(u.id_Users) === String(cid));
+              const data = clientUser?.client ?? null;
 
-                setPatch({
-                  deliveryAddress: data?.deliveryAddress ?? "",
-                  city: data?.city ?? "",
-                  country: data?.country ?? "",
-                  vat: data?.vat ?? "",
-                  bankCode: data?.bankCode ?? null,
-                });
-              } catch (e) {
-                console.error(e);
-              }
+              setPatch({
+                deliveryAddress: data?.deliveryAddress ?? "",
+                city: data?.city ?? "",
+                country: data?.country ?? "",
+                vat: data?.vat ?? "",
+                bankCode: data?.bankCode ?? null,
+              });
             }
           }
 

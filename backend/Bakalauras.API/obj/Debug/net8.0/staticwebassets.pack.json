@@ -25,6 +25,14 @@
       "PackagePath": "staticwebassets\\uploads\\products\\55\\d5ee355a5a6b427798cabe8f559bff00.jpg"
     },
     {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\85\\3792a270f354446588e8340f1f2a84ea.jpg",
+      "PackagePath": "staticwebassets\\uploads\\products\\85\\3792a270f354446588e8340f1f2a84ea.jpg"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\85\\75f9cdd984cf4e5bb56589c47dcfa51c.jpg",
+      "PackagePath": "staticwebassets\\uploads\\products\\85\\75f9cdd984cf4e5bb56589c47dcfa51c.jpg"
+    },
+    {
       "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.Bakalauras.API.Microsoft.AspNetCore.StaticWebAssets.props",
       "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
     },

@@ -47,10 +47,7 @@ builder.Services
             ValidAudience = jwtSettings["Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
 
-            // ✅ important: maps principal.Identity.Name / NameIdentifier correctly
             NameClaimType = System.Security.Claims.ClaimTypes.NameIdentifier,
-
-            // ✅ removes random “token expired” issues because of default 5 min skew
             ClockSkew = TimeSpan.Zero
         };
     });
@@ -58,27 +55,18 @@ builder.Services
 builder.Services.AddAuthorization();
 
 // Butent API client
-builder.Services.AddHttpClient<ButentApiService>(client =>
-{
-    client.BaseAddress = new Uri("http://94.176.235.151:3001/api/v1/");
+builder.Services.AddHttpClient();
 
-    var username = builder.Configuration["Butent:Username"];
-    var password = builder.Configuration["Butent:Password"];
-
-    var authValue = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}"));
-    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authValue);
-});
-
-// CORS (pick ONE style: either default policy OR UseCors builder below)
-// Here we register a named policy and use it.
+// CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("LocalReact", policy =>
+    options.AddPolicy("LocalDev", policy =>
     {
-        policy.WithOrigins("http://localhost:3000")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        policy
+            .WithOrigins("http://localhost:3000")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+        // .AllowCredentials(); // ✅ tik jei naudoji cookies. Su Bearer dažniausiai nereikia
     });
 });
 
@@ -89,8 +77,10 @@ builder.Services.AddHostedService<OrderSyncWorker>();
 
 var app = builder.Build();
 
-// ✅ use named cors policy
-app.UseCors("LocalReact");
+// ✅ svarbi tvarka:
+app.UseRouting();
+
+app.UseCors("LocalDev"); // ✅ po routing, prieš auth
 
 app.UseStaticFiles();
 

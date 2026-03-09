@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
-using System.Text.Json;
 using Bakalauras.API.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,9 +9,7 @@ public class OrderSyncWorker : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IHttpClientFactory _httpClientFactory;
 
-    public OrderSyncWorker(
-        IServiceScopeFactory scopeFactory,
-        IHttpClientFactory httpClientFactory)
+    public OrderSyncWorker(IServiceScopeFactory scopeFactory, IHttpClientFactory httpClientFactory)
     {
         _scopeFactory = scopeFactory;
         _httpClientFactory = httpClientFactory;
@@ -25,22 +22,13 @@ public class OrderSyncWorker : BackgroundService
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            try
-            {
-                await SyncAllCompanies(stoppingToken);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[OrderSyncWorker] Error: {ex}");
-            }
+            try { await SyncAllCompanies(stoppingToken); }
+            catch (Exception ex) { Console.WriteLine($"[OrderSyncWorker] Error: {ex}"); }
 
             await Task.Delay(TimeSpan.FromMinutes(60), stoppingToken);
         }
     }
 
-    // ===============================
-    // MULTI COMPANY LOOP
-    // ===============================
     private async Task SyncAllCompanies(CancellationToken ct)
     {
         using var scope = _scopeFactory.CreateScope();
@@ -49,47 +37,38 @@ public class OrderSyncWorker : BackgroundService
         var integrations = await db.company_integrations
             .AsNoTracking()
             .Where(x => x.enabled == true && x.type == "BUTENT")
+            .Select(x => new { x.fk_Companyid_Company, x.baseUrl, x.encryptedSecrets })
             .ToListAsync(ct);
 
         foreach (var integ in integrations)
         {
-            var secrets = ParseSecrets(integ.encryptedSecrets);
+            ct.ThrowIfCancellationRequested();
 
-            if (string.IsNullOrWhiteSpace(secrets.Username) ||
-                string.IsNullOrWhiteSpace(secrets.Password))
+            var (u, p, b) = IntegrationSecrets.TryUnpack(integ.encryptedSecrets);
+            var baseUrl = !string.IsNullOrWhiteSpace(integ.baseUrl) ? integ.baseUrl : b;
+
+            if (string.IsNullOrWhiteSpace(baseUrl) ||
+                string.IsNullOrWhiteSpace(u) ||
+                string.IsNullOrWhiteSpace(p))
+            {
+                Console.WriteLine($"[OrderSyncWorker] Skipping company {integ.fk_Companyid_Company}: missing baseUrl/username/password.");
                 continue;
+            }
 
-            await SyncCompanyOrders(
-                integ.fk_Companyid_Company,
-                integ.baseUrl!,
-                secrets.Username!,
-                secrets.Password!,
-                ct);
+            await SyncCompanyOrders(integ.fk_Companyid_Company, baseUrl!, u!, p!, ct);
         }
     }
 
-    // ===============================
-    // COMPANY SYNC
-    // ===============================
-    private async Task SyncCompanyOrders(
-        int companyId,
-        string baseUrl,
-        string username,
-        string password,
-        CancellationToken ct)
+    private async Task SyncCompanyOrders(int companyId, string baseUrl, string username, string password, CancellationToken ct)
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var http = _httpClientFactory.CreateClient();
-        http.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
+        http.BaseAddress = new Uri(baseUrl.Trim().TrimEnd('/') + "/");
 
-        var auth = Convert.ToBase64String(
-            Encoding.UTF8.GetBytes($"{username}:{password}")
-        );
-
-        http.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Basic", auth);
+        var auth = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}"));
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", auth);
 
         var butent = new ButentApiService(http);
 
@@ -97,43 +76,33 @@ public class OrderSyncWorker : BackgroundService
         Console.WriteLine($"[OrderSyncWorker] Company={companyId} docs={sales.Count}");
         if (sales.Count == 0) return;
 
-        // Existing orders PER COMPANY
         var existing = (await db.orders
                 .Where(o => o.fk_Companyid_Company == companyId)
                 .Select(o => o.externalDocumentId)
                 .ToListAsync(ct))
             .ToHashSet();
 
-        // CLIENT mapping via client_company
         var clientsByExternal = await db.client_companies
-            .Where(cc => cc.fk_Companyid_Company == companyId &&
-                         cc.externalClientId.HasValue)
-            .ToDictionaryAsync(
-                cc => cc.externalClientId!.Value,
-                cc => cc.fk_Clientid_Users,
-                ct);
+            .Where(cc => cc.fk_Companyid_Company == companyId && cc.externalClientId.HasValue)
+            .ToDictionaryAsync(cc => cc.externalClientId!.Value, cc => cc.fk_Clientid_Users, ct);
 
         var productsByExternal = await db.products
-            .Where(p => p.fk_Companyid_Company == companyId &&
-                        p.externalCode.HasValue)
-            .ToDictionaryAsync(
-                p => p.externalCode!.Value,
-                p => p.id_Product,
-                ct);
+            .Where(p => p.fk_Companyid_Company == companyId && p.externalCode.HasValue)
+            .ToDictionaryAsync(p => p.externalCode!.Value, p => p.id_Product, ct);
 
         foreach (var bill in sales)
         {
+            ct.ThrowIfCancellationRequested();
+
             var extDocId = bill.DocumentID;
-            if (existing.Contains(extDocId))
-                continue;
+            if (existing.Contains(extDocId)) continue;
 
             var doc = await butent.GetDocumentAsync(extDocId, ct);
-            if (doc?.Client_Id == null)
-                continue;
+            if (doc?.Client_Id == null) continue;
 
             if (!clientsByExternal.TryGetValue(doc.Client_Id.Value, out var clientUserId))
             {
-                Console.WriteLine($"Client missing for company {companyId}");
+                Console.WriteLine($"[OrderSyncWorker] Client missing for company {companyId}, external client={doc.Client_Id.Value}");
                 continue;
             }
 
@@ -176,49 +145,21 @@ public class OrderSyncWorker : BackgroundService
 
             await db.SaveChangesAsync(ct);
 
-            Console.WriteLine(
-                $"[OrderSyncWorker] Company={companyId} inserted order ext={extDocId}");
+            Console.WriteLine($"[OrderSyncWorker] Company={companyId} inserted order ext={extDocId}");
         }
     }
 
-    // ===============================
     private static DateTime? ParseButentDate(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return null;
 
-        if (DateTime.TryParseExact(
+        return DateTime.TryParseExact(
             value.Trim(),
             "yyyy-MM-dd HH:mm:ss",
             CultureInfo.InvariantCulture,
             DateTimeStyles.None,
-            out var dt))
-            return dt;
-
-        return null;
-    }
-
-    // ===============================
-    private static ButentSecrets ParseSecrets(string json)
-    {
-        try
-        {
-            var doc = JsonDocument.Parse(json).RootElement;
-
-            return new ButentSecrets
-            {
-                Username = doc.GetProperty("username").GetString(),
-                Password = doc.GetProperty("password").GetString()
-            };
-        }
-        catch
-        {
-            return new ButentSecrets();
-        }
-    }
-
-    private class ButentSecrets
-    {
-        public string? Username { get; set; }
-        public string? Password { get; set; }
+            out var dt)
+            ? dt
+            : null;
     }
 }
