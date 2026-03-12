@@ -8,6 +8,7 @@ import {
   FiMenu,
   FiBriefcase,
   FiLock,
+  FiPackage,
 } from "react-icons/fi";
 import { LuLayoutDashboard } from "react-icons/lu";
 import "../styles/SidebarLeft.css";
@@ -68,6 +69,7 @@ export default function SidebarLeft({ collapsed, onToggle }) {
           { label: "Kurti prekę", to: "/productAdd" },
         ],
       },
+      { type: "link", id: "Siuntos", label: "Siuntos", icon: <FiPackage/>, to: "/shipmentsList" },
       {
         type: "group",
         id: "Naudotojai",

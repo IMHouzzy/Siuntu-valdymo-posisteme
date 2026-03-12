@@ -1,12 +1,21 @@
+/* ═══════════════════════════════════════════════════════════════════
+   RightDrawerSidebar.css
+   Base styles + 5 page variants:
+     rd--order · rd--shipment · rd--product · rd--user · rd--company
+═══════════════════════════════════════════════════════════════════ */
+
+/* ── Overlay ──────────────────────────────────────────────────────── */
 .rd-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.35);
+  background: rgba(11, 18, 32, 0.4);
+  backdrop-filter: blur(2px);
   z-index: 2000;
   display: flex;
   justify-content: flex-end;
 }
 
+/* ── Drawer shell ─────────────────────────────────────────────────── */
 .rd {
   height: 100%;
   background: var(--color-bg-card);
@@ -14,45 +23,107 @@
   box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
-
-  animation: rdIn var(--transition-normal);
+  animation: rdSlideIn var(--transition-normal);
+  overflow: hidden;
+  height: 100%;
+  overflow-y: auto;
 }
 
-@keyframes rdIn {
-  from { transform: translateX(24px); opacity: 0; }
-  to   { transform: translateX(0); opacity: 1; }
+@keyframes rdSlideIn {
+  from {
+    transform: translateX(32px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
+/* ── Header ───────────────────────────────────────────────────────── */
 .rd-header {
-  padding: var(--space-lg);
-  border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-md);
+  flex-shrink: 0;
+}
+
+.rd-header-text {
+  min-width: 0;
+  flex: 1;
 }
 
 .rd-title {
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
   font-weight: var(--font-semibold);
   color: var(--color-text-primary);
-  line-height: 1.2;
+  line-height: 1.3;
+  word-break: break-word;
 }
 
 .rd-subtitle {
-  margin-top: 4px;
+
   color: var(--color-text-muted);
   font-size: var(--text-sm);
   word-break: break-word;
 }
 
+/* ── Header action buttons (icon-only) ────────────────────────────── */
+.rd-header-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Every action button passed via `actions` prop */
+.rd-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 15px;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.rd-action-btn:hover {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  border-color: var(--color-text-muted);
+}
+
+.rd-action-btn.danger {
+  color: var(--color-danger);
+  border-color: transparent;
+}
+
+.rd-action-btn.danger:hover {
+  background: #fef2f2;
+  border-color: var(--color-danger);
+}
+
+/* Close button */
 .rd-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
   border: none;
   background: transparent;
   cursor: pointer;
-  color: var(--color-text-secondary);
-  font-size: 20px;
-  padding: 6px 10px;
+  color: var(--color-text-muted);
   border-radius: var(--radius-md);
   transition: background var(--transition-fast), color var(--transition-fast);
 }
@@ -62,31 +133,67 @@
   color: var(--color-text-primary);
 }
 
+/* ── Hero slot ────────────────────────────────────────────────────── */
+.rd-hero {
+  flex-shrink: 0;
+
+}
+
+/* ── Body ─────────────────────────────────────────────────────────── */
 .rd-body {
+  flex: 1;
+
   padding: var(--space-lg);
-  overflow: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
 }
 
+/* ── Sections ─────────────────────────────────────────────────────── */
+.rd-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
 .rd-section-title {
   margin: 0 0 var(--space-sm) 0;
-  color: var(--color-primary);
-  font-size: var(--text-md);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.rd-rows {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }
 
 .rd-row {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   gap: var(--space-md);
-  padding: 10px 0;
+  padding: 9px var(--space-md);
   border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+}
+
+.rd-row:last-child {
+  border-bottom: none;
+}
+
+.rd-row:nth-child(even) {
+  background: #fafbfc;
 }
 
 .rd-label {
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
   font-size: var(--text-sm);
+  flex-shrink: 0;
+  padding-top: 1px;
 }
 
 .rd-value {
@@ -97,69 +204,785 @@
   word-break: break-word;
 }
 
+.rd-value--full {
+  text-align: left;
+  width: 100%;
+}
+
 .rd-empty {
   color: var(--color-text-muted);
   font-size: var(--text-sm);
-  padding: var(--space-sm) 0;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  text-align: center;
 }
-.rd-header-actions{
-  display:flex;
-  gap: var(--space-sm);
-  align-items:center;
-}
-/* .rd-footer {
-  padding: var(--space-md) var(--space-lg);
-  border-top: 1px solid var(--color-border);
+
+
+
+/* ════════════════════════════════════════════════════════════════════
+   VARIANT: ORDER  (rd--order)
+   Feel: clean financial record, left-accent stripe, totals prominent
+════════════════════════════════════════════════════════════════════ */
+
+/* Right-align the close button in order drawer header */
+.rd--order .rd-header {
   display: flex;
   justify-content: flex-end;
-} */
+  align-items: center;
+  padding: var(--space-md) var(--space-lg) var(--space-sm) 0;
+}
 
-.rd-btn {
+.rd--order .order-hero {
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 var(--space-xl) var(--space-md) var(--space-xl);
+}
+
+.rd--order .order-stats-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 28px;
+  margin-top: 10px;
+  width: 100%;
+
+}
+
+.rd--order .order-hero-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+
+}
+
+.rd--order .order-hero-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rd--order .order-hero-stat-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.rd--order .order-hero-stat-value {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.rd--order .order-hero-divider {
+  width: 1px;
+  height: 36px;
+  background: #c7d5f5;
+}
+
+
+.rd--order .order-hero-title {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-primary);
+}
+
+
+
+.rd--order .order-hero-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+}
+
+.rd--order .order-hero-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.rd--order .order-hero-actions .rd-action-btn {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+}
+
+/* Product rows in order drawer — compact pill style */
+.rd--order .rd-product-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 8px var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+}
+
+.rd--order .rd-product-row:last-child {
+  border-bottom: none;
+}
+
+.rd--order .rd-product-row:nth-child(even) {
+  background: #fafbfc;
+}
+
+.rd--order .rd-product-qty {
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 6px;
+  background: #e8eeff;
+  color: var(--color-primary);
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  flex-shrink: 0;
+}
+
+.rd--order .rd-product-name {
+  flex: 1;
   font-size: var(--text-sm);
-  padding: 10px 14px;
-  background: var(--color-primary);
-  color: #fff;
-  border: none;
+  color: var(--color-text-primary);
+  font-weight: var(--font-medium);
+}
+
+.rd--order .rd-product-price {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* container */
+.rd--order .rd-product-img {
+  width: 54px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* normal product image */
+.rd--order .rd-product-img img {
+  width: 54px;
+  height: 54px;
+  object-fit: cover;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background var(--transition-fast);
 }
 
-.rd-btn:hover {
-  background: var(--color-primary-hover);
+/* placeholder container */
+.rd--order .rd-product-img-placeholder {
+  width: 54px;
+  height: 54px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.rd-img-grid{
+/* placeholder icon */
+.rd--order .rd-product-img-placeholder img {
+  width: 34px;
+  height: 34px;
+  border: none;
+  /* removes the solid border */
+  opacity: 0.6;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   VARIANT: SHIPMENT  (rd--shipment)
+   Feel: logistics dashboard — status bar top, tracking mono, packages as cards
+════════════════════════════════════════════════════════════════════ */
+
+.rd--shipment .rd-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: var(--space-md) var(--space-lg) 0 0;
+
+}
+
+.rd--shipment .rd-title {
+  font-family: var(--font-family-mono);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  letter-spacing: 0.04em;
+  color: var(--color-primary);
+}
+
+/* Status bar hero */
+.rd--shipment .rd-hero {
+  padding: var(--space-md) var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.rd--shipment .shipment-status-bar {
+  display: flex;           /* enable flex layout */
+  align-items: center;     /* vertically center all children */
+  gap: var(--space-sm);    /* optional spacing between elements */
+}
+
+.rd--shipment .shipment-date-small {
+font-size: var(--text-xs);
+color: var(--color-text-muted);
+}
+.rd--shipment .shipment-dates {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+}
+
+.rd--shipment .shipment-date-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+}
+
+.rd--shipment .shipment-date-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.rd--shipment .shipment-date-value {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  margin-top: 2px;
+}
+
+/* Package cards in shipment drawer */
+.rd--shipment .rd-package-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 10px var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-card);
+  margin-bottom: 6px;
+}
+
+.rd--shipment .rd-package-card:last-child {
+  margin-bottom: 0;
+}
+
+.rd--shipment .rd-package-index {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: #e8eeff;
+  color: var(--color-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  flex-shrink: 0;
+}
+
+.rd--shipment .rd-package-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rd--shipment .rd-package-id {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.rd--shipment .rd-package-label-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--color-primary);
+  text-decoration: none;
+  padding: 3px 8px;
+  border: 1px solid #c7d5f5;
+  border-radius: 999px;
+  background: #f0f4ff;
+  transition: background var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.rd--shipment .rd-package-label-link:hover {
+  background: #dde6ff;
+}
+.rd--shipment .shipment-header-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-sm);
+}
+
+.rd--shipment .shipment-hero-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.rd--shipment .shipment-hero-actions .rd-action-btn {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   VARIANT: PRODUCT  (rd--product)
+   Feel: e-commerce product card — full-bleed image strip at top
+════════════════════════════════════════════════════════════════════ */
+
+.rd--product .rd-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: var(--space-md) var(--space-lg) 0 0;
+
+}
+
+/* Image strip hero */
+.rd--product .rd-hero {
+  padding: 0;
+}
+
+.rd--product .rd-product-hero-simple {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg) 0 var(--space-lg);
+  ;
+
+}
+
+.rd--product .rd-product-hero-content {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  gap: 16px;
+
+}
+
+.rd--product .rd-product-hero-img {
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* normal product image */
+.rd--product .rd-product-hero-img img {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+/* placeholder container */
+.rd--product .rd-product-img-placeholder {
+  width: 100px;
+  height: 100px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* placeholder icon */
+.rd--product .rd-product-img-placeholder img {
+  width: 74px;
+  height: 74px;
+  border: none;
+  /* removes the solid border */
+  opacity: 0.6;
+}
+
+.rd--product .rd-product-hero-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.rd--product .rd-product-hero-name {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-primary);
+}
+
+/* Hero price pill */
+.rd--product .rd-product-hero-price {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: #fff;
+  background-color: var(--color-accent);
+  white-space: nowrap;
+  border: none;
+}
+
+.rd--product .rd-product-hero-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.rd--product .rd-product-hero-actions .rd-action-btn {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+}
+
+/* Spec tags */
+.rd--product .rd-tag-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: var(--space-md) var(--space-md);
+}
+
+.rd--product .rd-tag {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.rd-row--full {
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rd-row--full .rd-label {
+  padding-top: 0;
+}
+
+.rd-empty {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+
+/* ════════════════════════════════════════════════════════════════════
+   VARIANT: USER  (rd--user)
+   Feel: profile card — avatar circle, role badge, clean contact rows
+════════════════════════════════════════════════════════════════════ */
+
+.rd--user .rd-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: var(--space-md) var(--space-lg) 0 0;
+
+}
+
+/* Avatar hero */
+.rd--user .rd-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.rd--user .user-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.rd--user .user-avatar-initials {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-primary);
+  background: #e8eeff;
+  border: 2px solid #c7d5f5;
+  flex-shrink: 0;
+  letter-spacing: -0.02em;
+  user-select: none;
+}
+
+.rd--user .user-hero-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rd--user .user-hero-name {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  line-height: 1.2;
+}
+
+.rd--user .user-hero-email {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  word-break: break-all;
+}
+
+/* ── User Role Badge on Avatar ───────────────────────────── */
+/* Avatar wrapper to position role icon */
+.rd--user .user-avatar-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+/* Role icon at bottom-right */
+.rd--user .user-avatar-wrapper .user-role-icon {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 24px;
+  height: 24px;
+  background: var(--color-bg-card);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  color: var(--color-primary);
+  font-size: 14px;
+}
+
+/* ── Position row icon (drawer row) ─────────────────────── */
+.rd--user .rd-row .position-icon-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rd--user .rd-row .position-icon-wrapper svg {
+  width: 16px;
+  height: 16px;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.rd--user .user-hero-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.rd--user .user-hero-actions .rd-action-btn {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+}
+
+.rd--user .user-copy-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, transform 0.2s;
+}
+
+.rd--user .user-copy-btn:hover {
+  color: var(--color-primary);
+}
+
+.rd--user .user-copy-btn svg {
+  transition: transform 0.2s;
+}
+
+.rd--user .user-copy-btn:active svg {
+  transform: scale(1.2);
+}
+
+/* Wrapper to align email and copy button */
+.rd--user .user-hero-email-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Copy button styling */
+.rd--user .user-copy-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  padding: 2px;
+  transition: color 0.2s;
+}
+
+.rd--user .user-copy-btn:hover {
+  color: var(--color-primary);
+}
+
+.rd--user .user-role-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.03em;
+}
+
+.rd--user .user-role-badge--client {
+  background: #ecfdf5;
+  color: var(--color-accent);
+  border: 1px solid #a7f3d0;
+}
+
+.rd--user .user-role-badge--admin {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.rd--user .user-role-badge--employee {
+  background: #e8eeff;
+  color: var(--color-primary);
+  border: 1px solid #c7d5f5;
+}
+
+
+/* ════════════════════════════════════════════════════════════════════
+   VARIANT: COMPANY  (rd--company)
+   Feel: org record — logo/initials block, status pill, structured card
+════════════════════════════════════════════════════════════════════ */
+
+.rd--company .rd-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: var(--space-md) var(--space-lg) 0 0;
+}
+
+/* Company hero */
+.rd--company .rd-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.rd--company .company-logo-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.rd--company .company-logo {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.rd--company .company-logo-initials {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-primary);
+  background: #e8eeff;
+  border: 2px solid #c7d5f5;
+  flex-shrink: 0;
+  letter-spacing: -0.02em;
+  user-select: none;
+}
+
+/* Status icon on logo */
+.rd--company .company-logo-status {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+
+.rd--company .company-logo-status.active {
+  color: var(--color-primary);
+}
+
+.rd--company .company-logo-status.inactive {
+  color: var(--color-primary);
+}
+
+/* Info block */
+.rd--company .company-hero-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.rd--company .company-hero-name {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+}
+
+.rd--company .company-hero-code {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Actions */
+.rd--company .company-hero-actions {
+  display: flex;
   gap: 10px;
 }
 
-.rd-img-tile{
-  position: relative;
-  display: block;
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  overflow: hidden;
-  border-radius: 12px;
-  background: #f3f4f6;
-  border: 1px solid rgba(0,0,0,0.06);
-}
-
-.rd-img-tile img{
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.rd-img-badge{
-  position: absolute;
-  left: 8px;
-  top: 8px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 12px;
-  background: rgba(0,0,0,0.75);
-  color: white;
+.rd--company .company-hero-actions .rd-action-btn {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
 }

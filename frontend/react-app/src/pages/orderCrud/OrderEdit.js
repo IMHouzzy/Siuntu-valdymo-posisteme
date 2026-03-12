@@ -127,7 +127,7 @@ export default function OrderEditPage() {
 
             {
                 name: "status",
-                label: "Statusas",
+                label: "Būsena",
                 type: "select",
                 required: true,
                 colSpan: 1,

@@ -101,7 +101,8 @@ public class OrderController : ControllerBase
                     name         = op.fk_Productid_ProductNavigation.name,
                     price        = op.fk_Productid_ProductNavigation.price,
                     unit         = op.fk_Productid_ProductNavigation.unit,
-                    externalCode = op.fk_Productid_ProductNavigation.externalCode
+                    externalCode = op.fk_Productid_ProductNavigation.externalCode,
+                    imageUrl     = op.fk_Productid_ProductNavigation.product_images.Select(pi => pi.url).FirstOrDefault()
                 }).ToList()
             })
             .OrderByDescending(x => x.id_Orders)

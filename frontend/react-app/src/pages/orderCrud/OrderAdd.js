@@ -74,7 +74,7 @@ const userOptions = useMemo(
 
     {
       name: "status",
-      label: "Statusas",
+      label: "Būsena",
       type: "select",
       required: true,
       colSpan: 1,

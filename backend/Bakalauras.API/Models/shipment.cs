@@ -13,6 +13,10 @@ public partial class shipment
 
     public DateTime? estimatedDeliveryDate { get; set; }
 
+    public double? DeliveryLat { get; set; }
+
+    public double? DeliveryLng { get; set; }
+
     public int? fk_Courierid_Courier { get; set; }
 
     public int fk_Ordersid_Orders { get; set; }

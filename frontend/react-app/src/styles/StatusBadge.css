@@ -42,7 +42,43 @@
   color: var(--color-danger);
   border-color: rgba(239, 68, 68, 0.28);
 }
+/* Created (neutral/gray) */
+.status-created {
+  background: rgba(100, 116, 139, 0.14);
+  color: var(--color-secondary);
+  border-color: rgba(100, 116, 139, 0.28);
+}
 
+/* In transit / Vežama */
+.status-intransit,
+.status-return-intransit {
+  background: rgba(37, 99, 235, 0.14);
+  color: var(--color-primary);
+  border-color: rgba(37, 99, 235, 0.28);
+}
+
+/* Delivered / Pristatyta */
+.status-delivered,
+.status-return-delivered {
+  background: rgba(34, 197, 94, 0.14);
+  color: var(--color-accent);
+  border-color: rgba(34, 197, 94, 0.28);
+}
+
+/* Late / Vėluoja */
+.status-late,
+.status-return-late {
+  background: rgba(245, 158, 11, 0.14);
+  color: var(--color-warning);
+  border-color: rgba(245, 158, 11, 0.28);
+}
+
+/* Return created */
+.status-return-created {
+  background: rgba(129, 140, 248, 0.14);
+  color: #6366f1;
+  border-color: rgba(129, 140, 248, 0.28);
+}
 /* fallback */
 .status-default {
   background: var(--color-bg);

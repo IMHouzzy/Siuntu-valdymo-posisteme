@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useState, } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DataTable from "../../components/DataTable";
-import RightDrawer from "../../components/RightDrawerSidebar";
+import RightDrawer from "../../components/RightDrawers/RightDrawerSidebar";
 import "../../styles/UserPage.css";
 import TableToolbar from "../../components/TableToolbar";
 import { FiTrash2, FiEdit } from "react-icons/fi";
 import NoImage from "../../images/no-camera.png";
 import { useAuth } from "../../services/AuthContext";
+
+const API = "http://localhost:5065";
+
 function ProductList() {
     const navigate = useNavigate();
     const [products, setProducts] = useState([]);
@@ -14,41 +17,32 @@ function ProductList() {
     const [q, setQ] = useState("");
     const [group, setGroup] = useState("all");
     const { token, activeCompanyId } = useAuth();
+
     useEffect(() => {
         if (!token) return;
-
         setProducts([]);
         setSelectedProduct(null);
-
-        fetch("http://localhost:5065/api/products/allProductsFullInfo", {
+        fetch(`${API}/api/products/allProductsFullInfo`, {
             headers: { Authorization: `Bearer ${token}` },
         })
-            .then((res) => {
-                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-                return res.json();
-            })
+            .then((res) => { if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`); return res.json(); })
             .then(setProducts)
             .catch(console.error);
+        console.log("Fetched products:", products);
     }, [token, activeCompanyId]);
+
     const deleteProduct = async (p) => {
-        const ok = window.confirm(`Delete product "${p.name}"?`);
+        const ok = window.confirm(`Ištrinti prekę "${p.name}"?`);
         if (!ok) return;
-
-        const res = await fetch(`http://localhost:5065/api/products/deleteProduct/${p.id_Product}`, {
+        const res = await fetch(`${API}/api/products/deleteProduct/${p.id_Product}`, {
             method: "DELETE",
-            headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
+            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         });
-
-        if (!res.ok) {
-            alert("Delete failed");
-            return;
-        }
-
+        if (!res.ok) { alert("Ištrinti nepavyko"); return; }
         setProducts((prev) => prev.filter((x) => x.id_Product !== p.id_Product));
         setSelectedProduct(null);
     };
+
     const groupFilters = useMemo(() => {
         const map = new Map();
         for (const p of products) {
@@ -58,270 +52,180 @@ function ProductList() {
                 map.set(name, (map.get(name) || 0) + 1);
             }
         }
-
         const items = [{ label: "Visi", value: "all", count: products.length }];
         Array.from(map.entries())
             .sort((a, b) => a[0].localeCompare(b[0], "lt"))
             .forEach(([name, count]) => items.push({ label: name, value: name, count }));
-
         return items;
     }, [products]);
+
     const filtered = useMemo(() => {
         const byGroup = products.filter((p) => {
             if (group === "all") return true;
             const gs = p.groups?.length ? p.groups : [{ name: "Be grupės" }];
             return gs.some((g) => (g?.name || "Be grupės") === group);
         });
-
         const s = q.trim().toLowerCase();
         if (!s) return byGroup;
-
-        return byGroup.filter((p) => {
-            const name = (p.name || "").toLowerCase();
-            const code = String(p.externalCode ?? "").toLowerCase();
-            const id = String(p.id_Product ?? "").toLowerCase();
-            const date = String(p.creationDate ?? "").toLowerCase();
-            const grp = (p.groups ?? []).map(g => g.name?.toLowerCase() || "").join(" ");
-            const type = (p.categories ?? []).map(c => c.name?.toLowerCase() || "").join(" ");
-            const price = String(p.price ?? "").toLowerCase();
-
-            return (
-                name.includes(s) || code.includes(s) || id.includes(s) || date.includes(s) ||
-                grp.includes(s) || type.includes(s) || price.includes(s)
-            );
-        });
+        return byGroup.filter((p) =>
+            [p.name, p.externalCode, p.id_Product, p.creationDate,
+            p.groups?.map(g => g.name).join(" "),
+            p.categories?.map(c => c.name).join(" "),
+            p.price]
+                .some(v => String(v ?? "").toLowerCase().includes(s))
+        );
     }, [products, q, group]);
-    const columns = useMemo(
-        () => [
 
-            {
-                key: "image",
-                header: "",
-                width: 70,
-                align: "left",
-                sortable: false,
-                accessor: (p) => {
-                    const first = (p.images ?? [])
-                        .slice()
-                        .sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0) || (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];
-                    return first?.url ?? null;
-                },
-                cell: (v, p) => (
-                    <div className="dt-img-wrap">
-                        {v ? (
-                            <img
-                                className="dt-img"
-                                src={`http://localhost:5065${v}`}  // ✅ svarbu, jei url yra "/uploads/..."
-                                alt={p.name ?? "product"}
-                                loading="lazy"
-                                onClick={(e) => e.stopPropagation()}
-                                onError={(e) => { e.currentTarget.style.display = "none"; }}
-                            />
+    const columns = useMemo(() => [
+        {
+            key: "image",
+            header: "",
+            width: 70,
+            sortable: false,
+            accessor: (p) => {
+                const sorted = (p.images ?? []).slice()
+                    .sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0) || (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+                return sorted[0]?.url ?? null;
+            },
+            cell: (v, p) => (
+                <div className="dt-img-wrap">
+                    {v ? (
+                        <img className="dt-img" src={`${API}${v}`} alt={p.name ?? "product"} loading="lazy"
+                            onClick={(e) => e.stopPropagation()}
+                            onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                    ) : (
+                        <div className="dt-img-placeholder"><img src={NoImage} alt="No image" /></div>
+                    )}
+                </div>
+            ),
+        },
+        {
+            key: "productName",
+            header: "Pavadinimas / ID",
+            sortable: true,
+            accessor: (p) => p.name ?? "",
+            cell: (_v, p) => (
+                <div className="dt-cell-stack">
+                    <div className="dt-cell-primary">{p.name || "—"}</div>
+                    <div className="dt-cell-secondary">#{p.id_Product}</div>
+                </div>
+            ),
+        },
+        {
+            key: "price",
+            header: "Kaina",
+            sortable: true,
+            accessor: (p) => p.price,
+            cell: (_v, p) => (
+                <div className="dt-cell-stack">
+                    <div className="dt-cell-primary">{p.price != null ? `${p.price} €` : "—"}</div>
+                    <div className="dt-cell-secondary">{p.unit || "—"}</div>
+                </div>
+            ),
+        },
+        {
+            key: "groups",
+            header: "Grupės",
+            accessor: (p) => p.groups?.map(g => g.name).join(", "),
+            cell: (_v, p) => (
+                <div className="dt-cell-secondary">
+                    {p.groups?.length ? p.groups.map(g => g.name).join(", ") : "—"}
+                </div>
+            ),
+        },
+        {
+            key: "creationDate",
+            header: "Sukūrimo data",
+            sortable: true,
+            accessor: (p) => p.creationDate ? new Date(p.creationDate) : null,
+            cell: (v) => v instanceof Date && !isNaN(v) ? v.toLocaleDateString("lt-LT") : "—",
+        },
+        {
+            key: "actions",
+            header: "",
+            width: 80,
+            align: "right",
+            cell: (_v, p) => (
+                <div className="dt-actions">
+                    <button className="dt-icon-btn" title="Redaguoti" onClick={(e) => { e.stopPropagation(); navigate(`/productEdit/${p.id_Product}`); }}>
+                        <FiEdit />
+                    </button>
+                    <button className="dt-icon-btn danger" title="Ištrinti"
+                        onClick={(e) => { e.stopPropagation(); deleteProduct(p); }}>
+                        <FiTrash2 />
+                    </button>
+                </div>
+            ),
+        },
+    ], [products]);
+
+    // ── Hero: image strip ──────────────────────────────────────────────
+    const productHero = (product, onEdit, onDelete) => {
+        if (!product) return null;
+
+        return (
+            <div className="rd-product-hero-simple">
+                <div className="rd-product-hero-content">
+                    {/* Main Image */}
+                    <div className={`rd-product-hero-img ${!product.images?.[0]?.url ? "rd-product-img-placeholder" : ""}`}>
+                        {product.images?.[0]?.url ? (
+                            <img src={`http://localhost:5065/${product.images[0].url}`} alt={product.name || "product"} />
                         ) : (
-                            <div className="dt-img-placeholder">
-                                <img src={NoImage} alt="No image" />
+                            <img src={NoImage} alt="No image" />
+                        )}
+                    </div>
+
+                    {/* Name & Price */}
+                    <div className="rd-product-hero-info">
+                        <div className="rd-product-hero-name">{product.name || "Prekė"}</div>
+                        {product.price != null && (
+                            <div className="rd-product-hero-price">
+                                <span>{Number(product.price).toFixed(2)} €</span>
                             </div>
                         )}
                     </div>
-                ),
-            },
-            {
-                key: "productName",
-                header: "Producto pavadinimas / ID",
-                sortable: true,
-                accessor: (p) => `${p.name ?? ""} ${p.id_Product ?? ""}`.trim(),
-                cell: (_value, p) => (
-                    <div className="dt-cell-stack">
-                        <div className="dt-cell-primary">{p.name || "-"}</div>
-                        <div className="dt-cell-secondary">{p.id_Product || "-"}</div>
-                    </div>
-                ),
-            },
-            {
-                key: "price",
-                header: "Kaina, Eur",
-                sortable: true,
-                accessor: (p) => p.price,
-                cell: (_value, p) => (
-                    <div className="dt-cell-stack">
-                        <div className="dt-cell-primary">{p.price || "-"}</div>
-                    </div>
-                ),
-            },
-            {
-                key: "unit",
-                header: "Vienetai",
-                sortable: true,
-                accessor: (p) => p.unit,
-                cell: (_value, p) => (
-                    <div className="dt-cell-stack">
-                        <div className="dt-cell-secondary">{p.unit || "-"}</div>
-                    </div>
-                ),
-            },
+                </div>
+                {/* Action Buttons */}
+                <div className="rd-product-hero-actions">
+                    <button className="rd-action-btn" title="Redaguoti"onClick={() => navigate(`/productEdit/${product.id_Product}`)}>
+                        <FiEdit size={18} />
+                    </button>
+                    <button className="rd-action-btn danger" title="Ištrinti" onClick={() => onDelete(product)}>
+                        <FiTrash2 size={18} />
+                    </button>
+                </div>
+            </div>
+        );
+    };
 
-            {
-                key: "creationDate",
-                header: "Sukūrimo data",
-                sortable: true,
-                accessor: (p) => (p.creationDate ? new Date(p.creationDate) : null),
-                cell: (v) => (
-                    <div className="dt-cell-stack">
-                        <div className="dt-cell-primary">
-                            {v instanceof Date && !isNaN(v) ? v.toLocaleDateString("lt-LT") : "-"}
-                        </div>
-                    </div>
-                ),
-            },
-
-            {
-                key: "groups",
-                header: "Grupės",
-                accessor: (p) => p.groups?.map(g => g.name).join(", "),
-                cell: (_v, p) => (
-                    <div className="dt-cell-secondary">
-                        {p.groups?.length
-                            ? p.groups.map(g => g.name).join(", ")
-                            : "-"}
-                    </div>
-                ),
-            },
-
-            {
-                key: "categories",
-                header: "Tipai",
-                accessor: (p) => p.categories?.map(c => c.name).join(", "),
-                cell: (_v, p) => (
-                    <div className="dt-cell-secondary">
-                        {p.categories?.length
-                            ? p.categories.map(c => c.name).join(", ")
-                            : "-"}
-                    </div>
-                ),
-            },
-            {
-                key: "actions",
-                header: "",
-                width: 80,
-                align: "right",
-                cell: (_v, p) => (
-                    <div className="dt-actions">
-                        <button
-                            className="dt-icon-btn"
-                            title="Edit"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/productEdit/${p.id_Product}`);
-                            }}
-                        >
-                            <FiEdit />
-                        </button>
-
-                        <button
-                            className="dt-icon-btn danger"
-                            title="Delete"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                deleteProduct(p);
-                            }}
-                        >
-                            <FiTrash2 />
-                        </button>
-                    </div>
-                ),
-            }
-
-        ],
-        []
-    );
-
-    const drawerSections = selectedProduct
-        ? [
+    const drawerSections = useMemo(() => {
+        if (!selectedProduct) return [];
+        const p = selectedProduct;
+        return [
             {
                 title: "Prekės informacija",
                 rows: [
-                    { label: "Pavadinimas", value: selectedProduct.name || "-" },
-                    { label: "Aprašymas", value: selectedProduct.description || "-" },
-                    { label: "Kaina", value: selectedProduct.price || "-" },
-                    { label: "Ar gali būti grąžinama?", value: selectedProduct.canTheProductBeProductReturned ? "Taip" : "Ne" },
-                    { label: "Ar skaičiuojama prekė?", value: selectedProduct.countableItem ? "Taip" : "Ne" },
-                    { label: "Vientetai", value: selectedProduct.unit || "-" },
-                    { label: "Siuntimo būdas", value: selectedProduct.shipping_mode || "-" },
-                    { label: "VAT", value: selectedProduct.vat ? "Taip" : "Ne" },
+                    { label: "Aprašymas", value: p.description || "—", fullWidth: true },
+                    { label: "Vienetai", value: p.unit || "—" },
+                    { label: "Siuntimo būdas", value: p.shipping_mode || "—" },
+                    { label: "Ar grąžinama?", value: p.canTheProductBeProductReturned ? "Taip" : "Ne" },
+                    { label: "Ar skaičiuojama?", value: p.countableItem ? "Taip" : "Ne" },
+                    { label: "PVM", value: p.vat ? "Taip" : "Ne" },
                     {
-                        label: "Sukurta",
-                        value: selectedProduct.creationDate
-                            ? new Date(selectedProduct.creationDate).toLocaleDateString("lt-LT")
-                            : "-",
-                    },
-
-                ],
-            },
-            {
-                title: "Nuotraukos",
-                rows: [
-                    {
-                        label: "",
-                        value: (
-
-                            <div className="rd-img-grid">
-                                {(selectedProduct.images ?? [])
-                                    .slice()
-                                    .sort(
-                                        (a, b) =>
-                                            (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0) ||
-                                            (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
-                                    )
-                                    .map((img) => (
-                                        <a
-                                            key={img.id_ProductImage}
-                                            className="rd-img-tile"
-                                            href={`http://localhost:5065${img.url}`}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            onClick={(e) => e.stopPropagation()}
-                                            title={img.isPrimary ? "Pagrindinė" : ""}
-                                        >
-                                            <img
-                                                src={`http://localhost:5065${img.url}`}
-                                                alt="product"
-                                                loading="lazy"
-                                                onError={(e) => {
-                                                    e.currentTarget.style.display = "none";
-                                                }}
-                                            />
-                                            {img.isPrimary ? <div className="rd-img-badge">Pagrindinė</div> : null}
-                                        </a>
-                                    ))}
-
-                                {(!selectedProduct.images || selectedProduct.images.length === 0) ? (
-                                    <div className="rd-empty">Nėra nuotraukų</div>
-                                ) : null}
-                            </div>
-                        ),
+                        label: "Sukurta", value: p.creationDate
+                            ? new Date(p.creationDate).toLocaleDateString("lt-LT") : "—"
                     },
                 ],
             },
             {
                 title: "Grupės ir tipai",
                 rows: [
-                    {
-                        label: "Grupės",
-                        value: selectedProduct.groups?.length
-                            ? selectedProduct.groups.map(g => g.name).join(", ")
-                            : "-",
-                    },
-                    {
-                        label: "Tipai",
-                        value: selectedProduct.categories?.length
-                            ? selectedProduct.categories.map(c => c.name).join(", ")
-                            : "-",
-                    },
+                    { label: "Grupės", value: p.groups?.length ? p.groups.map(g => g.name).join(", ") : "—" },
+                    { label: "Tipai", value: p.categories?.length ? p.categories.map(c => c.name).join(", ") : "—" },
                 ],
             },
-
-        ]
-        : [];
+        ];
+    }, [selectedProduct]);
 
     return (
         <div className="user-cointainer">
@@ -336,7 +240,6 @@ function ProductList() {
                 onFilterChange={setGroup}
             />
             <DataTable
-                title={null}
                 columns={columns}
                 rows={filtered}
                 pageSize={25}
@@ -345,35 +248,13 @@ function ProductList() {
                 emptyText="Nėra duomenų"
                 initialSort={{ key: "productName", dir: "asc" }}
             />
-
-
-
             <RightDrawer
+                variant="product"
                 open={!!selectedProduct}
-                title={selectedProduct ? `${selectedProduct.name} ` : ""}
-                subtitle={selectedProduct ? `Id: ${selectedProduct.id_Product} ` : ""}
+                hero={productHero(selectedProduct)}
+
                 sections={drawerSections}
                 onClose={() => setSelectedProduct(null)}
-                actions={
-                    selectedProduct ? (
-                        <>
-                            <button
-                                className="rd-action-btn"
-                                onClick={() => navigate(`/productEdit/${selectedProduct.id_Product}`)}
-                            >
-                                <FiEdit /> Redaguoti
-                            </button>
-
-                            <button
-                                className="rd-action-btn danger"
-                                onClick={() => deleteProduct(selectedProduct)}
-                            >
-                                <FiTrash2 /> Ištrinti
-                            </button>
-                        </>
-                    ) : null
-                }
-
             />
         </div>
     );

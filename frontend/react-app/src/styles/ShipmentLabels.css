@@ -1,0 +1,198 @@
+/* styles/ShipmentLabels.css */
+
+.sl-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 4px 0;
+}
+
+/* ── Banner ──────────────────────────────────────────────────────────────── */
+.sl-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  padding: 14px 18px;
+}
+
+.sl-banner-icon {
+  font-size: 28px;
+  line-height: 1;
+  color: var(--color-accent)
+}
+
+.sl-banner-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #15803d;
+}
+
+.sl-banner-sub {
+  font-size: 13px;
+  color: #4b5563;
+  margin-top: 2px;
+}
+
+/* ── Bulk actions ────────────────────────────────────────────────────────── */
+.sl-bulk-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── Package list ────────────────────────────────────────────────────────── */
+.sl-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sl-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+/* PDF preview */
+.sl-preview-wrap {
+  flex-shrink: 0;
+  width: 160px;
+  height: 220px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f9fafb;
+}
+
+.sl-preview {
+  width: 100%;
+  height: 100%;
+  border: none;
+  pointer-events: none; /* preview only */
+}
+
+/* Row info */
+.sl-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.sl-row-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sl-row-id {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.sl-row-tracking {
+  font-family: monospace;
+  font-size: 13px;
+  color: #374151;
+  background: #f3f4f6;
+  border-radius: 5px;
+  padding: 3px 8px;
+  width: fit-content;
+}
+
+.sl-row-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.sl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 14px;
+  transition: background 0.15s, opacity 0.15s;
+  white-space: nowrap;
+}
+
+.sl-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.sl-btn-sm {
+  padding: 6px 11px;
+  font-size: 12px;
+}
+
+.sl-btn-primary {
+  background: #2563eb;
+  color: #fff;
+}
+.sl-btn-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.sl-btn-outline {
+  background: #fff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+.sl-btn-outline:hover:not(:disabled) {
+  background: #f9fafb;
+}
+
+.sl-btn-ghost {
+  background: transparent;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+}
+.sl-btn-ghost:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+.sl-footer {
+  padding-top: 4px;
+  border-top: 1px solid #f3f4f6;
+}
+
+/* ── Spinner ─────────────────────────────────────────────────────────────── */
+.sl-spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 2px solid #d1d5db;
+  border-top-color: #374151;
+  border-radius: 50%;
+  animation: sl-spin 0.7s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+.sl-spinner--white {
+  border-color: rgba(255,255,255,0.35);
+  border-top-color: #fff;
+}
+
+@keyframes sl-spin {
+  to { transform: rotate(360deg); }
+}

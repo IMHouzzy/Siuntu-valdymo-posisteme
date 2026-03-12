@@ -1,0 +1,29 @@
+/* ShipmentFormPage.css — only loading/error states needed;
+   everything else is handled by SmartForm.css + SmartForm.additions.css */
+
+.shp-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 24px;
+  color: var(--color-text-secondary, #6b7280);
+  font-size: 14px;
+}
+
+.shp-state--error {
+  color: #ef4444;
+}
+
+.shp-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e5e7eb;
+  border-top-color: var(--color-primary, #1a1a2e);
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: shp-spin 0.7s linear infinite;
+}
+
+@keyframes shp-spin {
+  to { transform: rotate(360deg); }
+}

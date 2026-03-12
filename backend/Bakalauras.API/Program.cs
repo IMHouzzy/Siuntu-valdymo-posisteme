@@ -5,6 +5,9 @@ using Bakalauras.API.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using QuestPDF.Infrastructure;
+
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -69,7 +72,7 @@ builder.Services.AddCors(options =>
         // .AllowCredentials(); // ✅ tik jei naudoji cookies. Su Bearer dažniausiai nereikia
     });
 });
-
+QuestPDF.Settings.License = LicenseType.Community;
 // Workers
 builder.Services.AddHostedService<ClientSyncWorker>();
 builder.Services.AddHostedService<ProductSyncWorker>();

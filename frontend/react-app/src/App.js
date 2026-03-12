@@ -36,6 +36,9 @@ import CompaniesList from "./pages/companyCrud/CompaniesList";
 import CompanyEdit from "./pages/companyCrud/CompanyEdit";
 import CompanyMembers from "./pages/companyCrud/CompanyMembers";
 import CompanyIntegrations from "./pages/companyCrud/CompanyIntegrations";
+
+import ShipmentRegistration from "./pages/shipmentPages/ShipmentRegistration";
+import ShipmentsPage from "./pages/shipmentPages/ShipmentsPage";
 export default function App() {
   return (
     <Routes>
@@ -75,7 +78,9 @@ export default function App() {
         <Route path="usersList" element={<UsersPage />} />
         <Route path="userAdd" element={<UserAdd />} />
         <Route path="userEdit/:id" element={<UserEdit />} />
-
+        {/* /shipments... */}
+        <Route path="/orders/:orderId/shipment/new" element={<ShipmentRegistration />} />
+        <Route path="/shipmentsList" element={<ShipmentsPage />} />
         {/* /companies... */}
         <Route path="companiesList" element={<CompaniesList />} />
         <Route path="companyAdd" element={<CompanyEdit />} />
