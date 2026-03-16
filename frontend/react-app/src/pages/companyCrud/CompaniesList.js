@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import TableToolbar from "../../components/TableToolbar";
 import RightDrawer from "../../components/RightDrawers/RightDrawerSidebar";
 import {
-  FiEdit, FiTrash2, FiUsers, FiCheckCircle, FiXCircle, FiSettings, FiMapPin,
+  FiEdit, FiTrash2, FiUsers, FiCheckCircle, FiXCircle, FiSettings, FiMapPin, FiHash, FiMail, FiPhone
 } from "react-icons/fi";
 import { useAuth } from "../../services/AuthContext";
 import "../../styles/CompaniesList.css";
@@ -22,31 +22,92 @@ async function apiFetch(url, token, options = {}) {
   if (res.status === 204) return null;
   return res.json();
 }
+// Deterministic hue from company name — gives each card a unique accent colour
+function nameToHue(name = "") {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
+  return h % 360;
+}
+function CompanyAvatar({ name, imageUrl, size = 48 }) {
+  const hue = nameToHue(name);
+  const initials = name ? name.slice(0, 2).toUpperCase() : "?";
+  const [imgErr, setImgErr] = useState(false);
 
-function CompanyCard({ c, onClick }) {
+  if (imageUrl && !imgErr) {
+    const src = imageUrl.startsWith("http") ? imageUrl : `${API}${imageUrl}`;
+    return (
+      <img
+        className="co-avatar co-avatar--img"
+        src={src}
+        alt={name}
+        style={{ width: size, height: size }}
+        onError={() => setImgErr(true)}
+      />
+    );
+  }
   return (
-    <button type="button" className="co-card" onClick={onClick}>
-      <div className="co-card-top">
-        <div className="co-card-title">
-          <div className="co-card-name">{c.name}</div>
-          <div className="co-card-code">{c.code || "—"}</div>
+    <div
+      className="co-avatar co-avatar--initials"
+      style={{
+        width: size, height: size,
+        background: `hsl(${hue} 60% 92%)`,
+        color: `hsl(${hue} 55% 35%)`,
+        fontSize: size * 0.33,
+      }}
+    >
+      {initials}
+    </div>
+  );
+}
+function CompanyCard({ c, index, onClick }) {
+  const hue = nameToHue(c.name);
+
+  return (
+    <button
+      type="button"
+      className="co-card"
+      onClick={onClick}
+      style={{ "--card-hue": hue, animationDelay: `${index * 40}ms` }}
+    >
+      <div className="co-card-accent" />
+
+      <div className="co-card-inner">
+        {/* Head: avatar + name + status */}
+        <div className="co-card-head">
+          <CompanyAvatar name={c.name} imageUrl={c.image} size={44} />
+          <div className="co-card-title">
+            <div className="co-card-name">{c.name}</div>
+            <div className="co-card-code">
+              <FiHash size={9} />
+              {c.code || c.id_Company}
+            </div>
+          </div>
+          <div className={`co-card-status ${c.active ? "is-active" : "is-inactive"}`}>
+            {c.active ? <FiCheckCircle size={10} /> : <FiXCircle size={10} />}
+            {c.active ? "Aktyvi" : "Neaktyvi"}
+          </div>
         </div>
-        <div className={`co-card-status ${c.active ? "is-active" : "is-inactive"}`}>
-          {c.active ? <><FiCheckCircle /> Aktyvi</> : <><FiXCircle /> Neaktyvi</>}
-        </div>
-      </div>
-      <div className="co-card-meta">
-        <div className="co-meta-row">
-          <span className="co-meta-label">El. paštas</span>
-          <span className="co-meta-value">{c.email || "—"}</span>
-        </div>
-        <div className="co-meta-row">
-          <span className="co-meta-label">Telefonas</span>
-          <span className="co-meta-value">{c.phoneNumber || "—"}</span>
-        </div>
-        <div className="co-meta-row">
-          <span className="co-meta-label">Adresas</span>
-          <span className="co-meta-value">{c.address || "—"}</span>
+
+        <div className="co-card-divider" />
+
+        {/* Foot: contact details */}
+        <div className="co-card-foot">
+          {c.email && (
+            <span className="co-detail">
+              <FiMail size={11} />{c.email}
+            </span>
+          )}
+          {c.phoneNumber && (
+            <span className="co-detail">
+              <FiPhone size={11} />{c.phoneNumber}
+            </span>
+          )}
+          {(c.shippingStreet || c.shippingCity) && (
+            <span className="co-detail">
+              <FiMapPin size={11} />
+              {[c.shippingStreet, c.shippingCity].filter(Boolean).join(", ")}
+            </span>
+          )}
         </div>
       </div>
     </button>
@@ -173,6 +234,11 @@ export default function CompaniesList() {
             <FiUsers size={18} />
           </button>
 
+          <button className="rd-action-btn" title="Konfigūruoti"
+            onClick={() => withSwitch(selected.id_Company, () => navigate(`/companyIntegrations/${selected.id_Company}`))}>
+            <FiSettings size={15} />
+          </button>
+
           {isMaster && (
             <button
               className="rd-action-btn danger"
@@ -182,95 +248,111 @@ export default function CompaniesList() {
               <FiTrash2 size={18} />
             </button>
           )}
+
         </div>
       </>
     );
   }, [selected]);
 
-  const drawerSections = useMemo(() => {
-    if (!selected) return [];
-    const c = selected;
-    return [
-      {
-        title: "Kontaktai",
-        rows: [
-          { label: "El. paštas", value: c.email || "—" },
-          { label: "Telefonas", value: c.phoneNumber || "—" },
-          { label: "Dokumento kodas", value: c.documentCode || "—" },
-          {
-            label: "Sukurta", value: c.creationDate
-              ? new Date(c.creationDate).toLocaleDateString("lt-LT") : "—"
-          },
-        ],
-      },
-      {
-        title: "Adresai",
-        rows: [
-          { label: "Adresas", value: c.address || "—" },
-          { label: "Siuntimo adresas", value: c.shippingAddress || "—" },
-          { label: "Grąžinimo adresas", value: c.returnAddress || "—" },
-        ],
-      },
-    ];
-  }, [selected]);
+ const drawerSections = useMemo(() => {
+  if (!selected) return [];
+  const c = selected;
 
-  return (
-    <div className="co-page">
-      <TableToolbar
-        title="Įmonės"
-        searchValue={q}
-        onSearchChange={setQ}
-        addLabel="Kurti įmonę"
-        onAdd={() => navigate("/companyAdd")}
-        filters={statusFilters}
-        filterValue={status}
-        onFilterChange={setStatus}
-      />
+  // Build addresses from structured fields, fall back to legacy
+  const shippingParts = [
+    c.shippingStreet,
+    c.shippingCity,
+    c.shippingPostalCode,
+    c.shippingCountry,
+  ].filter(Boolean);
+  const shippingAddr = shippingParts.length
+    ? shippingParts.join(", ")
+    : (c.shippingAddress || "—");
 
-      {!isMaster ? <style>{`.tb-header-right button{display:none;}`}</style> : null}
+  const returnParts = [
+    c.returnStreet,
+    c.returnCity,
+    c.returnPostalCode,
+    c.returnCountry,
+  ].filter(Boolean);
+  const returnAddr = returnParts.length
+    ? returnParts.join(", ")
+    : (c.returnAddress || "—");
 
-      <div className="co-grid">
-        {filtered.length === 0
-          ? <div className="co-empty">Nėra įmonių</div>
-          : filtered.map((c) => (
-            <CompanyCard key={c.id_Company} c={c} onClick={() => setSelected(c)} />
+  return [
+    {
+      title: "Bendra informacija",
+      rows: [
+        { label: "Įmonės kodas",    value: c.code          || "—" },
+        { label: "Dokumento kodas", value: c.documentCode  || "—" },
+        { label: "Būsena",          value: c.active ? "Aktyvi" : "Neaktyvi" },
+        {
+          label: "Sukurta",
+          value: c.creationDate
+            ? new Date(c.creationDate).toLocaleDateString("lt-LT")
+            : "—",
+        },
+      ],
+    },
+    {
+      title: "Kontaktai",
+      rows: [
+        { label: "El. paštas",  value: c.email       || "—" },
+        { label: "Telefonas",   value: c.phoneNumber  || "—" },
+      ],
+    },
+    {
+      title: "Adresai",
+      rows: [
+        { label: "Juridinis adresas", value: c.address      || "—" },
+        { label: "Siuntimo",          value: shippingAddr              },
+        { label: "Grąžinimo",         value: returnAddr                },
+      ],
+    },
+  ];
+}, [selected]);
+ return (
+  <div className="user-cointainer">
+    <TableToolbar
+      title="Įmonės"
+      searchValue={q}
+      onSearchChange={setQ}
+      addLabel="Kurti įmonę"
+      onAdd={() => navigate("/companyAdd")}
+      filters={statusFilters}
+      filterValue={status}
+      onFilterChange={setStatus}
+      
+    />
+
+    {!isMaster && <style>{`.tb-header-right button{display:none;}`}</style>}
+
+    <div className="co-grid">
+      {filtered.length === 0
+        ? <div className="co-empty">Nėra įmonių pagal pasirinktus filtrus</div>
+        : filtered.map((c, i) => (
+            <CompanyCard
+              key={c.id_Company}
+              c={c}
+              index={i}
+              onClick={() => setSelected(c)}
+            />
           ))
-        }
-      </div>
-
-      <RightDrawer
-        variant="company"
-        open={!!selected}
-        title={selected?.name ?? ""}
-        subtitle={selected ? (selected.code ? `Kodas: ${selected.code}` : `ID: ${selected.id_Company}`) : ""}
-        hero={companyHero}
-        sections={drawerSections}
-        onClose={() => setSelected(null)}
-        actions={
-          selected ? (
-            <>
-              <button className="rd-action-btn" title="Redaguoti"
-                onClick={() => withSwitch(selected.id_Company, () => navigate(`/companyEdit/${selected.id_Company}`))}>
-                <FiEdit size={15} />
-              </button>
-              <button className="rd-action-btn" title="Nariai"
-                onClick={() => withSwitch(selected.id_Company, () => navigate(`/companyMembers/${selected.id_Company}`))}>
-                <FiUsers size={15} />
-              </button>
-              <button className="rd-action-btn" title="Konfigūruoti"
-                onClick={() => withSwitch(selected.id_Company, () => navigate(`/companyIntegrations/${selected.id_Company}`))}>
-                <FiSettings size={15} />
-              </button>
-              {isMaster && (
-                <button className="rd-action-btn danger" title="Ištrinti"
-                  onClick={() => deleteCompany(selected)}>
-                  <FiTrash2 size={15} />
-                </button>
-              )}
-            </>
-          ) : null
-        }
-      />
+      }
     </div>
+
+    <RightDrawer
+      variant="company"
+      open={!!selected}
+      title={selected?.name ?? ""}
+      subtitle={selected
+        ? (selected.code ? `Kodas: ${selected.code}` : `ID: ${selected.id_Company}`)
+        : ""}
+      hero={companyHero}
+      sections={drawerSections}
+      onClose={() => setSelected(null)}
+    />
+  </div>
+
   );
 }

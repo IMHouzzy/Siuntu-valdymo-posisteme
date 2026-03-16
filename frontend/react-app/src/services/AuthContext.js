@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useMemo, useState, useEffect } from "react";
 import { jwtDecode } from "jwt-decode";
 
 const AuthContext = createContext();
@@ -11,17 +11,26 @@ function decodeAuth(token) {
   try {
     const p = jwtDecode(token);
 
+    const now = Date.now() / 1000;
+
+    if (p.exp && p.exp < now) {
+      // token expired
+      localStorage.removeItem("token");
+      return { user: null, companies: [], activeCompany: null, companyRole: "" };
+    }
+
     const companies =
       typeof p.companies === "string"
         ? safeJsonParse(p.companies, [])
         : Array.isArray(p.companies)
-        ? p.companies
-        : [];
+          ? p.companies
+          : [];
 
     const activeCompany = {
       id: Number(p.companyId || 0),
       name: p.companyName || "",
       code: p.companyCode || "",
+      image: p.companyImage || ""
     };
 
     return {
@@ -45,7 +54,26 @@ function decodeAuth(token) {
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem("token") || null);
   const [companySwitchLocked, setCompanySwitchLocked] = useState(false);
+  useEffect(() => {
+    if (!token) return;
 
+    const { exp } = jwtDecode(token);
+
+    if (!exp) return;
+
+    const expiryTime = exp * 1000 - Date.now();
+
+    if (expiryTime <= 0) {
+      logout();
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      logout();
+    }, expiryTime);
+
+    return () => clearTimeout(timer);
+  }, [token]);
   const decoded = useMemo(() => {
     return token ? decodeAuth(token) : { user: null, companies: [], activeCompany: null, companyRole: "" };
   }, [token]);

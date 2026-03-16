@@ -51,32 +51,32 @@ function UsersList() {
     return "Nežinoma";
   }
   function UserCopyButton({ email }) {
-  const [copied, setCopied] = useState(false);
+    const [copied, setCopied] = useState(false);
 
-  const handleCopy = (e) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(email).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  };
+    const handleCopy = (e) => {
+      e.stopPropagation();
+      navigator.clipboard.writeText(email).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      });
+    };
 
-  return (
-    <button
-      className="user-copy-btn"
-      title={copied ? "Nukopijuota!" : "Kopijuoti el. paštą"}
-      onClick={handleCopy}
-    >
-      {copied ? <FiCheck size={14} /> : <FiCopy size={14} />}
-    </button>
-  );
-}
+    return (
+      <button
+        className="user-copy-btn"
+        title={copied ? "Nukopijuota!" : "Kopijuoti el. paštą"}
+        onClick={handleCopy}
+      >
+        {copied ? <FiCheck size={14} /> : <FiCopy size={14} />}
+      </button>
+    );
+  }
   const userFilters = useMemo(() => {
     const counts = {
       all: users.length,
-      client: users.filter(u => !!u.client).length,
-      admin: users.filter(u => !!u.admin).length,
-      employee: users.filter(u => !!u.employee).length,
+      client: users.filter(u => !u.membership?.position).length,
+      admin: users.filter(u => u.membership?.position === "ADMIN").length,
+      employee: users.filter(u => u.membership?.position === "STAFF").length,
     };
     return [
       { label: "Visi", value: "all", count: counts.all },
@@ -89,9 +89,9 @@ function UsersList() {
   const filtered = useMemo(() => {
     const byType = users.filter((u) => {
       if (userType === "all") return true;
-      if (userType === "client") return !!u.client;
-      if (userType === "admin") return !!u.admin;
-      if (userType === "employee") return !!u.employee;
+      if (userType === "client") return !u.membership?.position;
+      if (userType === "admin") return u.membership?.position === "ADMIN";
+      if (userType === "employee") return u.membership?.position === "STAFF";
       return true;
     });
     const s = q.trim().toLowerCase();
@@ -174,47 +174,47 @@ function UsersList() {
   ], [users]);
 
   // ── Hero: avatar + name + role badges ─────────────────────────────
- const userHero = useMemo(() => {
-  if (!selectedUser) return null;
-  const u = selectedUser;
-  const initials = getInitials(u.name, u.surname);
+  const userHero = useMemo(() => {
+    if (!selectedUser) return null;
+    const u = selectedUser;
+    const initials = getInitials(u.name, u.surname);
 
-  return (
-    <>
-      <div className="user-avatar-wrapper">
-        {u.avatar ? (
-          <img className="user-avatar" src={`${API}${u.avatar}`} alt={u.name} />
-        ) : (
-          <div className="user-avatar-initials">{initials}</div>
-        )}
-
-        {/* Role icon on bottom-right */}
-        <div className="user-role-icon">
-          {getUserRole(u) === "Administratorius" && <FiShield />}
-          {getUserRole(u) === "Darbuotojas" && <FiBriefcase />}
-          {getUserRole(u) === "Klientas" && <FiUser />}
-        </div>
-      </div>
-      <div className="user-hero-info">
-        <div className="user-hero-name">{`${u.name ?? ""} ${u.surname ?? ""}`.trim() || "—"}</div>
-        <div className="user-hero-email-wrapper">
-          <span className="user-hero-email">{u.email || "—"}</span>
-          {u.email && (
-            <UserCopyButton email={u.email} />
+    return (
+      <>
+        <div className="user-avatar-wrapper">
+          {u.avatar ? (
+            <img className="user-avatar" src={`${API}${u.avatar}`} alt={u.name} />
+          ) : (
+            <div className="user-avatar-initials">{initials}</div>
           )}
+
+          {/* Role icon on bottom-right */}
+          <div className="user-role-icon">
+            {getUserRole(u) === "Administratorius" && <FiShield />}
+            {getUserRole(u) === "Darbuotojas" && <FiBriefcase />}
+            {getUserRole(u) === "Klientas" && <FiUser />}
+          </div>
         </div>
-      </div>
-      <div className="user-hero-actions">
-        <button className="rd-action-btn" title="Redaguoti" onClick={() => navigate(`/userEdit/${u.id_Users}`)}>
-          <FiEdit size={18} />
-        </button>
-        <button className="rd-action-btn danger" title="Ištrinti" onClick={() => deleteUser(u)}>
-          <FiTrash2 size={18} />
-        </button>
-      </div>
-    </>
-  );
-}, [selectedUser, copiedEmail]); // copiedEmail must be here if you keep state here
+        <div className="user-hero-info">
+          <div className="user-hero-name">{`${u.name ?? ""} ${u.surname ?? ""}`.trim() || "—"}</div>
+          <div className="user-hero-email-wrapper">
+            <span className="user-hero-email">{u.email || "—"}</span>
+            {u.email && (
+              <UserCopyButton email={u.email} />
+            )}
+          </div>
+        </div>
+        <div className="user-hero-actions">
+          <button className="rd-action-btn" title="Redaguoti" onClick={() => navigate(`/userEdit/${u.id_Users}`)}>
+            <FiEdit size={18} />
+          </button>
+          <button className="rd-action-btn danger" title="Ištrinti" onClick={() => deleteUser(u)}>
+            <FiTrash2 size={18} />
+          </button>
+        </div>
+      </>
+    );
+  }, [selectedUser, copiedEmail]); // copiedEmail must be here if you keep state here
 
   const drawerSections = useMemo(() => {
     if (!selectedUser) return [];
@@ -278,6 +278,7 @@ function UsersList() {
         filters={userFilters}
         filterValue={userType}
         onFilterChange={setUserType}
+        connectBottom
       />
       <DataTable
         columns={columns}

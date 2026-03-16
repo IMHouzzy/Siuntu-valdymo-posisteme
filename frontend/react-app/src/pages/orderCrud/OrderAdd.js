@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SmartForm from "../../components/SmartForm";
 import FormPageLayout from "../../components/FormPageLayout";
-
+import { FiArrowLeft } from "react-icons/fi";
 export default function OrderCreatePage() {
   const navigate = useNavigate();
 
@@ -22,7 +22,7 @@ export default function OrderCreatePage() {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       }).then(r => r.json()),
-       fetch("http://localhost:5065/api/users/allUsersWithClients", {
+      fetch("http://localhost:5065/api/users/allUsersWithClients", {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -41,14 +41,14 @@ export default function OrderCreatePage() {
       .catch(console.error);
   }, []);
 
-const userOptions = useMemo(
-  () =>
-    (users || []).map((u) => ({
-      value: String(u.id_Users),
-      label: `${u.name ?? ""} ${u.surname ?? ""} (${u.email ?? "-"})`.trim(),
-    })),
-  [users]
-);
+  const userOptions = useMemo(
+    () =>
+      (users || []).map((u) => ({
+        value: String(u.id_Users),
+        label: `${u.name ?? ""} ${u.surname ?? ""} (${u.email ?? "-"})`.trim(),
+      })),
+    [users]
+  );
 
   const productOptions = useMemo(() => (
     products.map(p => ({
@@ -69,8 +69,6 @@ const userOptions = useMemo(
 
 
     { name: "ordersDate", label: "Data", type: "date", required: true, colSpan: 1 },
-    { name: "paymentMethod", label: "Mokėjimo būdas", required: true, colSpan: 1 },
-    { name: "deliveryPrice", label: "Pristatymo kaina", type: "number", required: true, colSpan: 1 },
 
     {
       name: "status",
@@ -164,7 +162,7 @@ const userOptions = useMemo(
   }), []);
 
   return (
-    <FormPageLayout title="Kurti užsakymą">
+    <FormPageLayout title="Kurti užsakymą" actions={<button className="od-back-btn" onClick={() => navigate(-1)}><FiArrowLeft size={16} /> Grįžti</button>}>
       <SmartForm
         fields={fields}
         initialValues={initialValues}

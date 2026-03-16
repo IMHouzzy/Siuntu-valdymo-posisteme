@@ -17,7 +17,23 @@ public partial class company
 
     public string? shippingAddress { get; set; }
 
+    public string? shippingStreet { get; set; }
+
+    public string? shippingCity { get; set; }
+
+    public string? shippingPostalCode { get; set; }
+
+    public string shippingCountry { get; set; } = null!;
+
     public string? returnAddress { get; set; }
+
+    public string? returnStreet { get; set; }
+
+    public string? returnCity { get; set; }
+
+    public string? returnPostalCode { get; set; }
+
+    public string returnCountry { get; set; } = null!;
 
     public string documentCode { get; set; } = null!;
 
@@ -27,13 +43,15 @@ public partial class company
 
     public string email { get; set; } = null!;
 
-    public string image { get; set; } = null!;
+    public string? image { get; set; }
 
     public virtual ICollection<client_company> client_companies { get; set; } = new List<client_company>();
 
     public virtual ICollection<company_integration> company_integrations { get; set; } = new List<company_integration>();
 
     public virtual ICollection<company_user> company_users { get; set; } = new List<company_user>();
+
+    public virtual ICollection<courier> couriers { get; set; } = new List<courier>();
 
     public virtual ICollection<order> orders { get; set; } = new List<order>();
 

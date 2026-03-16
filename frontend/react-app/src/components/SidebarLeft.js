@@ -69,7 +69,7 @@ export default function SidebarLeft({ collapsed, onToggle }) {
           { label: "Kurti prekę", to: "/productAdd" },
         ],
       },
-      { type: "link", id: "Siuntos", label: "Siuntos", icon: <FiPackage/>, to: "/shipmentsList" },
+      { type: "link", id: "Siuntos", label: "Siuntos", icon: <FiPackage />, to: "/shipmentsList" },
       {
         type: "group",
         id: "Naudotojai",
@@ -102,7 +102,7 @@ export default function SidebarLeft({ collapsed, onToggle }) {
     try {
       const raw = localStorage.getItem(LS_KEY);
       if (raw) return new Set(JSON.parse(raw));
-    } catch {}
+    } catch { }
     return new Set();
   });
 
@@ -143,7 +143,7 @@ export default function SidebarLeft({ collapsed, onToggle }) {
   useEffect(() => {
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(Array.from(openGroups)));
-    } catch {}
+    } catch { }
   }, [openGroups]);
 
   const toggleGroup = (id) => {
@@ -170,8 +170,8 @@ export default function SidebarLeft({ collapsed, onToggle }) {
   const companyTitle = companySwitchLocked
     ? "Negalima keisti įmonės redaguojant/kuriant"
     : canSwitchCompany
-    ? "Keisti įmonę"
-    : undefined;
+      ? "Keisti įmonę"
+      : undefined;
 
   return (
     <aside className={`sidebar ${collapsed ? "is-collapsed" : ""}`}>
@@ -256,78 +256,88 @@ export default function SidebarLeft({ collapsed, onToggle }) {
       <div className="sidebar-bottom" onMouseLeave={() => setCompanyOpen(false)}>
         <div className="sidebar-bottom-left">
           <div className="sidebar-bottom-image">
-            <img src={TrackSyncSmall} alt="TrackSync" draggable="false" />
+            <img
+              src={
+                activeCompany?.image
+                  ? `http://localhost:5065${activeCompany.image}`
+                  : TrackSyncSmall
+              }
+              alt={activeCompany?.name || "Company"}
+              draggable="false"
+            />
           </div>
         </div>
 
-        <div className="sidebar-bottom-right">
-          <div className={`sb-select ${(!canSwitchCompany || collapsed) ? "is-disabled" : ""}`}>
-            <button
-              type="button"
-              className={`sb-select-trigger ${companyOpen ? "is-open" : ""}`}
-              onClick={() => {
-                if (!canSwitchCompany || collapsed) return;
-                setCompanyOpen((v) => !v);
-              }}
-              disabled={!canSwitchCompany || collapsed}
-              title={companyTitle}
-              aria-haspopup="listbox"
-              aria-expanded={companyOpen ? "true" : "false"}
-            >
-              <div className="sb-select-value">
-                <div className="sb-select-name">{activeCompany?.name || "— Įmonė —"}</div>
-                <div className="sb-select-meta">
-                  {activeCompany?.code || (activeCompany?.id ? `ID: ${activeCompany.id}` : "—")}
+        {!collapsed && (
+          <div className="sidebar-bottom-right">
+            <div className={`sb-select ${(!canSwitchCompany || collapsed) ? "is-disabled" : ""}`}>
+              <button
+                type="button"
+                className={`sb-select-trigger ${companyOpen ? "is-open" : ""}`}
+                onClick={() => {
+                  if (!canSwitchCompany || collapsed) return;
+                  setCompanyOpen((v) => !v);
+                }}
+                disabled={!canSwitchCompany || collapsed}
+                title={companyTitle}
+                aria-haspopup="listbox"
+                aria-expanded={companyOpen ? "true" : "false"}
+              >
+                <div className="sb-select-value">
+                  <div className="sb-select-name">{activeCompany?.name || "— Įmonė —"}</div>
+                  <div className="sb-select-meta">
+                    {activeCompany?.code || (activeCompany?.id ? `ID: ${activeCompany.id}` : "—")}
+                  </div>
                 </div>
-              </div>
 
-              {!collapsed && (
-                <>
-                  {companySwitchLocked ? (
-                    <FiLock className="sb-select-lock" size={16} />
-                  ) : canSwitchCompany ? (
-                    <FiChevronDown className={`sb-select-chev ${companyOpen ? "open" : ""}`} size={16} />
-                  ) : null}
-                </>
-              )}
-            </button>
+                {!collapsed && (
+                  <>
+                    {companySwitchLocked ? (
+                      <FiLock className="sb-select-lock" size={16} />
+                    ) : canSwitchCompany ? (
+                      <FiChevronDown className={`sb-select-chev ${companyOpen ? "open" : ""}`} size={16} />
+                    ) : null}
+                  </>
+                )}
+              </button>
 
-            {canSwitchCompany && companyOpen && !collapsed && (
-              <div className="sb-select-menu" role="listbox">
-                {companies.map((c) => {
-                  const isActive = String(c.id_Company) === String(activeCompany?.id);
-                  return (
-                    <button
-                      key={c.id_Company}
-                      type="button"
-                      role="option"
-                      aria-selected={isActive ? "true" : "false"}
-                      className={`sb-select-item ${isActive ? "is-active" : ""}`}
-                      onClick={async () => {
-                        try {
-                          if (isActive) {
+              {canSwitchCompany && companyOpen && !collapsed && (
+                <div className="sb-select-menu" role="listbox">
+                  {companies.map((c) => {
+                    const isActive = String(c.id_Company) === String(activeCompany?.id);
+                    return (
+                      <button
+                        key={c.id_Company}
+                        type="button"
+                        role="option"
+                        aria-selected={isActive ? "true" : "false"}
+                        className={`sb-select-item ${isActive ? "is-active" : ""}`}
+                        onClick={async () => {
+                          try {
+                            if (isActive) {
+                              setCompanyOpen(false);
+                              return;
+                            }
+                            await switchCompany(c.id_Company);
                             setCompanyOpen(false);
-                            return;
+                          } catch (e) {
+                            console.error(e);
+                            alert("Nepavyko pakeisti įmonės");
                           }
-                          await switchCompany(c.id_Company);
-                          setCompanyOpen(false);
-                        } catch (e) {
-                          console.error(e);
-                          alert("Nepavyko pakeisti įmonės");
-                        }
-                      }}
-                    >
-                      <div className="sb-select-item-name">{c.name}</div>
-                      <div className="sb-select-item-meta">
-                        {c.companyCode || c.code || `ID: ${c.id_Company}`}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+                        }}
+                      >
+                        <div className="sb-select-item-name">{c.name}</div>
+                        <div className="sb-select-item-meta">
+                          {c.companyCode || c.code || `ID: ${c.id_Company}`}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </aside>
   );

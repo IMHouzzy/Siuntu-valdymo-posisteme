@@ -17,6 +17,8 @@ public partial class user
 
     public string? phoneNumber { get; set; }
 
+    public string? image { get; set; }
+
     public DateTime creationDate { get; set; }
 
     public string? googleId { get; set; }

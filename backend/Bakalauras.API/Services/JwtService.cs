@@ -38,7 +38,8 @@ public class JwtService
                 id_Company = cu.fk_Companyid_Company,
                 name = cu.fk_Companyid_CompanyNavigation.name,
                 code = cu.fk_Companyid_CompanyNavigation.companyCode,
-                role = cu.role
+                role = cu.role,
+                image = cu.fk_Companyid_CompanyNavigation.image
             })
             .ToListAsync();
 
@@ -52,6 +53,7 @@ public class JwtService
         var activeCompanyName = active?.name ?? "";
         var activeCompanyCode = active?.code ?? "";
         var activeCompanyRole = active?.role ?? ""; // ✅ IMPORTANT
+        var activeCompanyImage = active?.image ?? "";
 
         var companiesJson = JsonSerializer.Serialize(companies);
 
@@ -75,7 +77,7 @@ public class JwtService
 
             // ✅ active role for routing/permissions
             new Claim("companyRole", activeCompanyRole),
-
+            new Claim("companyImage", activeCompanyImage),
             // list for switching
             new Claim("companies", companiesJson),
         };
@@ -87,7 +89,7 @@ public class JwtService
             issuer: issuer,
             audience: audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(60),
+            expires: DateTime.UtcNow.AddDays(1), // Example: token expires in 1 day
             signingCredentials: creds
         );
 

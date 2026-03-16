@@ -15,5 +15,9 @@ public partial class package
 
     public int fk_Shipmentid_Shipment { get; set; }
 
+    public string? parcelTrackingNumber { get; set; }
+
+    public string? trackingNumber { get; set; }
+
     public virtual shipment fk_Shipmentid_ShipmentNavigation { get; set; } = null!;
 }

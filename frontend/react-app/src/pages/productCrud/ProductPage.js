@@ -238,6 +238,7 @@ function ProductList() {
                 filters={groupFilters}
                 filterValue={group}
                 onFilterChange={setGroup}
+                connectBottom
             />
             <DataTable
                 columns={columns}

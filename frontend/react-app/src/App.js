@@ -16,6 +16,7 @@ import NotFoundPage from "./pages/NotFoundPage";
 import OrderPage from "./pages/orderCrud/OrderPage";
 import OrderAdd from "./pages/orderCrud/OrderAdd";
 import OrderEdit from "./pages/orderCrud/OrderEdit";
+import OrderDetailPage from "./pages/orderCrud/OrderDetailPage";
 
 import ProductPage from "./pages/productCrud/ProductPage";
 import ProductAdd from "./pages/productCrud/ProductAdd";
@@ -73,6 +74,7 @@ export default function App() {
         <Route path="orderList" element={<OrderPage />} />
         <Route path="orderAdd" element={<OrderAdd />} />
         <Route path="orderEdit/:id" element={<OrderEdit />} />
+        <Route path="/orders/:orderId/detail" element={<OrderDetailPage />} />
 
         {/* /users... */}
         <Route path="usersList" element={<UsersPage />} />

@@ -1,0 +1,221 @@
+/* components/LockerPicker/LockerPicker.css */
+
+.lp-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+/* ── Loading / error ─────────────────────────────────────────────────────── */
+.lp-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+.lp-state--error { color: var(--color-text-danger); }
+
+.lp-spinner {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: 2px solid var(--color-border-tertiary);
+  border-top-color: var(--color-text-secondary);
+  border-radius: 50%;
+  animation: lp-spin 0.7s linear infinite;
+}
+@keyframes lp-spin { to { transform: rotate(360deg); } }
+
+/* ── Trigger button ──────────────────────────────────────────────────────── */
+.lp-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-secondary);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+  min-height: 44px;
+}
+.lp-trigger:hover,
+.lp-trigger.is-open {
+  border-color: var(--color-border-primary);
+  background: var(--color-background-primary);
+}
+.lp-trigger.has-value {
+  border-color: var(--color-border-primary);
+}
+
+.lp-trigger-placeholder {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+.lp-trigger-value {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.lp-trigger-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lp-trigger-addr {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lp-trigger-chevron {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+/* ── Portal panel (position injected inline by JS) ───────────────────────── */
+.lp-panel {
+  background: var(--color-background-primary);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* max-height so long lists don't fall off-screen */
+  max-height: 360px;
+}
+
+/* ── Search inside panel ─────────────────────────────────────────────────── */
+.lp-search-wrap {
+  position: relative;
+  padding: 8px 8px 0;
+  flex-shrink: 0;
+}
+.lp-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 32px 8px 10px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-secondary);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.lp-search:focus { border-color: var(--color-border-primary); }
+.lp-clear {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-30%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  padding: 2px 4px;
+}
+.lp-clear:hover { color: var(--color-text-primary); }
+
+/* ── Options ─────────────────────────────────────────────────────────────── */
+.lp-options {
+  overflow-y: auto;
+  flex: 1;
+  margin-top: 4px;
+  background: var(--color-background-secondary);
+}
+.lp-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+.lp-option {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border-tertiary);
+  transition: background 0.1s;
+}
+.lp-option:last-child { border-bottom: none; }
+.lp-option:hover      { background: var(--color-background-secondary); }
+.lp-option.is-selected {
+  background: var(--color-background-info);
+  border-left: 3px solid var(--color-border-info);
+}
+.lp-option-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.lp-option-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lp-option-badge {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: var(--color-background-secondary);
+  padding: 1px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-tertiary);
+}
+.lp-option-addr {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+/* ── Panel footer ────────────────────────────────────────────────────────── */
+.lp-panel-footer {
+  padding: 5px 12px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  border-top: 1px solid var(--color-border-tertiary);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Map (in normal document flow, below the trigger) ────────────────────── */
+.lp-map-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lp-map {
+  width: 100%;
+  height: 240px;
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--color-border-tertiary);
+  overflow: hidden;
+}
+.lp-map-caption {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+.lp-map-caption strong {
+  color: var(--color-text-primary);
+  font-weight: 500;
+}

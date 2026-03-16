@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Outlet } from "react-router-dom";
 import Header from "../components/header";
+import Footer from "../components/Footer";
 import SidebarLeft from "../components/SidebarLeft";
 import "../App.css";
 
@@ -17,7 +18,9 @@ export default function StaffLayout() {
 
   return (
     <div className={`layout-container ${collapsed ? "is-collapsed" : ""}`}>
-      <div className="layout-header"><Header /></div>
+      <div className="layout-header">
+        <Header />
+      </div>
 
       <div className="layout-menu">
         <SidebarLeft collapsed={collapsed} onToggle={toggle} />
@@ -27,7 +30,16 @@ export default function StaffLayout() {
         <Outlet />
       </div>
 
-      <div className="layout-footer" />
+      <div className="layout-footer">
+        <Footer
+          company="TrackSync"
+          version="1.0.0"
+          // links={[
+          //   { label: "Privatumo politika", href: "/privacy" },
+          //   { label: "Pagalba", href: "/help" },
+          // ]}
+        />
+      </div>
     </div>
   );
 }

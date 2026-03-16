@@ -49,67 +49,174 @@ public class OrderController : ControllerBase
     }
 
     [HttpGet("allOrdersFullInfo")]
-    public async Task<IActionResult> GetAllOrdersFullInfo()
-    {
-        int companyId;
-        try { companyId = GetRequiredCompanyId(); }
-        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+public async Task<IActionResult> GetAllOrdersFullInfo()
+{
+    int companyId;
+    try { companyId = GetRequiredCompanyId(); }
+    catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
 
-        var orders = await _db.orders
-            .AsNoTracking()
-            .Where(o => o.fk_Companyid_Company == companyId)
-            .Select(o => new
+    var orders = await _db.orders
+        .AsNoTracking()
+        .Where(o => o.fk_Companyid_Company == companyId)
+        .Select(o => new
+        {
+            o.id_Orders, o.OrdersDate, o.totalAmount, o.paymentMethod,
+            o.deliveryPrice, o.status,
+            statusName        = o.statusNavigation.name,
+            o.externalDocumentId,
+            o.fk_Companyid_Company,
+
+            // ← add this one line
+            hasShipment = _db.shipments.Any(s => s.fk_Ordersid_Orders == o.id_Orders),
+
+            client = new
             {
-                o.id_Orders, o.OrdersDate, o.totalAmount, o.paymentMethod,
-                o.deliveryPrice, o.status,
-                statusName          = o.statusNavigation.name,
-                o.externalDocumentId,
-                o.fk_Companyid_Company,
+                id_Users = o.fk_Clientid_Users,
+                name     = o.fk_Clientid_UsersNavigation.name,
+                surname  = o.fk_Clientid_UsersNavigation.surname,
+                email    = o.fk_Clientid_UsersNavigation.email,
+                companyData = _db.client_companies
+                    .AsNoTracking()
+                    .Where(cc =>
+                        cc.fk_Companyid_Company == companyId &&
+                        cc.fk_Clientid_Users    == o.fk_Clientid_Users)
+                    .Select(cc => new
+                    {
+                        cc.deliveryAddress, cc.city, cc.country,
+                        cc.vat, cc.bankCode, cc.externalClientId
+                    })
+                    .FirstOrDefault()
+            },
 
-                client = new
+            products = o.ordersproducts.Select(op => new
+            {
+                op.quantity, op.unitPrice, op.vatValue,
+                productId    = op.fk_Productid_Product,
+                name         = op.fk_Productid_ProductNavigation.name,
+                price        = op.fk_Productid_ProductNavigation.price,
+                unit         = op.fk_Productid_ProductNavigation.unit,
+                externalCode = op.fk_Productid_ProductNavigation.externalCode,
+                imageUrl     = op.fk_Productid_ProductNavigation.product_images
+                                  .Select(pi => pi.url).FirstOrDefault()
+            }).ToList()
+        })
+        .OrderByDescending(x => x.id_Orders)
+        .ToListAsync();
+
+    return Ok(orders);
+}
+// ── READ (FULL DETAIL) ────────────────────────────────────────────────────────
+// GET /api/orders/order/{id}/full
+
+[HttpGet("order/{id:int}/full")]
+public async Task<IActionResult> GetOrderFull(int id)
+{
+    int companyId;
+    try { companyId = GetRequiredCompanyId(); }
+    catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
+    var order = await _db.orders
+        .AsNoTracking()
+        .Where(o => o.id_Orders == id && o.fk_Companyid_Company == companyId)
+        .Select(o => new
+        {
+            o.id_Orders,
+            o.OrdersDate,
+            o.totalAmount,
+            o.paymentMethod,
+            o.deliveryPrice,
+            o.status,
+            statusName        = o.statusNavigation.name,
+            o.externalDocumentId,
+
+            client = new
+            {
+                id      = o.fk_Clientid_Users,
+                name    = o.fk_Clientid_UsersNavigation.name,
+                surname = o.fk_Clientid_UsersNavigation.surname,
+                email   = o.fk_Clientid_UsersNavigation.email,
+                phone   = o.fk_Clientid_UsersNavigation.phoneNumber,
+                companyData = _db.client_companies
+                    .AsNoTracking()
+                    .Where(cc =>
+                        cc.fk_Companyid_Company == companyId &&
+                        cc.fk_Clientid_Users    == o.fk_Clientid_Users)
+                    .Select(cc => new
+                    {
+                        cc.deliveryAddress, cc.city, cc.country,
+                        cc.vat, cc.bankCode, cc.externalClientId
+                    })
+                    .FirstOrDefault()
+            },
+
+            products = o.ordersproducts.Select(op => new
+            {
+                op.id_OrdersProduct,
+                op.quantity,
+                op.unitPrice,
+                op.vatValue,
+                product = new
                 {
-                    id_Users = o.fk_Clientid_Users,
-                    // user fields come directly from users navigation
-                    name    = o.fk_Clientid_UsersNavigation.name,
-                    surname = o.fk_Clientid_UsersNavigation.surname,
-                    email   = o.fk_Clientid_UsersNavigation.email,
-
-                    // per-company client data from client_company
-                    companyData = _db.client_companies
-                        .AsNoTracking()
-                        .Where(cc =>
-                            cc.fk_Companyid_Company == companyId &&
-                            cc.fk_Clientid_Users    == o.fk_Clientid_Users)
-                        .Select(cc => new
-                        {
-                            cc.deliveryAddress,
-                            cc.city,
-                            cc.country,
-                            cc.vat,
-                            cc.bankCode,
-                            cc.externalClientId
-                        })
-                        .FirstOrDefault()
-                },
-
-                products = o.ordersproducts.Select(op => new
-                {
-                    op.quantity,
-                    op.unitPrice,
-                    op.vatValue,
-                    productId    = op.fk_Productid_Product,
+                    id           = op.fk_Productid_Product,
                     name         = op.fk_Productid_ProductNavigation.name,
-                    price        = op.fk_Productid_ProductNavigation.price,
                     unit         = op.fk_Productid_ProductNavigation.unit,
                     externalCode = op.fk_Productid_ProductNavigation.externalCode,
-                    imageUrl     = op.fk_Productid_ProductNavigation.product_images.Select(pi => pi.url).FirstOrDefault()
-                }).ToList()
-            })
-            .OrderByDescending(x => x.id_Orders)
-            .ToListAsync();
+                    imageUrl     = op.fk_Productid_ProductNavigation.product_images
+                                      .OrderBy(pi => pi.sortOrder)
+                                      .Select(pi => pi.url)
+                                      .FirstOrDefault()
+                }
+            }).ToList(),
 
-        return Ok(orders);
-    }
+            shipment = _db.shipments
+                .AsNoTracking()
+                .Where(s => s.fk_Ordersid_Orders == o.id_Orders)
+                .Select(s => new
+                {
+                    s.id_Shipment,
+                    s.trackingNumber,
+                    s.shippingDate,
+                    s.estimatedDeliveryDate,
+                    s.DeliveryLat,
+                    s.DeliveryLng,
+                    s.providerShipmentId,
+                    s.providerParcelNumber,
+                    s.providerLockerId,
+                    courierName  = s.fk_Courierid_CourierNavigation == null
+                                    ? null : s.fk_Courierid_CourierNavigation.name,
+                    courierType  = s.fk_Courierid_CourierNavigation == null
+                                    ? null : s.fk_Courierid_CourierNavigation.type,
+                    courierPrice = s.fk_Courierid_CourierNavigation == null
+                                    ? (double?)null : s.fk_Courierid_CourierNavigation.deliveryPrice,
+                    latestStatus = s.shipment_statuses
+                        .OrderByDescending(ss => ss.date)
+                        .Select(ss => new
+                        {
+                            ss.date,
+                            typeName = ss.fk_ShipmentStatusTypeid_ShipmentStatusTypeNavigation.name
+                        })
+                        .FirstOrDefault(),
+                    packages = s.packages
+                        .OrderBy(p => p.id_Package)
+                        .Select(p => new
+                        {
+                            p.id_Package,
+                            p.labelFile,
+                            p.weight,
+                            p.trackingNumber,
+                            p.creationDate
+                        })
+                        .ToList()
+                })
+                .FirstOrDefault()
+        })
+        .FirstOrDefaultAsync();
+
+    if (order == null)
+        return NotFound("Order not found or does not belong to your company.");
+
+    return Ok(order);
+}
 
     // ── LOOKUPS ───────────────────────────────────────────────────────────────
 
@@ -408,4 +515,6 @@ public class OrderController : ControllerBase
             return StatusCode(500, ex.InnerException?.Message ?? ex.Message);
         }
     }
+
+
 }

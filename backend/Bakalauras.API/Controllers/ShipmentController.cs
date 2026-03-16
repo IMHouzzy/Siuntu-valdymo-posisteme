@@ -1,4 +1,7 @@
-// ── Controllers/ShipmentController.cs ───────────────────────────────────────
+// Controllers/ShipmentController.cs
+// FULL REPLACEMENT of your existing file.
+// Key change: CreateShipment branches on courier.type — provider couriers go through
+// ICourierProvider (DPD label from API), CUSTOM couriers use QuestPDF as before.
 
 using Bakalauras.API.Models;
 using Bakalauras.API.Dtos;
@@ -14,38 +17,65 @@ public class ShipmentController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IWebHostEnvironment _env;
+    private readonly CourierProviderFactory _providerFactory;
 
-    public ShipmentController(AppDbContext db, IWebHostEnvironment env)
+    public ShipmentController(
+        AppDbContext db,
+        IWebHostEnvironment env,
+        CourierProviderFactory providerFactory)
     {
         _db = db;
         _env = env;
+        _providerFactory = providerFactory;
     }
-
-    // ── Helper ────────────────────────────────────────────────────────────────
 
     private int GetRequiredCompanyId()
     {
-        var companyId = User.GetCompanyId();
-        if (companyId <= 0)
-            throw new UnauthorizedAccessException("No active company selected.");
-        return companyId;
+        var id = User.GetCompanyId();
+        if (id <= 0) throw new UnauthorizedAccessException("No active company selected.");
+        return id;
     }
 
     // ── GET /api/shipments/couriers ───────────────────────────────────────────
+    // DEPRECATED — kept for backwards compat. Frontend should use
+    //   GET /api/companies/{companyId}/couriers  instead.
 
     [HttpGet("couriers")]
     public async Task<IActionResult> GetCouriers()
     {
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
+        var enabledKeys = await _providerFactory.GetEnabledIntegrationKeysAsync(companyId);
+
+        var allowedProviderTypes = CourierProviderFactory.AllProviderCourierTypes
+            .Where(t =>
+            {
+                var key = CourierProviderFactory.GetIntegrationKey(t);
+                return key != null && enabledKeys.Contains(key);
+            })
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         var couriers = await _db.couriers
             .AsNoTracking()
-            .OrderBy(c => c.name)
+            .Where(c =>
+                (c.type == "CUSTOM" && c.fk_Companyid_Company == companyId) ||
+                (c.type == "CUSTOM" && c.fk_Companyid_Company == null) ||
+                (c.fk_Companyid_Company == null && allowedProviderTypes.Contains(c.type))
+            )
+            .OrderBy(c => c.fk_Companyid_Company == null ? 1 : 0)
+            .ThenBy(c => c.name)
             .Select(c => new
             {
                 c.id_Courier,
                 c.name,
+                c.type,
                 c.contactPhone,
                 c.deliveryTermDays,
-                c.deliveryPrice
+                c.deliveryPrice,
+                supportsLockers = c.type.EndsWith("_PARCEL"),
+                isOwn = c.fk_Companyid_Company == companyId,
             })
             .ToListAsync();
 
@@ -72,12 +102,12 @@ public class ShipmentController : ControllerBase
                 o.paymentMethod,
                 o.deliveryPrice,
                 o.status,
-                statusName        = o.statusNavigation.name,
+                statusName = o.statusNavigation.name,
                 o.externalDocumentId,
-                clientId          = o.fk_Clientid_Users,
-                clientName        = o.fk_Clientid_UsersNavigation.name,
-                clientSurname     = o.fk_Clientid_UsersNavigation.surname,
-                clientEmail       = o.fk_Clientid_UsersNavigation.email,
+                clientId = o.fk_Clientid_Users,
+                clientName = o.fk_Clientid_UsersNavigation.name,
+                clientSurname = o.fk_Clientid_UsersNavigation.surname,
+                clientEmail = o.fk_Clientid_UsersNavigation.email,
                 clientPhoneNumber = o.fk_Clientid_UsersNavigation.phoneNumber,
                 items = o.ordersproducts.Select(op => new
                 {
@@ -85,9 +115,9 @@ public class ShipmentController : ControllerBase
                     op.quantity,
                     op.unitPrice,
                     op.vatValue,
-                    productId           = op.fk_Productid_Product,
-                    productName         = op.fk_Productid_ProductNavigation.name,
-                    productUnit         = op.fk_Productid_ProductNavigation.unit,
+                    productId = op.fk_Productid_Product,
+                    productName = op.fk_Productid_ProductNavigation.name,
+                    productUnit = op.fk_Productid_ProductNavigation.unit,
                     productExternalCode = op.fk_Productid_ProductNavigation.externalCode,
                     productImages = op.fk_Productid_ProductNavigation.product_images
                         .OrderBy(pi => pi.sortOrder)
@@ -112,7 +142,21 @@ public class ShipmentController : ControllerBase
             .Select(s => new { s.id_Shipment, s.trackingNumber })
             .FirstOrDefaultAsync();
 
-        var result = new
+        // Include company shipping address so the frontend can pre-fill sender fields
+        var companyInfo = await _db.companies
+            .AsNoTracking()
+            .Where(c => c.id_Company == companyId)
+            .Select(c => new
+            {
+                c.shippingAddress,
+                c.shippingStreet,
+                c.shippingCity,
+                c.shippingPostalCode,
+                c.shippingCountry,
+            })
+            .FirstOrDefaultAsync();
+
+        return Ok(new
         {
             order.id_Orders,
             order.OrdersDate,
@@ -124,10 +168,10 @@ public class ShipmentController : ControllerBase
             order.externalDocumentId,
             client = new
             {
-                id          = order.clientId,
-                name        = order.clientName,
-                surname     = order.clientSurname,
-                email       = order.clientEmail,
+                id = order.clientId,
+                name = order.clientName,
+                surname = order.clientSurname,
+                email = order.clientEmail,
                 phoneNumber = order.clientPhoneNumber,
             },
             clientCompany = cc == null ? null : (object)new
@@ -139,6 +183,12 @@ public class ShipmentController : ControllerBase
                 cc.bankCode,
                 cc.externalClientId
             },
+            // Company sender address for pre-filling the shipment form
+            shippingStreet = companyInfo?.shippingStreet,
+            shippingAddress = companyInfo?.shippingAddress,
+            shippingCity = companyInfo?.shippingCity,
+            shippingPostalCode = companyInfo?.shippingPostalCode,
+            shippingCountry = companyInfo?.shippingCountry ?? "LT",
             items = order.items.Select(op => new
             {
                 op.id_OrdersProduct,
@@ -147,17 +197,15 @@ public class ShipmentController : ControllerBase
                 op.vatValue,
                 product = new
                 {
-                    id           = op.productId,
-                    name         = op.productName,
-                    unit         = op.productUnit,
+                    id = op.productId,
+                    name = op.productName,
+                    unit = op.productUnit,
                     externalCode = op.productExternalCode,
-                    images       = op.productImages
+                    images = op.productImages
                 }
             }).ToList(),
             existingShipment
-        };
-
-        return Ok(result);
+        });
     }
 
     // ── GET /api/shipments/all ────────────────────────────────────────────────
@@ -180,16 +228,19 @@ public class ShipmentController : ControllerBase
                 s.estimatedDeliveryDate,
                 s.DeliveryLat,
                 s.DeliveryLng,
-                courierId    = s.fk_Courierid_Courier,
-                courierName  = s.fk_Courierid_CourierNavigation == null ? null : s.fk_Courierid_CourierNavigation.name,
+                s.providerShipmentId,
+                s.providerParcelNumber,
+                s.providerLockerId,
+                courierId = s.fk_Courierid_Courier,
+                courierName = s.fk_Courierid_CourierNavigation == null ? null : s.fk_Courierid_CourierNavigation.name,
+                courierType = s.fk_Courierid_CourierNavigation == null ? null : s.fk_Courierid_CourierNavigation.type,
                 courierPrice = s.fk_Courierid_CourierNavigation == null ? (double?)null : s.fk_Courierid_CourierNavigation.deliveryPrice,
-                orderId      = s.fk_Ordersid_Orders,
+                orderId = s.fk_Ordersid_Orders,
             })
             .OrderByDescending(s => s.id_Shipment)
             .ToListAsync();
 
-        if (!shipments.Any())
-            return Ok(new List<object>());
+        if (!shipments.Any()) return Ok(new List<object>());
 
         var shipmentIds = shipments.Select(s => s.id_Shipment).ToList();
 
@@ -216,10 +267,14 @@ public class ShipmentController : ControllerBase
             s.estimatedDeliveryDate,
             s.DeliveryLat,
             s.DeliveryLng,
+            s.providerShipmentId,
+            s.providerParcelNumber,
+            s.providerLockerId,
             courier = s.courierId == null ? null : (object)new
             {
-                id_Courier    = s.courierId,
-                name          = s.courierName,
+                id_Courier = s.courierId,
+                name = s.courierName,
+                type = s.courierType,
                 deliveryPrice = s.courierPrice,
             },
             s.orderId,
@@ -250,24 +305,25 @@ public class ShipmentController : ControllerBase
                 s.estimatedDeliveryDate,
                 s.DeliveryLat,
                 s.DeliveryLng,
+                s.providerShipmentId,
+                s.providerParcelNumber,
+                s.providerLockerId,
                 courierId = s.fk_Courierid_Courier,
-                orderId   = s.fk_Ordersid_Orders,
-                statuses  = s.shipment_statuses
+                orderId = s.fk_Ordersid_Orders,
+                statuses = s.shipment_statuses
                     .OrderByDescending(ss => ss.date)
                     .Select(ss => new
                     {
                         ss.id_ShipmentStatus,
                         ss.date,
-                        typeId   = ss.fk_ShipmentStatusTypeid_ShipmentStatusType,
+                        typeId = ss.fk_ShipmentStatusTypeid_ShipmentStatusType,
                         typeName = ss.fk_ShipmentStatusTypeid_ShipmentStatusTypeNavigation.name
                     })
                     .ToList()
             })
             .FirstOrDefaultAsync();
 
-        if (shipment == null)
-            return NotFound();
-
+        if (shipment == null) return NotFound();
         return Ok(shipment);
     }
 
@@ -280,12 +336,9 @@ public class ShipmentController : ControllerBase
         try { companyId = GetRequiredCompanyId(); }
         catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
 
-        // Verify the shipment belongs to this company
         var shipmentExists = await _db.shipments
             .AnyAsync(s => s.id_Shipment == id && s.fk_Companyid_Company == companyId);
-
-        if (!shipmentExists)
-            return NotFound();
+        if (!shipmentExists) return NotFound();
 
         var packages = await _db.packages
             .AsNoTracking()
@@ -297,6 +350,7 @@ public class ShipmentController : ControllerBase
                 p.creationDate,
                 p.labelFile,
                 p.weight,
+                p.trackingNumber,
                 p.fk_Shipmentid_Shipment
             })
             .ToListAsync();
@@ -305,7 +359,6 @@ public class ShipmentController : ControllerBase
     }
 
     // ── POST /api/shipments/create ────────────────────────────────────────────
-    // Creates the shipment, generates N packages, and generates a label PDF per package.
 
     [HttpPost("create")]
     public async Task<IActionResult> CreateShipment([FromBody] CreateShipmentDto dto)
@@ -314,8 +367,7 @@ public class ShipmentController : ControllerBase
         try { companyId = GetRequiredCompanyId(); }
         catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
 
-        if (dto.PackageCount < 1)
-            return BadRequest("PackageCount must be at least 1.");
+        if (dto.PackageCount < 1) return BadRequest("PackageCount must be at least 1.");
 
         // ── Validate order ────────────────────────────────────────────────────
         var order = await _db.orders
@@ -324,18 +376,17 @@ public class ShipmentController : ControllerBase
             .Select(o => new
             {
                 o.id_Orders,
-                clientId      = o.fk_Clientid_Users,
-                clientName    = o.fk_Clientid_UsersNavigation.name,
+                clientId = o.fk_Clientid_Users,
+                clientName = o.fk_Clientid_UsersNavigation.name,
                 clientSurname = o.fk_Clientid_UsersNavigation.surname,
-                clientPhone   = o.fk_Clientid_UsersNavigation.phoneNumber,
+                clientPhone = o.fk_Clientid_UsersNavigation.phoneNumber,
+                clientEmail = o.fk_Clientid_UsersNavigation.email,
             })
             .FirstOrDefaultAsync();
 
-        if (order == null)
-            return NotFound("Order not found or does not belong to your company.");
+        if (order == null) return NotFound("Order not found or does not belong to your company.");
 
-        var duplicate = await _db.shipments.AnyAsync(s => s.fk_Ordersid_Orders == dto.OrderId);
-        if (duplicate)
+        if (await _db.shipments.AnyAsync(s => s.fk_Ordersid_Orders == dto.OrderId))
             return Conflict("A shipment already exists for this order.");
 
         // ── Validate courier ──────────────────────────────────────────────────
@@ -343,11 +394,10 @@ public class ShipmentController : ControllerBase
         if (dto.CourierId.HasValue)
         {
             courier = await _db.couriers.FindAsync(dto.CourierId.Value);
-            if (courier == null)
-                return BadRequest("Courier not found.");
+            if (courier == null) return BadRequest("Courier not found.");
         }
 
-        // ── Fetch client delivery address ─────────────────────────────────────
+        // ── Fetch client delivery info ────────────────────────────────────────
         var cc = await _db.client_companies
             .AsNoTracking()
             .Where(x => x.fk_Companyid_Company == companyId && x.fk_Clientid_Users == order.clientId)
@@ -358,103 +408,253 @@ public class ShipmentController : ControllerBase
         var company = await _db.companies
             .AsNoTracking()
             .Where(c => c.id_Company == companyId)
-            .Select(c => new { c.name, c.shippingAddress, c.address, c.phoneNumber })
+            .Select(c => new
+            {
+                c.name,
+                c.phoneNumber,
+                c.address,
+                c.shippingAddress,
+                c.shippingStreet,
+                c.shippingCity,
+                c.shippingPostalCode,
+                c.shippingCountry,
+            })
             .FirstOrDefaultAsync();
 
-        // ── Auto-generate unique tracking number ──────────────────────────────
-        string trackingNumber;
-        var rng = new Random();
-        do
-        {
-            var ts     = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            var suffix = rng.Next(100, 999);
-            trackingNumber = $"SHP-{companyId}-{dto.OrderId}-{ts}{suffix}";
-        }
-        while (await _db.shipments.AnyAsync(s => s.trackingNumber == trackingNumber));
-
-        // ── Prepare label strings ─────────────────────────────────────────────
-        var recipientName    = $"{order.clientName} {order.clientSurname}".Trim();
+        // ── Build label text helpers ──────────────────────────────────────────
+        var recipientName = $"{order.clientName} {order.clientSurname}".Trim();
         var recipientAddress = string.Join(", ",
             new[] { cc?.deliveryAddress, cc?.city, cc?.country }
             .Where(s => !string.IsNullOrWhiteSpace(s)));
         var recipientPhone = order.clientPhone ?? "";
-
-        var senderName    = company?.name ?? "—";
+        var senderName = company?.name ?? "—";
         var senderAddress = company?.shippingAddress ?? company?.address ?? "—";
-        var senderPhone   = company?.phoneNumber ?? "";
+        var senderPhone = company?.phoneNumber ?? "";
+        var courierName = courier?.name ?? "—";
+        var shippingDateStr = dto.ShippingDate?.ToString("yyyy-MM-dd") ?? "—";
+        var estimatedDateStr = dto.EstimatedDeliveryDate?.ToString("yyyy-MM-dd") ?? "—";
 
-        var courierName       = courier?.name ?? "—";
-        var shippingDateStr   = dto.ShippingDate?.ToString("yyyy-MM-dd") ?? "—";
-        var estimatedDateStr  = dto.EstimatedDeliveryDate?.ToString("yyyy-MM-dd") ?? "—";
+        // ── Determine path: provider courier vs custom courier ────────────────
+        var courierType = courier?.type ?? "CUSTOM";
+        var integKey = CourierProviderFactory.GetIntegrationKey(courierType);
+        var isProvider = integKey != null;
 
-        // ── Persist ───────────────────────────────────────────────────────────
         await using var tx = await _db.Database.BeginTransactionAsync();
         try
         {
+            // ── Persist shipment — trackingNumber is now just a legacy/reference field ──
+            // For provider couriers: set to providerShipmentId after API call.
+            // For custom couriers: set to first package tracking number after generation.
+            // Either way it's filled below — start with empty string.
             var shipment = new shipment
             {
-                trackingNumber        = trackingNumber,
-                shippingDate          = dto.ShippingDate,
+                trackingNumber = "",
+                shippingDate = dto.ShippingDate,
                 estimatedDeliveryDate = dto.EstimatedDeliveryDate,
-                fk_Courierid_Courier  = dto.CourierId,
-                fk_Ordersid_Orders    = dto.OrderId,
-                fk_Companyid_Company  = companyId,
-                DeliveryLat           = dto.DeliveryLat,
-                DeliveryLng           = dto.DeliveryLng,
+                fk_Courierid_Courier = dto.CourierId,
+                fk_Ordersid_Orders = dto.OrderId,
+                fk_Companyid_Company = companyId,
+                DeliveryLat = dto.DeliveryLat,
+                DeliveryLng = dto.DeliveryLng,
             };
 
             _db.shipments.Add(shipment);
-            await _db.SaveChangesAsync();   // get shipment.id_Shipment
+            await _db.SaveChangesAsync();
 
-            // ── Initial status "Sukurta" ──────────────────────────────────────
             _db.shipment_statuses.Add(new shipment_status
             {
-                fk_Shipmentid_Shipment                     = shipment.id_Shipment,
+                fk_Shipmentid_Shipment = shipment.id_Shipment,
                 fk_ShipmentStatusTypeid_ShipmentStatusType = 1,
-                date                                       = DateTime.UtcNow
+                date = DateTime.UtcNow
             });
 
-            // ── Create packages + generate labels ─────────────────────────────
-            var webRoot = _env.WebRootPath
-                ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-
+            var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
             var createdPackages = new List<object>();
 
-            for (int i = 1; i <= dto.PackageCount; i++)
-            {
-                string labelUrl = LabelGenerator.Generate(
-                    webRootPath       : webRoot,
-                    shipmentId        : shipment.id_Shipment,
-                    packageIndex      : i,
-                    totalPackages     : dto.PackageCount,
-                    trackingNumber    : trackingNumber,
-                    senderName        : senderName,
-                    senderAddress     : senderAddress,
-                    senderPhone       : senderPhone,
-                    recipientName     : recipientName,
-                    recipientAddress  : recipientAddress,
-                    recipientPhone    : recipientPhone,
-                    courierName       : courierName,
-                    shippingDate      : shippingDateStr,
-                    estimatedDelivery : estimatedDateStr
-                );
-
-                var pkg = new package
+            // ── Resolve per-package weights ───────────────────────────────────
+            var resolvedWeights = Enumerable.Range(0, dto.PackageCount)
+                .Select(i =>
                 {
-                    fk_Shipmentid_Shipment = shipment.id_Shipment,
-                    labelFile              = labelUrl,
-                    creationDate           = DateTime.UtcNow,
+                    double? w = dto.PackageWeights != null && i < dto.PackageWeights.Count
+                        ? dto.PackageWeights[i]
+                        : null;
+                    return (w.HasValue && w.Value > 0) ? w.Value : (dto.PackageWeightKg ?? 1.0);
+                })
+                .ToList();
+
+            if (isProvider)
+            {
+                // ── Provider path (DPD, LP Express, …) ───────────────────────
+                if (string.IsNullOrWhiteSpace(dto.RecipientPostalCode) && dto.LockerId == null)
+                    return BadRequest("RecipientPostalCode is required for courier service delivery.");
+
+                ICourierProvider provider;
+                try { provider = await _providerFactory.GetProviderAsync(companyId, courierType); }
+                catch (InvalidOperationException ex)
+                {
+                    await tx.RollbackAsync();
+                    return BadRequest(ex.Message);
+                }
+
+                var providerReq = new CourierShipmentRequest
+                {
+                    SenderName = senderName,
+                    SenderPhone = senderPhone,
+                    SenderStreet = !string.IsNullOrWhiteSpace(dto.SenderStreet)
+                                         ? dto.SenderStreet
+                                         : (company?.shippingStreet ?? company?.shippingAddress ?? company?.address ?? ""),
+                    SenderCity = !string.IsNullOrWhiteSpace(dto.SenderCity)
+                                         ? dto.SenderCity
+                                         : (company?.shippingCity ?? ""),
+                    SenderPostalCode = (!string.IsNullOrWhiteSpace(dto.SenderPostalCode)
+                                         ? dto.SenderPostalCode
+                                         : (company?.shippingPostalCode ?? ""))
+                                       .Replace("-", "").Replace(" ", ""),
+                    SenderCountry = company?.shippingCountry ?? "LT",
+
+                    RecipientName = recipientName,
+                    RecipientEmail = order.clientEmail ?? "",
+                    RecipientPhone = recipientPhone,
+                    RecipientStreet = !string.IsNullOrWhiteSpace(dto.RecipientStreet)
+                                            ? dto.RecipientStreet
+                                            : (cc?.deliveryAddress ?? ""),
+                    RecipientCity = !string.IsNullOrWhiteSpace(dto.RecipientCity)
+                                            ? dto.RecipientCity
+                                            : (cc?.city ?? ""),
+                    RecipientPostalCode = (dto.RecipientPostalCode ?? "").Replace("-", "").Replace(" ", ""),
+                    RecipientCountry = MapCountry(cc?.country),
+
+                    LockerId = dto.LockerId,
+                    PackageCount = dto.PackageCount,
+                    PackageWeightKg = resolvedWeights[0],
+                    PackageWeights = resolvedWeights,
+                    OrderReference = $"Order-{dto.OrderId}",
                 };
 
-                _db.packages.Add(pkg);
-                await _db.SaveChangesAsync();
+                var result = await provider.CreateShipmentAsync(providerReq);
 
-                createdPackages.Add(new
+                if (result.ErrorMessage != null)
                 {
-                    pkg.id_Package,
-                    pkg.labelFile,
-                    packageIndex = i,
-                });
+                    await tx.RollbackAsync();
+                    return StatusCode(502, result.ErrorMessage);
+                }
+
+                // ── Update shipment with provider reference info ──────────────
+                // trackingNumber on shipment = DPD shipment UUID (internal reference only)
+                // The real tracking numbers live on each package row
+                shipment.trackingNumber = result.ProviderShipmentId;
+                shipment.providerShipmentId = result.ProviderShipmentId;
+                shipment.providerParcelNumber = result.ParcelNumbers.Count > 0
+                    ? string.Join(",", result.ParcelNumbers)
+                    : result.ProviderShipmentId;
+                shipment.providerLockerId = dto.LockerId;
+
+                var dir = Path.Combine(webRoot, "labels", shipment.id_Shipment.ToString());
+                Directory.CreateDirectory(dir);
+
+                for (int i = 0; i < dto.PackageCount; i++)
+                {
+                    // Each package's tracking number = its own DPD parcel number
+                    var pkgTrackingNumber = i < result.ParcelNumbers.Count
+                        ? result.ParcelNumbers[i]
+                        : result.ParcelNumbers.LastOrDefault() ?? result.ProviderShipmentId;
+
+                    byte[]? labelBytes = null;
+                    if (result.PerParcelLabelBytes.Count > 0)
+                        labelBytes = i < result.PerParcelLabelBytes.Count
+                            ? result.PerParcelLabelBytes[i]
+                            : result.PerParcelLabelBytes.Last();
+
+                    string? labelUrl = null;
+                    if (labelBytes != null)
+                    {
+                        var filePath = Path.Combine(dir, $"label_{i + 1}.pdf");
+                        await System.IO.File.WriteAllBytesAsync(filePath, labelBytes);
+                        labelUrl = $"/labels/{shipment.id_Shipment}/label_{i + 1}.pdf";
+                    }
+
+                    var pkg = new package
+                    {
+                        fk_Shipmentid_Shipment = shipment.id_Shipment,
+                        labelFile = labelUrl,
+                        creationDate = DateTime.UtcNow,
+                        weight = resolvedWeights[i],
+                        trackingNumber = pkgTrackingNumber,
+                    };
+                    _db.packages.Add(pkg);
+                    await _db.SaveChangesAsync();
+
+                    createdPackages.Add(new
+                    {
+                        pkg.id_Package,
+                        pkg.labelFile,
+                        pkg.weight,
+                        pkg.trackingNumber,
+                        packageIndex = i + 1,
+                    });
+                }
+            }
+            else
+            {
+                // ── Custom courier path — generate a unique tracking number per package ──
+                var dir = Path.Combine(webRoot, "labels", shipment.id_Shipment.ToString());
+                Directory.CreateDirectory(dir);
+
+                var rng = new Random();
+
+                for (int i = 0; i < dto.PackageCount; i++)
+                {
+                    // Generate a unique tracking number for this individual package
+                    string pkgTrackingNumber;
+                    do
+                    {
+                        var ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                        var suffix = rng.Next(1000, 9999);
+                        pkgTrackingNumber = $"PKG-{companyId}-{dto.OrderId}-{ts}-{suffix}";
+                    }
+                    while (await _db.packages.AnyAsync(p => p.trackingNumber == pkgTrackingNumber));
+
+                    string labelUrl = LabelGenerator.Generate(
+                        webRootPath: webRoot,
+                        shipmentId: shipment.id_Shipment,
+                        packageIndex: i + 1,
+                        totalPackages: dto.PackageCount,
+                        trackingNumber: pkgTrackingNumber,   // ← package's own tracking number on label
+                        senderName: senderName,
+                        senderAddress: senderAddress,
+                        senderPhone: senderPhone,
+                        recipientName: recipientName,
+                        recipientAddress: recipientAddress,
+                        recipientPhone: recipientPhone,
+                        courierName: courierName,
+                        shippingDate: shippingDateStr,
+                        estimatedDelivery: estimatedDateStr
+                    );
+
+                    var pkg = new package
+                    {
+                        fk_Shipmentid_Shipment = shipment.id_Shipment,
+                        labelFile = labelUrl,
+                        creationDate = DateTime.UtcNow,
+                        weight = resolvedWeights[i],
+                        trackingNumber = pkgTrackingNumber,
+                    };
+                    _db.packages.Add(pkg);
+                    await _db.SaveChangesAsync();
+
+                    createdPackages.Add(new
+                    {
+                        pkg.id_Package,
+                        pkg.labelFile,
+                        pkg.weight,
+                        pkg.trackingNumber,
+                        packageIndex = i + 1,
+                    });
+                }
+
+                // Set shipment.trackingNumber to the first package's tracking number
+                // so any existing code that reads shipment.trackingNumber still works
+                shipment.trackingNumber = ((dynamic)createdPackages[0]).trackingNumber;
             }
 
             await _db.SaveChangesAsync();
@@ -462,10 +662,12 @@ public class ShipmentController : ControllerBase
 
             return Ok(new
             {
-                shipmentId     = shipment.id_Shipment,
-                trackingNumber,
-                packageCount   = dto.PackageCount,
-                packages       = createdPackages,
+                shipmentId = shipment.id_Shipment,
+                trackingNumber = shipment.trackingNumber,
+                packageCount = dto.PackageCount,
+                packages = createdPackages,
+                providerShipmentId = shipment.providerShipmentId,
+                providerParcelNumber = shipment.providerParcelNumber,
             });
         }
         catch (Exception ex)
@@ -486,21 +688,17 @@ public class ShipmentController : ControllerBase
 
         var shipment = await _db.shipments
             .FirstOrDefaultAsync(s => s.id_Shipment == id && s.fk_Companyid_Company == companyId);
-
-        if (shipment == null)
-            return NotFound();
+        if (shipment == null) return NotFound();
 
         var typeExists = await _db.shipment_status_types
             .AnyAsync(t => t.id_ShipmentStatusType == dto.StatusTypeId);
-
-        if (!typeExists)
-            return BadRequest("Invalid status type.");
+        if (!typeExists) return BadRequest("Invalid status type.");
 
         _db.shipment_statuses.Add(new shipment_status
         {
-            fk_Shipmentid_Shipment                     = id,
+            fk_Shipmentid_Shipment = id,
             fk_ShipmentStatusTypeid_ShipmentStatusType = dto.StatusTypeId,
-            date                                       = dto.Date ?? DateTime.UtcNow
+            date = dto.Date ?? DateTime.UtcNow
         });
 
         await _db.SaveChangesAsync();
@@ -516,7 +714,6 @@ public class ShipmentController : ControllerBase
             .AsNoTracking()
             .Select(t => new { t.id_ShipmentStatusType, t.name })
             .ToListAsync();
-
         return Ok(types);
     }
 
@@ -531,12 +728,26 @@ public class ShipmentController : ControllerBase
 
         var shipment = await _db.shipments
             .FirstOrDefaultAsync(s => s.id_Shipment == id && s.fk_Companyid_Company == companyId);
-
-        if (shipment == null)
-            return NotFound();
+        if (shipment == null) return NotFound();
 
         _db.shipments.Remove(shipment);
         await _db.SaveChangesAsync();
         return NoContent();
     }
+
+    // ── Helper ────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Maps Lithuanian full country names to ISO 3166-1 alpha-2 codes for DPD.
+    /// Falls back to "LT" for unknown values.
+    /// </summary>
+    private static string MapCountry(string? country) => country?.ToUpperInvariant() switch
+    {
+        "LIETUVA" or "LIETUVOS RESPUBLIKA" or "LT" => "LT",
+        "LATVIJA" or "LATVIJOS RESPUBLIKA" or "LV" => "LV",
+        "ESTIJA" or "ESTIJOS RESPUBLIKA" or "EE" => "EE",
+        "LENKIJA" or "LENKIJOS RESPUBLIKA" or "PL" => "PL",
+        "VOKIETIJA" or "VOKIETIJOS FEDERACINĖ RESPUBLIKA" or "DE" => "DE",
+        _ => "LT"
+    };
 }

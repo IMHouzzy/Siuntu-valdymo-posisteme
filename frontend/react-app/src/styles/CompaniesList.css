@@ -1,157 +1,214 @@
-/* Companies styles — uses premade vars */
+/* ── Page ───────────────────────────────────────── */
 
 .co-page {
-  width: 90%;
-  margin: var(--space-xl) auto;
-  
+  padding: 0 var(--space-lg) var(--space-xl);
 }
+
+/* ── Grid ───────────────────────────────────────── */
 
 .co-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: var(--space-sm);
-  padding: var(--space-sm);
+  gap: var(--space-lg);
+  padding-top: var(--space-lg);
+}
 
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  min-height: 500px;
-  
+@media (max-width: 640px) {
+  .co-grid { grid-template-columns: 1fr; }
 }
 
 .co-empty {
-  padding: var(--space-lg);
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-lg);
-  background: var(--color-bg);
-  grid-column: 1 / -1;
-  color: var(--color-text-secondary);
+  background: var(--color-bg-card);
 }
 
-/* Card */
+/* ── Card ───────────────────────────────────────── */
+
 .co-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
   text-align: left;
 
-  border: 1px solid var(--color-border);
   background: var(--color-bg-card);
-  border-radius: calc(var(--radius-lg) + 4px);
-  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
 
+  overflow: hidden;
   cursor: pointer;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+
   box-shadow: var(--shadow-sm);
-  height: 150px;
+
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    border-color var(--transition-fast);
+
+  animation: co-fade-up .25s ease both;
 }
 
 .co-card:hover {
-  transform: translateY(-1px);
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
   box-shadow: var(--shadow-lg);
-  border-color: color-mix(in srgb, var(--color-border) 65%, var(--color-primary) 35%);
 }
 
-/* Top row */
-.co-card-top {
+.co-card:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ── Card Accent ────────────────────────────────── */
+
+.co-card-accent {
+  position: relative;
+  top: -1px;  
+  left: -15px;
+  height: 10px;
+  width: 120%;
+  border-radius: var(--space-lg);
+  background: linear-gradient(
+    90deg,
+    hsl(var(--card-hue) 60% 60%),
+    hsl(calc(var(--card-hue) + 35) 60% 70%)
+  );
+
+  opacity: .9;
+}
+
+.co-card:hover .co-card-accent {
+  opacity: 1;
+}
+
+/* ── Animation ──────────────────────────────────── */
+
+@keyframes co-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Card Inner ─────────────────────────────────── */
+
+.co-card-inner {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  flex-direction: column;
+  padding: var(--space-lg);
+  gap: var(--space-sm);
+  flex: 1;
+}
+
+/* ── Card Header ────────────────────────────────── */
+
+.co-card-head {
+  display: flex;
+  align-items: center;
   gap: var(--space-sm);
 }
 
 .co-card-title {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  min-width: 0; /* kad ellipsis veiktų */
+  flex: 1;
+  min-width: 0;
 }
 
 .co-card-name {
-  font-weight: var(--font-bold);
   font-size: var(--text-md);
+  font-weight: var(--font-semibold);
+  letter-spacing: -0.01em;
   color: var(--color-text-primary);
-
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .co-card-code {
-  opacity: 0.85;
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: var(--text-xs);
+  margin-top: 2px;
+  color: var(--color-text-muted);
 }
 
-/* Status pill */
+/* ── Status Badge ───────────────────────────────── */
+
 .co-card-status {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
-
   font-size: var(--text-xs);
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: 999px;
+  font-weight: var(--font-semibold);
+  padding: 3px 10px;
 
-  border: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
-  background: var(--color-bg);
-  white-space: nowrap;
+  border-radius: 999px;
+  border: 1px solid transparent;
 }
 
 .co-card-status.is-active {
   color: var(--color-accent);
-  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border) 65%);
-  background: color-mix(in srgb, var(--color-accent) 10%, var(--color-bg-card) 90%);
+  border-color: color-mix(in srgb, var(--color-accent) 30%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 10%, var(--color-bg-card));
 }
 
 .co-card-status.is-inactive {
   color: var(--color-danger);
-  border-color: color-mix(in srgb, var(--color-danger) 35%, var(--color-border) 65%);
-  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-bg-card) 90%);
+  border-color: color-mix(in srgb, var(--color-danger) 30%, var(--color-border));
+  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-bg-card));
 }
 
-/* Meta rows */
-.co-card-meta {
-  margin-top: var(--space-md);
+/* ── Divider ────────────────────────────────────── */
+
+.co-card-divider {
+  height: 1px;
+  background: var(--color-border);
+}
+
+/* ── Contact Section ────────────────────────────── */
+
+.co-card-foot {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: 4px;
 }
 
-.co-meta-row {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-sm);
-}
-
-.co-meta-label {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-}
-
-.co-meta-value {
+.co-detail {
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
 
-  text-align: right;
-  max-width: 60%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
 }
 
-.co-hint {
-  font-size: var(--text-xs);
+.co-detail svg {
+  opacity: .65;
   color: var(--color-text-muted);
-  margin-right: var(--space-sm);
-  max-width: 520px;
 }
 
-/* Optional: focus accessibility */
-.co-card:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-primary) 55%, white 45%);
-  outline-offset: 2px;
+/* ── Avatar ─────────────────────────────────────── */
+
+.co-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.co-avatar--img {
+  object-fit: contain;
+  padding: 4px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+
+.co-avatar--initials {
+  font-weight: var(--font-bold);
+  letter-spacing: -0.02em;
 }

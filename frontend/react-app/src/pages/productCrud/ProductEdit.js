@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import SmartForm from "../../components/SmartForm";
 import FormPageLayout from "../../components/FormPageLayout";
-
+import { FiArrowLeft } from "react-icons/fi";
 export default function ProductEditPage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -77,7 +77,7 @@ export default function ProductEditPage() {
   if (!product) return <div style={{ padding: 24 }}>Product not found</div>;
 
   return (
-    <FormPageLayout title="Redaguoti prekę" subtitle={`ID: ${id}`}>
+    <FormPageLayout title="Redaguoti prekę" subtitle={`ID: ${id}`} actions={<button className="od-back-btn" onClick={() => navigate(-1)}><FiArrowLeft size={16} /> Grįžti</button>}>
       <SmartForm
         key={`edit-${id}`}
         fields={fields}

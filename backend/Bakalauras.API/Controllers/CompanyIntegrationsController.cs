@@ -1,8 +1,14 @@
+// Controllers/CompanyIntegrationsController.cs
+// FULL REPLACEMENT of your existing file.
+// Adds DPD integration endpoints (PUT/POST/DELETE /dpd) alongside the existing BUTENT endpoints.
+// The pattern is identical for every future provider — just copy the DPD block and change the type string.
+
 using Bakalauras.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Bakalauras.API.Dtos;
+
 [ApiController]
 [Route("api/companies/{companyId:int}/integrations")]
 [Authorize]
@@ -10,18 +16,15 @@ public class CompanyIntegrationsController : ControllerBase
 {
     private readonly AppDbContext _db;
 
-    public CompanyIntegrationsController(AppDbContext db)
-    {
-        _db = db;
-    }
+    public CompanyIntegrationsController(AppDbContext db) => _db = db;
+
+    // ── Auth helpers ──────────────────────────────────────────────────────────
 
     private async Task<string?> GetMyRoleInCompany(int companyId, int userId)
-    {
-        return await _db.company_users.AsNoTracking()
+        => await _db.company_users.AsNoTracking()
             .Where(cu => cu.fk_Companyid_Company == companyId && cu.fk_Usersid_Users == userId)
             .Select(cu => cu.role)
             .FirstOrDefaultAsync();
-    }
 
     private static bool CanManageIntegrations(string? role)
         => string.Equals(role, "OWNER", StringComparison.OrdinalIgnoreCase)
@@ -30,18 +33,14 @@ public class CompanyIntegrationsController : ControllerBase
     private async Task<bool> CanManageThisCompany(int companyId)
     {
         if (User.IsMasterAdmin()) return true;
-
-        var activeCompanyId = User.GetCompanyId();
-        if (activeCompanyId != companyId) return false;
-
-        var userId = User.GetUserId();
-        var role = await GetMyRoleInCompany(companyId, userId);
+        if (User.GetCompanyId() != companyId) return false;
+        var role = await GetMyRoleInCompany(companyId, User.GetUserId());
         return CanManageIntegrations(role);
     }
 
-    // ------------------------------------------
-    // LIST (be password)
-    // ------------------------------------------
+    // ── GET /api/companies/{companyId}/integrations ───────────────────────────
+    // Lists all integrations for the company (without passwords).
+
     [HttpGet]
     public async Task<IActionResult> List(int companyId)
     {
@@ -53,11 +52,11 @@ public class CompanyIntegrationsController : ControllerBase
             .OrderByDescending(x => x.updatedAt)
             .Select(x => new CompanyIntegrationViewDto
             {
-                Id = x.id_CompanyIntegration,
+                Id        = x.id_CompanyIntegration,
                 CompanyId = x.fk_Companyid_Company,
-                Type = x.type,
-                BaseUrl = x.baseUrl,
-                Enabled = x.enabled == true,
+                Type      = x.type,
+                BaseUrl   = x.baseUrl,
+                Enabled   = x.enabled == true,
                 UpdatedAt = x.updatedAt
             })
             .ToListAsync();
@@ -65,26 +64,120 @@ public class CompanyIntegrationsController : ControllerBase
         return Ok(items);
     }
 
-    // ------------------------------------------
-    // UPSERT BUTENT (1 per company by unique key)
-    // ------------------------------------------
+    // ══════════════════════════════════════════════════════════════════════════
+    //  BUTENT
+    // ══════════════════════════════════════════════════════════════════════════
+
     [HttpPut("butent")]
     public async Task<IActionResult> UpsertButent(int companyId, [FromBody] CompanyIntegrationUpsertDto dto)
     {
         if (!await CanManageThisCompany(companyId))
             return Forbid("You cannot manage integrations of this company.");
 
-        var type = (dto.Type ?? "BUTENT").Trim().ToUpperInvariant();
-        if (type != "BUTENT") return BadRequest("Only BUTENT integration supported here.");
+        if (string.IsNullOrWhiteSpace(dto.Username)) return BadRequest("Username required.");
+        if (string.IsNullOrWhiteSpace(dto.Password)) return BadRequest("Password required.");
+
+        var baseUrl = NormalizeBaseUrl(dto.BaseUrl);
+        if (dto.BaseUrl != null && baseUrl == null)
+            return BadRequest("BaseUrl is not a valid absolute URL.");
+
+        return await UpsertIntegration(companyId, "BUTENT", dto.Username, dto.Password, baseUrl, dto.Enabled);
+    }
+
+    [HttpPost("butent/disable")]
+    public async Task<IActionResult> DisableButent(int companyId)
+        => await DisableIntegration(companyId, "BUTENT");
+
+    [HttpDelete("butent")]
+    public async Task<IActionResult> DeleteButent(int companyId)
+        => await DeleteIntegration(companyId, "BUTENT");
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  DPD
+    //  Enabling DPD also ensures the global DPD courier rows exist in the DB.
+    // ══════════════════════════════════════════════════════════════════════════
+
+    [HttpPut("dpd")]
+    public async Task<IActionResult> UpsertDpd(int companyId, [FromBody] CompanyIntegrationUpsertDto dto)
+    {
+        if (!await CanManageThisCompany(companyId))
+            return Forbid("You cannot manage integrations of this company.");
 
         if (string.IsNullOrWhiteSpace(dto.Username)) return BadRequest("Username required.");
         if (string.IsNullOrWhiteSpace(dto.Password)) return BadRequest("Password required.");
 
-        var baseUrl = string.IsNullOrWhiteSpace(dto.BaseUrl) ? null : dto.BaseUrl.Trim();
-        if (baseUrl != null && !Uri.TryCreate(baseUrl, UriKind.Absolute, out _))
-            return BadRequest("BaseUrl invalid.");
+        // Default to sandbox URL; company can override via BaseUrl
+        var baseUrl = string.IsNullOrWhiteSpace(dto.BaseUrl)
+            ? "https://sandbox-esiunta.dpd.lt/api/v1/"
+            : dto.BaseUrl.Trim();
 
-        var secretsJson = IntegrationSecrets.Pack(dto.Username, dto.Password, baseUrl);
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out _))
+            return BadRequest("BaseUrl is not a valid absolute URL.");
+
+        var result = await UpsertIntegration(companyId, "DPD", dto.Username, dto.Password, baseUrl, dto.Enabled);
+
+        // Seed global DPD courier rows once (only if they don't exist yet)
+        await EnsureDpdCouriersExistAsync();
+
+        return result;
+    }
+
+    [HttpPost("dpd/disable")]
+    public async Task<IActionResult> DisableDpd(int companyId)
+        => await DisableIntegration(companyId, "DPD");
+
+    [HttpDelete("dpd")]
+    public async Task<IActionResult> DeleteDpd(int companyId)
+    {
+        var result = await DeleteIntegration(companyId, "DPD");
+        // Also clear the cached DPD token so it cannot be reused
+        var integ = await _db.company_integrations
+            .FirstOrDefaultAsync(ci => ci.fk_Companyid_Company == companyId && ci.type == "DPD");
+        if (integ != null)
+        {
+            integ.dpdToken         = null;
+            integ.dpdTokenExpires  = null;
+            integ.dpdTokenSecretId = null;
+            await _db.SaveChangesAsync();
+        }
+        return result;
+    }
+
+    // ── LP Express (add more providers here with the same pattern) ────────────
+
+    [HttpPut("lp-express")]
+    public async Task<IActionResult> UpsertLpExpress(int companyId, [FromBody] CompanyIntegrationUpsertDto dto)
+    {
+        if (!await CanManageThisCompany(companyId))
+            return Forbid();
+
+        if (string.IsNullOrWhiteSpace(dto.Username)) return BadRequest("Username required.");
+        if (string.IsNullOrWhiteSpace(dto.Password)) return BadRequest("Password required.");
+
+        var baseUrl = string.IsNullOrWhiteSpace(dto.BaseUrl)
+            ? "https://api.lpexpress.lt/v2/"
+            : dto.BaseUrl.Trim();
+
+        return await UpsertIntegration(companyId, "LP_EXPRESS", dto.Username, dto.Password, baseUrl, dto.Enabled);
+    }
+
+    [HttpPost("lp-express/disable")]
+    public async Task<IActionResult> DisableLpExpress(int companyId)
+        => await DisableIntegration(companyId, "LP_EXPRESS");
+
+    [HttpDelete("lp-express")]
+    public async Task<IActionResult> DeleteLpExpress(int companyId)
+        => await DeleteIntegration(companyId, "LP_EXPRESS");
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  Shared private helpers — all providers use these
+    // ══════════════════════════════════════════════════════════════════════════
+
+    private async Task<IActionResult> UpsertIntegration(
+        int companyId, string type,
+        string username, string password, string? baseUrl, bool enabled)
+    {
+        var secretsJson = IntegrationSecrets.Pack(username, password, baseUrl);
 
         var existing = await _db.company_integrations
             .FirstOrDefaultAsync(x => x.fk_Companyid_Company == companyId && x.type == type);
@@ -94,18 +187,22 @@ public class CompanyIntegrationsController : ControllerBase
             existing = new company_integration
             {
                 fk_Companyid_Company = companyId,
-                type = type,
-                baseUrl = baseUrl,
-                encryptedSecrets = secretsJson,
-                enabled = dto.Enabled
+                type                 = type,
+                baseUrl              = baseUrl,
+                encryptedSecrets     = secretsJson,
+                enabled              = enabled
             };
             _db.company_integrations.Add(existing);
         }
         else
         {
-            existing.baseUrl = baseUrl;
+            existing.baseUrl          = baseUrl;
             existing.encryptedSecrets = secretsJson;
-            existing.enabled = dto.Enabled;
+            existing.enabled          = enabled;
+            // Invalidate cached token whenever credentials change
+            existing.dpdToken         = null;
+            existing.dpdTokenExpires  = null;
+            existing.dpdTokenSecretId = null;
         }
 
         await _db.SaveChangesAsync();
@@ -113,46 +210,60 @@ public class CompanyIntegrationsController : ControllerBase
         return Ok(new
         {
             companyId,
-            type = existing.type,
-            enabled = existing.enabled,
-            baseUrl = existing.baseUrl,
+            type      = existing.type,
+            enabled   = existing.enabled,
+            baseUrl   = existing.baseUrl,
             updatedAt = existing.updatedAt
         });
     }
 
-    // ------------------------------------------
-    // DISABLE BUTENT
-    // ------------------------------------------
-    [HttpPost("butent/disable")]
-    public async Task<IActionResult> DisableButent(int companyId)
+    private async Task<IActionResult> DisableIntegration(int companyId, string type)
     {
-        if (!await CanManageThisCompany(companyId))
-            return Forbid("You cannot manage integrations of this company.");
+        if (!await CanManageThisCompany(companyId)) return Forbid();
 
         var existing = await _db.company_integrations
-            .FirstOrDefaultAsync(x => x.fk_Companyid_Company == companyId && x.type == "BUTENT");
+            .FirstOrDefaultAsync(x => x.fk_Companyid_Company == companyId && x.type == type);
 
-        if (existing == null) return NotFound("BUTENT integration not found.");
+        if (existing == null) return NotFound($"{type} integration not found.");
 
         existing.enabled = false;
         await _db.SaveChangesAsync();
-
         return Ok();
     }
-    [HttpDelete("butent")]
-    public async Task<IActionResult> DeleteButent(int companyId)
+
+    private async Task<IActionResult> DeleteIntegration(int companyId, string type)
     {
-        if (!await CanManageThisCompany(companyId))
-            return Forbid("You cannot manage integrations of this company.");
+        if (!await CanManageThisCompany(companyId)) return Forbid();
 
         var existing = await _db.company_integrations
-            .FirstOrDefaultAsync(x => x.fk_Companyid_Company == companyId && x.type == "BUTENT");
+            .FirstOrDefaultAsync(x => x.fk_Companyid_Company == companyId && x.type == type);
 
-        if (existing == null) return NotFound("BUTENT integration not found.");
+        if (existing == null) return NotFound($"{type} integration not found.");
 
         _db.company_integrations.Remove(existing);
         await _db.SaveChangesAsync();
-
         return NoContent();
+    }
+
+    private async Task EnsureDpdCouriersExistAsync()
+    {
+        var hasDpdParcel = await _db.couriers
+            .AnyAsync(c => c.type == "DPD_PARCEL" && c.fk_Companyid_Company == null);
+
+        if (!hasDpdParcel)
+        {
+            _db.couriers.AddRange(
+                new courier { name = "DPD Paštomatas", type = "DPD_PARCEL", deliveryTermDays = 2, deliveryPrice = 3.50, fk_Companyid_Company = null },
+                new courier { name = "DPD Kurjeris",   type = "DPD_HOME",   deliveryTermDays = 1, deliveryPrice = 5.00, fk_Companyid_Company = null }
+            );
+            await _db.SaveChangesAsync();
+        }
+    }
+
+    private static string? NormalizeBaseUrl(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var trimmed = raw.Trim();
+        return Uri.TryCreate(trimmed, UriKind.Absolute, out _) ? trimmed : null;
     }
 }

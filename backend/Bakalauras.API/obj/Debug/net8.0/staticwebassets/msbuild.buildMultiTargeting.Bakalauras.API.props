@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="..\build\Bakalauras.API.props" />
-</Project>

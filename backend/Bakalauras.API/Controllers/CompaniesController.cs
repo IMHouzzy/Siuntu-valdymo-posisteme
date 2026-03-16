@@ -1,27 +1,35 @@
+// Controllers/CompaniesController.cs
+// FULL REPLACEMENT.
+// Changes from your existing version:
+//   • List / Get now return the new structured address fields
+//   • Create / Update now read and save them from the DTO
+
 using Bakalauras.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Bakalauras.API.Dtos;
+
 [ApiController]
 [Route("api/companies")]
 [Authorize]
 public class CompaniesController : ControllerBase
 {
-    private readonly AppDbContext _db;
-    private readonly JwtService _jwt;
+    private readonly AppDbContext        _db;
+    private readonly JwtService          _jwt;
+    private readonly IWebHostEnvironment _env;
 
-    public CompaniesController(AppDbContext db, JwtService jwt)
+    public CompaniesController(AppDbContext db, JwtService jwt, IWebHostEnvironment env)
     {
-        _db = db;
+        _db  = db;
         _jwt = jwt;
+        _env = env;
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private async Task<string?> GetMyRoleInCompany(int companyId, int userId)
-        => await _db.company_users
-            .AsNoTracking()
+        => await _db.company_users.AsNoTracking()
             .Where(cu => cu.fk_Companyid_Company == companyId && cu.fk_Usersid_Users == userId)
             .Select(cu => cu.role)
             .FirstOrDefaultAsync();
@@ -37,15 +45,42 @@ public class CompaniesController : ControllerBase
     private async Task<bool> CanManageThisCompanyMembers(int companyId)
     {
         if (User.IsMasterAdmin()) return true;
-
         var activeCompanyId = User.GetCompanyId();
         if (activeCompanyId != companyId) return false;
-
         var role = await GetMyRoleInCompany(companyId, User.GetUserId());
         return CanManageMembers(role);
     }
 
-    // ── LIST ─────────────────────────────────────────────────────────────────
+    // ── Shared select projection (avoids repeating the same anonymous type) ──
+
+    private static object MapCompany(company c) => new
+    {
+        c.id_Company,
+        c.name,
+        code = c.companyCode,
+        c.active,
+        c.creationDate,
+        c.email,
+        c.phoneNumber,
+        c.address,
+        c.documentCode,
+        c.image,
+        // Legacy free-text address strings
+        c.shippingAddress,
+        c.returnAddress,
+        // Structured shipping address
+        c.shippingStreet,
+        c.shippingCity,
+        c.shippingPostalCode,
+        c.shippingCountry,
+        // Structured return address
+        c.returnStreet,
+        c.returnCity,
+        c.returnPostalCode,
+        c.returnCountry,
+    };
+
+    // ── LIST ──────────────────────────────────────────────────────────────────
 
     [HttpGet]
     public async Task<IActionResult> List()
@@ -62,29 +97,11 @@ public class CompaniesController : ControllerBase
                 cu.fk_Companyid_Company == c.id_Company));
         }
 
-        var items = await q
-            .OrderByDescending(c => c.id_Company)
-            .Select(c => new
-            {
-                c.id_Company,
-                c.name,
-                code = c.companyCode,
-                c.active,
-                c.creationDate,
-                c.email,
-                c.phoneNumber,
-                c.address,
-                c.shippingAddress,
-                c.returnAddress,
-                c.documentCode,
-                c.image
-            })
-            .ToListAsync();
-
-        return Ok(items);
+        var items = await q.OrderByDescending(c => c.id_Company).ToListAsync();
+        return Ok(items.Select(MapCompany));
     }
 
-    // ── DETAILS ──────────────────────────────────────────────────────────────
+    // ── GET ───────────────────────────────────────────────────────────────────
 
     [HttpGet("{id:int}")]
     public async Task<IActionResult> Get(int id)
@@ -96,40 +113,22 @@ public class CompaniesController : ControllerBase
         {
             var member = await _db.company_users.AsNoTracking()
                 .AnyAsync(cu => cu.fk_Usersid_Users == userId && cu.fk_Companyid_Company == id);
-
             if (!member) return Forbid("Not in this company.");
         }
 
         var c = await _db.companies.AsNoTracking()
-            .Where(x => x.id_Company == id)
-            .Select(x => new
-            {
-                x.id_Company,
-                x.name,
-                code = x.companyCode,
-                x.active,
-                x.creationDate,
-                x.email,
-                x.phoneNumber,
-                x.address,
-                x.shippingAddress,
-                x.returnAddress,
-                x.documentCode,
-                x.image
-            })
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(x => x.id_Company == id);
 
         if (c == null) return NotFound();
-        return Ok(c);
+        return Ok(MapCompany(c));
     }
 
-    // ── CREATE (master only) ─────────────────────────────────────────────────
+    // ── CREATE (master only) ──────────────────────────────────────────────────
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CompanyUpsertDto dto)
     {
         if (!User.IsMasterAdmin()) return Forbid("Only master admin can create companies.");
-
         if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("Name required.");
         if (string.IsNullOrWhiteSpace(dto.CompanyCode)) return BadRequest("CompanyCode required.");
 
@@ -147,19 +146,32 @@ public class CompaniesController : ControllerBase
                 companyCode = dto.CompanyCode.Trim(),
                 active = dto.Active,
                 creationDate = DateTime.UtcNow,
-                shippingAddress = dto.ShippingAddress,
-                returnAddress = dto.ReturnAddress,
                 documentCode = dto.DocumentCode ?? "",
                 phoneNumber = dto.PhoneNumber ?? "",
                 address = dto.Address ?? "",
                 email = dto.Email ?? "",
-                image = dto.Image ?? ""
+                image = dto.Image ?? "",
+
+                // Legacy free-text
+                shippingAddress = dto.ShippingAddress,
+                returnAddress = dto.ReturnAddress,
+
+                // Structured shipping
+                shippingStreet = dto.ShippingStreet?.Trim(),
+                shippingCity = dto.ShippingCity?.Trim(),
+                shippingPostalCode = dto.ShippingPostalCode?.Trim(),
+                shippingCountry = string.IsNullOrWhiteSpace(dto.ShippingCountry) ? "LT" : dto.ShippingCountry.Trim().ToUpper(),
+
+                // Structured return
+                returnStreet = dto.ReturnStreet?.Trim(),
+                returnCity = dto.ReturnCity?.Trim(),
+                returnPostalCode = dto.ReturnPostalCode?.Trim(),
+                returnCountry = string.IsNullOrWhiteSpace(dto.ReturnCountry) ? "LT" : dto.ReturnCountry.Trim().ToUpper(),
             };
 
             _db.companies.Add(c);
             await _db.SaveChangesAsync();
 
-            // Auto-assign creator as OWNER
             var exists = await _db.company_users.AnyAsync(cu =>
                 cu.fk_Companyid_Company == c.id_Company &&
                 cu.fk_Usersid_Users == creatorUserId);
@@ -189,7 +201,7 @@ public class CompaniesController : ControllerBase
         }
     }
 
-    // ── UPDATE ───────────────────────────────────────────────────────────────
+    // ── UPDATE ────────────────────────────────────────────────────────────────
 
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] CompanyUpsertDto dto)
@@ -201,7 +213,6 @@ public class CompaniesController : ControllerBase
         {
             var activeCompanyId = User.GetCompanyId();
             if (activeCompanyId != id) return Forbid("You can edit only your company.");
-
             var role = await GetMyRoleInCompany(id, userId);
             if (!CanEditCompany(role)) return Forbid("Only company admin can edit this company.");
         }
@@ -213,26 +224,38 @@ public class CompaniesController : ControllerBase
         {
             if (!isMaster) return Forbid("Only master can change company code.");
             if (string.IsNullOrWhiteSpace(dto.CompanyCode)) return BadRequest("CompanyCode required.");
-
             if (await _db.companies.AnyAsync(x => x.id_Company != id && x.companyCode == dto.CompanyCode))
                 return Conflict("CompanyCode already exists.");
-
             c.companyCode = dto.CompanyCode.Trim();
         }
 
         c.name = dto.Name?.Trim() ?? c.name;
         c.active = dto.Active;
-        c.shippingAddress = dto.ShippingAddress;
-        c.returnAddress = dto.ReturnAddress;
         c.documentCode = dto.DocumentCode ?? "";
         c.phoneNumber = dto.PhoneNumber ?? "";
         c.address = dto.Address ?? "";
         c.email = dto.Email ?? "";
         c.image = dto.Image ?? "";
 
+        // Legacy free-text
+        c.shippingAddress = dto.ShippingAddress;
+        c.returnAddress = dto.ReturnAddress;
+
+        // Structured shipping
+        c.shippingStreet = dto.ShippingStreet?.Trim();
+        c.shippingCity = dto.ShippingCity?.Trim();
+        c.shippingPostalCode = dto.ShippingPostalCode?.Trim();
+        c.shippingCountry = string.IsNullOrWhiteSpace(dto.ShippingCountry) ? "LT" : dto.ShippingCountry.Trim().ToUpper();
+
+        // Structured return
+        c.returnStreet = dto.ReturnStreet?.Trim();
+        c.returnCity = dto.ReturnCity?.Trim();
+        c.returnPostalCode = dto.ReturnPostalCode?.Trim();
+        c.returnCountry = string.IsNullOrWhiteSpace(dto.ReturnCountry) ? "LT" : dto.ReturnCountry.Trim().ToUpper();
+
         await _db.SaveChangesAsync();
 
-        // Refresh token if this edited company is the caller's active company
+        // Refresh JWT if this is the caller's active company
         var activeCompanyIdClaim = User.GetCompanyId();
         if (isMaster || activeCompanyIdClaim == id)
         {
@@ -244,7 +267,7 @@ public class CompaniesController : ControllerBase
         return Ok();
     }
 
-    // ── DELETE (master only) ─────────────────────────────────────────────────
+    // ── DELETE (master only) ──────────────────────────────────────────────────
 
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
@@ -256,11 +279,10 @@ public class CompaniesController : ControllerBase
 
         _db.companies.Remove(c);
         await _db.SaveChangesAsync();
-
         return NoContent();
     }
 
-    // ── MEMBERS LIST ─────────────────────────────────────────────────────────
+    // ── MEMBERS LIST ──────────────────────────────────────────────────────────
 
     [HttpGet("{id:int}/members")]
     public async Task<IActionResult> Members(int id)
@@ -268,8 +290,7 @@ public class CompaniesController : ControllerBase
         if (!await CanManageThisCompanyMembers(id))
             return Forbid("You cannot view members of this company.");
 
-        var members = await _db.company_users
-            .AsNoTracking()
+        var members = await _db.company_users.AsNoTracking()
             .Where(cu => cu.fk_Companyid_Company == id)
             .Where(cu => cu.role == "OWNER" || cu.role == "ADMIN" || cu.role == "STAFF")
             .Select(cu => new
@@ -289,7 +310,7 @@ public class CompaniesController : ControllerBase
         return Ok(members);
     }
 
-    // ── ADD MEMBER ───────────────────────────────────────────────────────────
+    // ── ADD MEMBER ────────────────────────────────────────────────────────────
 
     [HttpPost("{id:int}/members")]
     public async Task<IActionResult> AddMember(int id, [FromBody] MemberUpsertDto dto)
@@ -305,11 +326,9 @@ public class CompaniesController : ControllerBase
 
         if (!await _db.companies.AnyAsync(c => c.id_Company == id))
             return NotFound("Company not found.");
-
         if (!await _db.users.AnyAsync(u => u.id_Users == dto.UserId))
             return NotFound("User not found.");
 
-        // Staff/admin/owner can only belong to one company in that capacity
         if (roleToSet is "OWNER" or "ADMIN" or "STAFF")
         {
             var hasStaffElsewhere = await _db.company_users.AsNoTracking()
@@ -317,7 +336,6 @@ public class CompaniesController : ControllerBase
                     cu.fk_Usersid_Users == dto.UserId &&
                     cu.fk_Companyid_Company != id &&
                     (cu.role == "OWNER" || cu.role == "ADMIN" || cu.role == "STAFF"));
-
             if (hasStaffElsewhere)
                 return Conflict("This user already has STAFF/ADMIN/OWNER role in another company.");
         }
@@ -358,7 +376,7 @@ public class CompaniesController : ControllerBase
         }
     }
 
-    // ── UPDATE MEMBER ROLE ───────────────────────────────────────────────────
+    // ── UPDATE MEMBER ROLE ────────────────────────────────────────────────────
 
     [HttpPut("{id:int}/members/{userId:int}")]
     public async Task<IActionResult> UpdateMemberRole(int id, int userId, [FromBody] MemberUpsertDto dto)
@@ -378,7 +396,6 @@ public class CompaniesController : ControllerBase
                 .Where(u => u.id_Users == userId)
                 .Select(u => u.isMasterAdmin)
                 .FirstOrDefaultAsync();
-
             if (targetIsMaster) return Forbid("You cannot change master admin role.");
         }
 
@@ -393,7 +410,6 @@ public class CompaniesController : ControllerBase
                     cu.fk_Usersid_Users == userId &&
                     cu.fk_Companyid_Company != id &&
                     (cu.role == "OWNER" || cu.role == "ADMIN" || cu.role == "STAFF"));
-
             if (hasStaffElsewhere)
                 return Conflict("This user already has STAFF/ADMIN/OWNER role in another company.");
         }
@@ -403,7 +419,6 @@ public class CompaniesController : ControllerBase
         {
             var cu = await _db.company_users
                 .FirstOrDefaultAsync(x => x.fk_Companyid_Company == id && x.fk_Usersid_Users == userId);
-
             if (cu == null) return NotFound("Membership not found.");
 
             cu.role = nextRole;
@@ -412,7 +427,6 @@ public class CompaniesController : ControllerBase
 
             await _db.SaveChangesAsync();
             await tx.CommitAsync();
-
             return Ok(new { userId, role = cu.role });
         }
         catch (Exception ex)
@@ -422,7 +436,7 @@ public class CompaniesController : ControllerBase
         }
     }
 
-    // ── REMOVE MEMBER (demote to CLIENT or remove entirely) ──────────────────
+    // ── REMOVE MEMBER ─────────────────────────────────────────────────────────
 
     [HttpDelete("{id:int}/members/{userId:int}")]
     public async Task<IActionResult> RemoveMember(int id, int userId)
@@ -442,7 +456,6 @@ public class CompaniesController : ControllerBase
                 .Where(u => u.id_Users == userId)
                 .Select(u => u.isMasterAdmin)
                 .FirstOrDefaultAsync();
-
             if (targetIsMaster) return Forbid("You cannot remove master admin.");
         }
 
@@ -451,10 +464,8 @@ public class CompaniesController : ControllerBase
         {
             var cu = await _db.company_users
                 .FirstOrDefaultAsync(x => x.fk_Companyid_Company == id && x.fk_Usersid_Users == userId);
-
             if (cu == null) return NotFound();
 
-            // If they also have a client_company row keep them as CLIENT, otherwise remove
             var isClient = await _db.client_companies.AnyAsync(cc =>
                 cc.fk_Companyid_Company == id && cc.fk_Clientid_Users == userId);
 
@@ -471,7 +482,6 @@ public class CompaniesController : ControllerBase
 
             await _db.SaveChangesAsync();
             await tx.CommitAsync();
-
             return Ok(new { userId, role = isClient ? "CLIENT" : "REMOVED" });
         }
         catch (Exception ex)
@@ -481,7 +491,7 @@ public class CompaniesController : ControllerBase
         }
     }
 
-    // ── ASSIGNABLE USERS ─────────────────────────────────────────────────────
+    // ── ASSIGNABLE USERS ──────────────────────────────────────────────────────
 
     [HttpGet("{id:int}/assignable-users")]
     public async Task<IActionResult> AssignableUsers(int id)
@@ -506,5 +516,51 @@ public class CompaniesController : ControllerBase
             .ToListAsync();
 
         return Ok(users);
+    }
+    // ── LOGO UPLOAD ───────────────────────────────────────────────────────────────
+    // POST /api/companies/{id}/logo
+    // Saves file to wwwroot/uploads/companies/{id}/logo.{ext}
+    // Returns { imageUrl: "/uploads/companies/{id}/logo.jpg" }
+
+ [HttpPost("{id:int}/logo")]
+public async Task<IActionResult> UploadLogo(int id, IFormFile file)
+    {
+        var userId = User.GetUserId();
+        var isMaster = User.IsMasterAdmin();
+
+        if (!isMaster)
+        {
+            var activeCompanyId = User.GetCompanyId();
+            if (activeCompanyId != id) return Forbid("You can edit only your company.");
+            var role = await GetMyRoleInCompany(id, userId);
+            if (!CanEditCompany(role)) return Forbid("Only company admin can edit this company.");
+        }
+
+        if (file == null || file.Length == 0)
+            return BadRequest("No file provided.");
+
+        var allowed = new[] { ".jpg", ".jpeg", ".png", ".webp", ".svg" };
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowed.Contains(ext))
+            return BadRequest("Allowed formats: jpg, png, webp, svg.");
+
+        var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+        var dir = Path.Combine(webRoot, "uploads", "companies", id.ToString());
+        Directory.CreateDirectory(dir);
+
+        // Always overwrite to the same filename — simple, no orphans
+        var fileName = $"logo{ext}";
+        var fullPath = Path.Combine(dir, fileName);
+
+        await using var stream = System.IO.File.Create(fullPath);
+        await file.CopyToAsync(stream);
+
+        var imageUrl = $"/uploads/companies/{id}/{fileName}";
+
+        // Persist to DB
+        var c = await _db.companies.FirstOrDefaultAsync(x => x.id_Company == id);
+        if (c != null) { c.image = imageUrl; await _db.SaveChangesAsync(); }
+
+        return Ok(new { imageUrl });
     }
 }

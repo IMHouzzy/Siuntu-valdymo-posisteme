@@ -19,5 +19,11 @@ public partial class company_integration
 
     public DateTime updatedAt { get; set; }
 
+    public string? dpdToken { get; set; }
+
+    public DateTime? dpdTokenExpires { get; set; }
+
+    public string? dpdTokenSecretId { get; set; }
+
     public virtual company fk_Companyid_CompanyNavigation { get; set; } = null!;
 }

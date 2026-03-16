@@ -72,12 +72,19 @@ builder.Services.AddCors(options =>
         // .AllowCredentials(); // ✅ tik jei naudoji cookies. Su Bearer dažniausiai nereikia
     });
 });
+
+// Encryption key for integration secrets
+var encKey = builder.Configuration["Encryption:Key"]
+    ?? throw new InvalidOperationException("Encryption:Key is missing in configuration.");
+IntegrationSecrets.Configure(encKey);
+
 QuestPDF.Settings.License = LicenseType.Community;
 // Workers
 builder.Services.AddHostedService<ClientSyncWorker>();
 builder.Services.AddHostedService<ProductSyncWorker>();
 builder.Services.AddHostedService<OrderSyncWorker>();
 
+builder.Services.AddScoped<CourierProviderFactory>();
 var app = builder.Build();
 
 // ✅ svarbi tvarka:

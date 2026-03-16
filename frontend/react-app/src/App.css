@@ -1,12 +1,15 @@
 .layout-container {
   min-height: 100vh;
   display: grid;
+
   grid-template-areas:
     "menu header"
     "menu content"
-    "footer footer";
+    "menu footer";
+
   grid-template-columns: 240px 1fr;
   grid-template-rows: 60px 1fr auto;
+
   transition: grid-template-columns var(--transition-normal);
 }
 
@@ -15,6 +18,6 @@
 }
 
 .layout-header { grid-area: header; }
-.layout-menu { grid-area: menu; height: 100%; }
+.layout-menu { grid-area: menu; }
 .layout-content { grid-area: content; }
 .layout-footer { grid-area: footer; }

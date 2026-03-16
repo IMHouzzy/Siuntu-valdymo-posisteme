@@ -98,6 +98,7 @@
   .sf-grid {
     grid-template-columns: 1fr;
   }
+
   .sf-field.span-2 {
     grid-column: span 1;
   }
@@ -107,32 +108,36 @@
   grid-column: span 2;
 }
 
-.sf-section-title{
+.sf-section-title {
   font-size: var(--text-md);
   font-weight: var(--font-semibold);
   color: var(--color-text-primary);
   margin-top: 8px;
 }
-.sf-section-title span{
- display: inline-flex;
- gap: var(--space-sm);
+
+.sf-section-title span {
+  display: inline-flex;
+  gap: var(--space-sm);
 }
-.sf-section-sub{
+
+.sf-section-sub {
   margin-top: 4px;
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
-.sf-divider.span-2{
+.sf-divider.span-2 {
   grid-column: span 2;
   height: 1px;
   background: var(--color-border);
   margin: 6px 0;
 }
+
 .sf-block.span-2,
 .sf-divider.span-2 {
   grid-column: span 2;
 }
+
 .sf-combo {
   position: relative;
 }
@@ -213,6 +218,7 @@
   padding: 12px;
   color: var(--color-text-muted);
 }
+
 .sf-display {
   height: 42px;
   display: flex;
@@ -225,9 +231,16 @@
   font-weight: 600;
 }
 
-.sf-images { display: flex; flex-direction: column; gap: 10px; }
+.sf-images {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 
-.sf-images-empty { opacity: .7; font-size: 14px; }
+.sf-images-empty {
+  opacity: .7;
+  font-size: 14px;
+}
 
 .sf-images-grid {
   display: grid;
@@ -245,10 +258,23 @@
   gap: 8px;
 }
 
-.sf-img-top { display: flex; justify-content: space-between; align-items: center; }
+.sf-img-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 
-.sf-img-index { font-weight: 700; opacity: .8; }
-.sf-img-badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #f3f3f3; }
+.sf-img-index {
+  font-weight: 700;
+  opacity: .8;
+}
+
+.sf-img-badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f3f3f3;
+}
 
 .sf-img-thumb {
   width: 100%;
@@ -258,8 +284,14 @@
   border: 1px solid var(--color-border);
 }
 
-.sf-img-actions { display: flex; gap: 8px; }
-.sf-btn.danger { color: #b00020; }
+.sf-img-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.sf-btn.danger {
+  color: #b00020;
+}
 
 
 /* ── Append these rules to your existing SmartForm.css ─────────────────────
@@ -283,7 +315,8 @@
 
 .sf-map-overlay {
   position: absolute;
-  inset: 0 0 32px 0; /* leave room for hint bar */
+  inset: 0 0 32px 0;
+  /* leave room for hint bar */
   z-index: 5;
   display: flex;
   flex-direction: column;
@@ -306,7 +339,9 @@
 }
 
 @keyframes sf-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .sf-map-hint {
@@ -429,4 +464,552 @@
   font-size: 13px;
   border: 1px solid var(--color-border, #e8eaed);
   border-radius: var(--radius-md, 8px);
+}
+
+/* ── Append to the bottom of SmartForm.css ──────────────────────────────────── */
+
+/* The overlay root is created by JS and appended to <body>.                    */
+/* It's position:fixed with z-index:99999, so it sits above every stacking      */
+/* context on the page. The panel inside it uses position:absolute.             */
+#sf-overlay-root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 99999;
+  overflow: visible;
+}
+
+/* ── Locker picker ───────────────────────────────────────────────────────── */
+.sf-locker-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.sf-locker-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0;
+  color: var(--color-text-secondary, #6b7280);
+  font-size: 14px;
+}
+
+.sf-locker-state--error {
+  color: var(--color-danger, #ef4444);
+}
+
+.sf-locker-spinner {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  border: 2px solid var(--color-border, #e5e7eb);
+  border-top-color: var(--color-text-secondary, #6b7280);
+  border-radius: 50%;
+  animation: sf-spin 0.7s linear infinite;
+}
+
+/* ── Trigger ─────────────────────────────────────────────────────────────── */
+.sf-locker-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-bg, #f9fafb);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+  min-height: 44px;
+}
+
+.sf-locker-trigger:hover,
+.sf-locker-trigger.is-open {
+  border-color: rgba(37, 99, 235, 0.5);
+  background: #fff;
+}
+
+.sf-locker-trigger.has-value {
+  border-color: rgba(37, 99, 235, 0.4);
+}
+
+.sf-locker-trigger-placeholder {
+  color: var(--color-text-muted, #9ca3af);
+  font-size: 14px;
+}
+
+.sf-locker-trigger-value {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.sf-locker-trigger-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary, #1a1a2e);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sf-locker-trigger-addr {
+  font-size: 12px;
+  color: var(--color-text-secondary, #6b7280);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sf-locker-chevron {
+  font-size: 10px;
+  color: var(--color-text-secondary, #6b7280);
+  flex-shrink: 0;
+}
+
+/* ── Portal panel — absolute inside the fixed overlay root ───────────────── */
+.sf-locker-panel {
+  position: absolute;
+  /* coords set inline by LockerPortalPanel JS */
+  pointer-events: auto;
+  /* re-enable clicks (parent has pointer-events:none) */
+  background: var(--color-bg-card, #fff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.16);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: 360px;
+}
+
+/* ── Search ──────────────────────────────────────────────────────────────── */
+.sf-locker-search-wrap {
+  position: relative;
+  padding: 8px 8px 0;
+  flex-shrink: 0;
+}
+
+.sf-locker-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 30px 8px 10px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-bg, #f9fafb);
+  color: var(--color-text-primary, #1a1a2e);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.sf-locker-search:focus {
+  border-color: rgba(37, 99, 235, 0.5);
+}
+
+.sf-locker-clear {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-30%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted, #9ca3af);
+  font-size: 11px;
+  padding: 2px 4px;
+}
+
+.sf-locker-clear:hover {
+  color: var(--color-text-primary, #1a1a2e);
+}
+
+/* ── Options ─────────────────────────────────────────────────────────────── */
+.sf-locker-options {
+  overflow-y: auto;
+  flex: 1;
+  margin-top: 4px;
+}
+
+.sf-locker-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--color-text-muted, #9ca3af);
+  font-size: 13px;
+}
+
+.sf-locker-option {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border, #f0f0f0);
+  transition: background 0.1s;
+}
+
+.sf-locker-option:last-child {
+  border-bottom: none;
+}
+
+.sf-locker-option:hover {
+  background: var(--color-bg, #f9fafb);
+}
+
+.sf-locker-option.is-selected {
+  background: rgba(37, 99, 235, 0.07);
+  border-left: 3px solid rgba(37, 99, 235, 0.5);
+}
+
+.sf-locker-option-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sf-locker-option-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary, #1a1a2e);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sf-locker-option-badge {
+  font-size: 11px;
+  color: var(--color-text-secondary, #6b7280);
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: var(--color-bg, #f9fafb);
+  padding: 1px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border, #e5e7eb);
+}
+
+.sf-locker-option-addr {
+  font-size: 12px;
+  color: var(--color-text-secondary, #6b7280);
+  margin-top: 2px;
+}
+
+.sf-locker-footer {
+  padding: 5px 12px;
+  font-size: 11px;
+  color: var(--color-text-muted, #9ca3af);
+  border-top: 1px solid var(--color-border, #e5e7eb);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Map ─────────────────────────────────────────────────────────────────── */
+.sf-locker-map-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sf-locker-map {
+  width: 100%;
+  height: 240px;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--color-border, #e5e7eb);
+  overflow: hidden;
+}
+
+.sf-locker-caption {
+  font-size: 12px;
+  color: var(--color-text-secondary, #6b7280);
+  line-height: 1.4;
+}
+
+.sf-locker-caption strong {
+  color: var(--color-text-primary, #1a1a2e);
+  font-weight: 600;
+}
+
+/* ── Courier cards ───────────────────────────────────────────────────────── */
+.sf-courier-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  grid-column: span 2;
+}
+
+.sf-courier-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 14px 12px 12px;
+  border: 1.5px solid var(--color-border, #e5e7eb);
+  border-radius: 10px;
+  background: var(--color-bg, #f9fafb);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+}
+
+.sf-courier-card:hover {
+  border-color: rgba(37, 99, 235, 0.4);
+  background: #fff;
+  transform: translateY(-1px);
+}
+
+.sf-courier-card.is-active {
+  border-color: rgba(37, 99, 235, 0.7);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+.sf-courier-check {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.9);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sf-courier-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+.sf-courier-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary, #1a1a2e);
+  line-height: 1.3;
+  margin-top: 2px;
+}
+
+.sf-courier-meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.sf-courier-own {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.sf-courier-tag {
+  font-size: 11px;
+  color: var(--color-text-secondary, #6b7280);
+  margin-top: 1px;
+}
+
+/* ── Packages widget ─────────────────────────────────────────────────────── */
+.sf-packages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sf-packages-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
+.sf-pkg-add {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-primary, #1a1a2e);
+  background: none;
+  border: 1.5px dashed var(--color-border, #e5e7eb);
+  border-radius: 7px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.sf-pkg-add:hover {
+  border-color: rgba(37, 99, 235, 0.4);
+  background: var(--color-bg, #f9fafb);
+}
+
+.sf-package-row {
+  display: flex;
+  align-items: center;
+  padding: var(--space-sm);
+  gap: 30px;
+  align-items: flex-end;
+}
+
+.sf-package-num {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  margin-bottom: 2px;
+}
+
+.sf-package-weight {
+  flex: 1;
+
+}
+
+.sf-pkg-remove {
+  width: 36px;
+  height: 36px;
+  border-radius: 7px;
+  border: 1px solid var(--color-danger);
+  background:  #ef444432;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  font-size: 16px;
+  line-height: 1;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+  flex-shrink: 0;
+}
+.sf-pkg-remove svg {
+  color: var(--color-danger);
+}
+.sf-pkg-remove:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+
+/* ── Logo uploader ───────────────────────────────────────────────────────── */
+
+.sf-logo-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sf-logo-drop {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  border-radius: var(--radius-lg, 12px);
+  border: 2px dashed var(--color-border, #e5e7eb);
+  background: var(--color-bg, #f9fafb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.sf-logo-drop:hover,
+.sf-logo-drop.is-uploading {
+  border-color: rgba(37, 99, 235, 0.5);
+  background: rgba(37, 99, 235, 0.03);
+}
+
+.sf-logo-drop.has-image {
+  border-style: solid;
+  border-color: var(--color-border, #e5e7eb);
+}
+
+.sf-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 12px;
+}
+
+.sf-logo-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.sf-logo-drop:hover .sf-logo-overlay { opacity: 1; }
+
+.sf-logo-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  text-align: center;
+  color: var(--color-text-muted, #9ca3af);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.sf-logo-icon { width: 45px; height: 45px; }
+
+.sf-logo-hint {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.sf-logo-spinner-wrap {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sf-logo-clear {
+  display: inline-flex;          
+  align-items: center;
+  justify-content: center;
+  gap: 6px;              
+  text-align: center;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: #ff4f4f;                 
+  background-color: rgba(239, 68, 68, 0.1); 
+  border: 1px solid #ff4f4f;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  padding: 6px 14px;               
+  transition: all 0.2s ease-in-out; 
+}
+
+.sf-logo-clear:hover {
+  background-color: #ff4f4f20;
+  transform: translateY(-1px);      
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08); 
 }

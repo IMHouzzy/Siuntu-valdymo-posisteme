@@ -7,7 +7,7 @@ public partial class shipment
 {
     public int id_Shipment { get; set; }
 
-    public string trackingNumber { get; set; } = null!;
+    public string? trackingNumber { get; set; }
 
     public DateTime? shippingDate { get; set; }
 
@@ -22,6 +22,12 @@ public partial class shipment
     public int fk_Ordersid_Orders { get; set; }
 
     public int fk_Companyid_Company { get; set; }
+
+    public string? providerShipmentId { get; set; }
+
+    public string? providerLockerId { get; set; }
+
+    public string? providerParcelNumber { get; set; }
 
     public virtual company fk_Companyid_CompanyNavigation { get; set; } = null!;
 

@@ -150,13 +150,23 @@ public partial class AppDbContext : DbContext
                 .HasColumnType("datetime");
             entity.Property(e => e.documentCode).HasMaxLength(100);
             entity.Property(e => e.email).HasMaxLength(255);
-            entity.Property(e => e.image)
-                .HasMaxLength(255)
-                .HasDefaultValueSql("''");
+            entity.Property(e => e.image).HasMaxLength(255);
             entity.Property(e => e.name).HasMaxLength(255);
             entity.Property(e => e.phoneNumber).HasMaxLength(255);
             entity.Property(e => e.returnAddress).HasMaxLength(255);
+            entity.Property(e => e.returnCity).HasMaxLength(100);
+            entity.Property(e => e.returnCountry)
+                .HasMaxLength(10)
+                .HasDefaultValueSql("'LT'");
+            entity.Property(e => e.returnPostalCode).HasMaxLength(20);
+            entity.Property(e => e.returnStreet).HasMaxLength(100);
             entity.Property(e => e.shippingAddress).HasMaxLength(255);
+            entity.Property(e => e.shippingCity).HasMaxLength(100);
+            entity.Property(e => e.shippingCountry)
+                .HasMaxLength(10)
+                .HasDefaultValueSql("'LT'");
+            entity.Property(e => e.shippingPostalCode).HasMaxLength(20);
+            entity.Property(e => e.shippingStreet).HasMaxLength(100);
         });
 
         modelBuilder.Entity<company_integration>(entity =>
@@ -169,6 +179,9 @@ public partial class AppDbContext : DbContext
 
             entity.Property(e => e.id_CompanyIntegration).HasColumnType("int(11)");
             entity.Property(e => e.baseUrl).HasMaxLength(500);
+            entity.Property(e => e.dpdToken).HasMaxLength(1000);
+            entity.Property(e => e.dpdTokenExpires).HasColumnType("datetime");
+            entity.Property(e => e.dpdTokenSecretId).HasMaxLength(36);
             entity.Property(e => e.enabled)
                 .IsRequired()
                 .HasDefaultValueSql("'1'");
@@ -222,11 +235,22 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("courier");
 
+            entity.HasIndex(e => e.fk_Companyid_Company, "FK_courier_company");
+
             entity.HasIndex(e => e.name, "IX_courier_name");
 
             entity.Property(e => e.id_Courier).HasColumnType("int(11)");
             entity.Property(e => e.contactPhone).HasMaxLength(50);
             entity.Property(e => e.deliveryTermDays).HasColumnType("int(11)");
+            entity.Property(e => e.fk_Companyid_Company).HasColumnType("int(11)");
+            entity.Property(e => e.type)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'CUSTOM'");
+
+            entity.HasOne(d => d.fk_Companyid_CompanyNavigation).WithMany(p => p.couriers)
+                .HasForeignKey(d => d.fk_Companyid_Company)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_courier_company");
         });
 
         modelBuilder.Entity<order>(entity =>
@@ -313,12 +337,16 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => e.fk_Shipmentid_Shipment, "IX_package_shipment");
 
+            entity.HasIndex(e => e.trackingNumber, "UQ_package_trackingNumber").IsUnique();
+
             entity.Property(e => e.id_Package).HasColumnType("int(11)");
             entity.Property(e => e.creationDate)
                 .HasDefaultValueSql("current_timestamp()")
                 .HasColumnType("datetime");
             entity.Property(e => e.fk_Shipmentid_Shipment).HasColumnType("int(11)");
             entity.Property(e => e.labelFile).HasMaxLength(500);
+            entity.Property(e => e.parcelTrackingNumber).HasMaxLength(50);
+            entity.Property(e => e.trackingNumber).HasMaxLength(100);
 
             entity.HasOne(d => d.fk_Shipmentid_ShipmentNavigation).WithMany(p => p.packages)
                 .HasForeignKey(d => d.fk_Shipmentid_Shipment)
@@ -504,13 +532,14 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => e.fk_Ordersid_Orders, "IX_shipment_order");
 
-            entity.HasIndex(e => e.trackingNumber, "UQ_shipment_trackingNumber").IsUnique();
-
             entity.Property(e => e.id_Shipment).HasColumnType("int(11)");
             entity.Property(e => e.estimatedDeliveryDate).HasColumnType("datetime");
             entity.Property(e => e.fk_Companyid_Company).HasColumnType("int(11)");
             entity.Property(e => e.fk_Courierid_Courier).HasColumnType("int(11)");
             entity.Property(e => e.fk_Ordersid_Orders).HasColumnType("int(11)");
+            entity.Property(e => e.providerLockerId).HasMaxLength(20);
+            entity.Property(e => e.providerParcelNumber).HasMaxLength(500);
+            entity.Property(e => e.providerShipmentId).HasMaxLength(36);
             entity.Property(e => e.shippingDate).HasColumnType("datetime");
             entity.Property(e => e.trackingNumber).HasMaxLength(100);
 
@@ -586,6 +615,7 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.email).HasMaxLength(255);
             entity.Property(e => e.fk_Companyid_Company).HasColumnType("int(11)");
             entity.Property(e => e.googleId).HasMaxLength(255);
+            entity.Property(e => e.image).HasMaxLength(255);
             entity.Property(e => e.name).HasMaxLength(255);
             entity.Property(e => e.password).HasMaxLength(255);
             entity.Property(e => e.phoneNumber).HasMaxLength(255);

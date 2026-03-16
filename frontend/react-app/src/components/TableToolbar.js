@@ -44,21 +44,22 @@ export default function TableToolbar({
   onFilterChange,        // (value) => void
 
   rightHeader,           // optional extra controls near AddButton
+  connectBottom = false,   // NEW
 }) {
-  return (
+ return (
     <div className="tb-wrap">
-      {/* HEADER (no background) */}
+      {/* HEADER */}
       <div className="tb-header">
         <h1 className="tb-title">{title}</h1>
 
         <div className="tb-header-right">
           {rightHeader}
-          <AddButton label={addLabel} onClick={onAdd} />
+          {onAdd && <AddButton label={addLabel} onClick={onAdd} />}
         </div>
       </div>
 
-      {/* TOOLS (card background) */}
-      <div className="tb-tools">
+      {/* TOOLS */}
+      <div className={`tb-tools ${connectBottom ? "tb-tools-flat" : "tb-tools-rounded"}`}>
         <div className="tb-search">
           <FiSearch className="tb-search-icon" />
           <input

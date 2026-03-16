@@ -4,7 +4,7 @@ import DataTable from "../../components/DataTable";
 import RightDrawer from "../../components/RightDrawers/RightDrawerSidebar";
 import StatusBadge from "../../components/StatusBadge";
 import TableToolbar from "../../components/TableToolbar";
-import { FiTrash2, FiMapPin, FiDownload, FiExternalLink } from "react-icons/fi";
+import { FiTrash2, FiMapPin, FiDownload, FiExternalLink, FiPackage } from "react-icons/fi";
 import { useAuth } from "../../services/AuthContext";
 import "../../styles/UserPage.css";
 
@@ -45,7 +45,8 @@ function ShipmentsList() {
   }, [selectedShipment?.id_Shipment]);
 
   const deleteShipment = async (s) => {
-    const ok = window.confirm(`Ištrinti siuntą "${s.trackingNumber}"?`);
+    // Use order ID in confirm since shipment tracking is now package-level
+    const ok = window.confirm(`Ištrinti siuntą užsakymui #${s.orderId}?`);
     if (!ok) return;
     const res = await fetch(`${API}/api/shipments/${s.id_Shipment}`, {
       method: "DELETE", headers: authHeaders(),
@@ -76,23 +77,34 @@ function ShipmentsList() {
     const term = q.trim().toLowerCase();
     if (!term) return byStatus;
     return byStatus.filter((s) =>
-      [s.trackingNumber, s.id_Shipment, s.orderId, s.courier?.name,
-      s.latestStatus?.typeName, s.shippingDate, s.estimatedDeliveryDate]
+      // Search by order ID, courier, status, dates, and also providerParcelNumber
+      // (individual package tracking numbers are loaded lazily so not searched here)
+      [s.id_Shipment, s.orderId, s.courier?.name, s.latestStatus?.typeName,
+      s.shippingDate, s.estimatedDeliveryDate, s.providerParcelNumber]
         .some(v => String(v ?? "").toLowerCase().includes(term))
     );
   }, [shipments, q, statusFilter]);
 
   const columns = useMemo(() => [
     {
-      key: "tracking",
-      header: "Siunta / Sekimo nr.",
+      key: "shipment",
+      header: "Siunta",
       sortable: true,
-      accessor: (s) => s.trackingNumber,
+      accessor: (s) => s.orderId,
       cell: (_v, s) => (
         <div className="dt-cell-stack">
-          <div className="dt-cell-primary"
-            style={{ fontFamily: "var(--font-family-mono)", fontSize: "0.8rem" }}>
-            {s.trackingNumber}
+          {/* Show providerParcelNumber (all DPD parcel numbers) or shipment ID */}
+          <div className="dt-cell-primary" style={{ fontFamily: "var(--font-family-mono)", fontSize: "0.8rem" }}>
+            {s.providerParcelNumber
+              // If multiple parcel numbers, show first + count badge
+              ? (() => {
+                const nums = s.providerParcelNumber.split(",");
+                return nums.length > 1
+                  ? <>{nums[0]} <span className="dt-badge">+{nums.length - 1}</span></>
+                  : nums[0];
+              })()
+              : `#${s.id_Shipment}`
+            }
           </div>
           <div className="dt-cell-secondary">Užsakymas #{s.orderId}</div>
         </div>
@@ -147,6 +159,7 @@ function ShipmentsList() {
           </a>
         ) : <span className="dt-cell-secondary">—</span>,
     },
+
     {
       key: "actions",
       header: "",
@@ -154,6 +167,10 @@ function ShipmentsList() {
       align: "right",
       cell: (_v, s) => (
         <div className="dt-actions">
+          <button className="dt-icon-btn" title="Peržiūrėti"
+            onClick={(e) => { e.stopPropagation(); navigate(`/orders/${s.orderId}/detail`); }}>
+            <FiExternalLink />
+          </button>
           <button className="dt-icon-btn danger" title="Ištrinti"
             onClick={(e) => { e.stopPropagation(); deleteShipment(s); }}>
             <FiTrash2 />
@@ -163,36 +180,43 @@ function ShipmentsList() {
     },
   ], [shipments]);
 
-  // ── Hero: status + two date cards ─────────────────────────────────
+  // ── Drawer hero ───────────────────────────────────────────────────
   const shipmentHero = useMemo(() => {
     if (!selectedShipment) return null;
     const s = selectedShipment;
+
+    // Primary display: first parcel number if available, else shipment ID
+    const primaryRef = s.providerParcelNumber
+      ? s.providerParcelNumber.split(",")[0]
+      : `#${s.id_Shipment}`;
+
     return (
       <>
         <div className="shipment-header-wrapper">
           <div>
-            <div className="rd-title">{s.trackingNumber}</div>
-
+            <div className="rd-title" style={{ fontFamily: "var(--font-family-mono)" }}>
+              {primaryRef}
+            </div>
             <div className="shipment-status-bar">
               <div className="rd-subtitle">Užsakymas #{s.orderId}</div>
-              
-              {s.latestStatus?.date && (
+              {s.shippingDate && (
                 <span className="shipment-date-small">
-                  {s.shippingDate ? new Date(s.shippingDate).toLocaleDateString("lt-LT") : "—"}
+                  {new Date(s.shippingDate).toLocaleDateString("lt-LT")}
                 </span>
-              )} <StatusBadge status={s.latestStatus?.typeName ?? "Nežinoma"} />
+              )}
+              <StatusBadge status={s.latestStatus?.typeName ?? "Nežinoma"} />
             </div>
           </div>
           <div className="shipment-hero-actions">
-            <button className="rd-action-btn" title="Atidaryti užsakymą"
-                onClick={() => navigate(`/orders/${selectedShipment.orderId}/shipment/new`)}>
-                <FiExternalLink size={18} />
-              </button>
-              <button className="rd-action-btn danger" title="Ištrinti"
-                onClick={() => deleteShipment(selectedShipment)}>
-                <FiTrash2 size={18} />
-              </button>
-   
+
+            <button className="rd-action-btn" title="Peržiūrėti"
+              onClick={() => navigate(`/orders/${s.orderId}/detail`)}>
+              <FiExternalLink size={18} />
+            </button>
+            <button className="rd-action-btn danger" title="Ištrinti"
+              onClick={() => deleteShipment(s)}>
+              <FiTrash2 size={18} />
+            </button>
           </div>
         </div>
 
@@ -216,29 +240,40 @@ function ShipmentsList() {
     );
   }, [selectedShipment]);
 
+  // ── Drawer sections ───────────────────────────────────────────────
   const drawerSections = useMemo(() => {
     if (!selectedShipment) return [];
     const s = selectedShipment;
 
     const shipmentRows = [
-      { label: "Siuntos ID", value: s.id_Shipment },
-      { label: "Sekimo numeris", value: s.trackingNumber },
+      { label: "Siuntos ID", value: `#${s.id_Shipment}` },
       { label: "Užsakymas", value: `#${s.orderId}` },
-      {
-        label: "Koordinatės",
-        value: s.DeliveryLat && s.DeliveryLng ? (
-          <a href={`https://www.google.com/maps?q=${s.DeliveryLat},${s.DeliveryLng}`}
-            target="_blank" rel="noopener noreferrer">
-            {`${Number(s.DeliveryLat).toFixed(5)}, ${Number(s.DeliveryLng).toFixed(5)}`}
-          </a>
-        ) : "—",
-      },
+      // Show all parcel numbers if multiple, otherwise single value
+      ...(s.providerParcelNumber ? [{
+        label: "Sekimo nr.",
+        value: (() => {
+          const nums = s.providerParcelNumber.split(",").map(n => n.trim()).filter(Boolean);
+          return nums.length === 1
+            ? <span style={{ fontFamily: "var(--font-family-mono)", fontSize: "0.85rem" }}>{nums[0]}</span>
+            : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {nums.map((n, i) => (
+                  <span key={i} style={{ fontFamily: "var(--font-family-mono)", fontSize: "0.82rem" }}>
+                    {n}
+                  </span>
+                ))}
+              </div>
+            );
+        })(),
+      }] : []),
+
     ];
 
     const courierRows = s.courier ? [
       { label: "Pavadinimas", value: s.courier.name ?? "—" },
       {
-        label: "Pristatymo kaina", value: s.courier.deliveryPrice != null
+        label: "Pristatymo kaina",
+        value: s.courier.deliveryPrice != null
           ? `€${Number(s.courier.deliveryPrice).toFixed(2)}` : "—"
       },
     ] : [];
@@ -247,43 +282,69 @@ function ShipmentsList() {
       title: "Pakuotės ir etiketės",
       rows: loadingPackages
         ? [{ label: "Kraunama…", value: "" }]
-        : packages.length === 0 ? [] : [{
-          label: null,
-          value: (
-            <div>
-              {packages.map((p, i) => {
-                const href = p.labelFile
-                  ? (p.labelFile.startsWith("http") ? p.labelFile : `${API}${p.labelFile}`)
-                  : null;
-                return (
-                  <div key={p.id_Package ?? i} className="rd-package-card">
-                    <div className="rd-package-index">{i + 1}</div>
-                    <div className="rd-package-info">
-                      <div style={{
-                        fontSize: "var(--text-sm)",
-                        fontWeight: "var(--font-medium)",
-                        color: "var(--color-text-primary)",
-                      }}>
-                        Paketas {i + 1}
+        : packages.length === 0
+          ? []
+          : [{
+            label: null,
+            value: (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {packages.map((p, i) => {
+                  const href = p.labelFile
+                    ? (p.labelFile.startsWith("http") ? p.labelFile : `${API}${p.labelFile}`)
+                    : null;
+                  return (
+                    <div key={p.id_Package ?? i} className="rd-package-card">
+                      <div className="rd-package-index">
+                        {i + 1}
                       </div>
-                      <div className="rd-package-id">#{p.id_Package}</div>
+                      <div className="rd-package-info" style={{ flex: 1, minWidth: 0 }}>
+                        {/* Package tracking number — primary identifier */}
+                        {p.trackingNumber ? (
+                          <div style={{
+                            fontFamily: "var(--font-family-mono)",
+                            fontSize: "0.78rem",
+                            fontWeight: "var(--font-semibold)",
+                            color: "var(--color-text-primary)",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}>
+                            {p.trackingNumber}
+                          </div>
+                        ) : (
+                          <div style={{
+                            fontSize: "var(--text-sm)",
+                            fontWeight: "var(--font-medium)",
+                            color: "var(--color-text-primary)",
+                          }}>
+                            Paketas {i + 1}
+                          </div>
+                        )}
+                        <div style={{ display: "flex", gap: 8, marginTop: 2 }}>
+                          <span className="rd-package-id">#{p.id_Package}</span>
+                          {p.weight != null && (
+                            <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>
+                              {Number(p.weight).toFixed(2)} kg
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {href ? (
+                        <a className="rd-package-label-link"
+                          href={href} target="_blank" rel="noopener noreferrer" download>
+                          <FiDownload size={11} /> Etiketė
+                        </a>
+                      ) : (
+                        <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>
+                          Nėra etiketės
+                        </span>
+                      )}
                     </div>
-                    {href ? (
-                      <a className="rd-package-label-link"
-                        href={href} target="_blank" rel="noopener noreferrer" download>
-                        <FiDownload size={11} /> Etiketė
-                      </a>
-                    ) : (
-                      <span style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)" }}>
-                        Nėra etiketės
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ),
-        }],
+                  );
+                })}
+              </div>
+            ),
+          }],
       emptyText: "Paketų nerasta.",
     };
 
@@ -303,6 +364,7 @@ function ShipmentsList() {
         filters={statusFilters}
         filterValue={statusFilter}
         onFilterChange={setStatusFilter}
+        connectBottom
       />
       <DataTable
         columns={columns}
@@ -316,7 +378,11 @@ function ShipmentsList() {
       <RightDrawer
         variant="shipment"
         open={!!selectedShipment}
-        title={selectedShipment?.trackingNumber ?? ""}
+        title={
+          selectedShipment?.providerParcelNumber
+            ? selectedShipment.providerParcelNumber.split(",")[0]
+            : `#${selectedShipment?.id_Shipment ?? ""}`
+        }
         subtitle={selectedShipment ? `Užsakymas #${selectedShipment.orderId}` : ""}
         hero={shipmentHero}
         sections={drawerSections}

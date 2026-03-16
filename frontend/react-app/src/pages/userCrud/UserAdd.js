@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SmartForm from "../../components/SmartForm";
 import FormPageLayout from "../../components/FormPageLayout";
-
+import { FiArrowLeft } from "react-icons/fi";
 export default function UserCreatePage() {
     const navigate = useNavigate();
     const [live, setLive] = useState({ isClient: false, isEmployee: false });
@@ -32,37 +32,6 @@ export default function UserCreatePage() {
                 { name: "country", label: "Šalis", colSpan: 1 },
                 { name: "vat", label: "PVM kodas", colSpan: 1 },
                 { name: "bankCode", label: "Banko kodas", type: "number", colSpan: 1 },
-
-                // {
-                //     name: "clientType", label: "Kliento tipas", type: "select", required: true, colSpan: 2,
-                //     options: [
-                //         { value: "PRIVATE", label: "Privatus" },
-                //         { value: "BUSINESS", label: "Įmonė" },
-                //     ],
-                // },
-
-                // // only if business:
-                // {
-                //     name: "companyName",
-                //     label: "Įmonės pavadinimas",
-                //     colSpan: 2,
-                //     visible: (v) => v.clientType === "BUSINESS",
-                //     required: true,
-                // },
-                // {
-                //     name: "companyCode",
-                //     label: "Įmonės kodas",
-                //     colSpan: 1,
-                //     visible: (v) => v.clientType === "BUSINESS",
-                // },
-                // {
-                //     name: "vatCode",
-                //     label: "PVM kodas",
-                //     colSpan: 1,
-                //     visible: (v) => v.clientType === "BUSINESS",
-                // },
-
-                // { name: "billingAddress", label: "Sąskaitos adresas", colSpan: 2 },
             ]
             : [];
 
@@ -105,11 +74,6 @@ export default function UserCreatePage() {
             country: "",
             vat: "",
             bankCode: null,
-            // clientType: "PRIVATE",
-            // companyName: "",
-            // companyCode: "",
-            // vatCode: "",
-            // billingAddress: "",
 
             // employee
             position: "",
@@ -120,7 +84,7 @@ export default function UserCreatePage() {
     );
 
     return (
-        <FormPageLayout title="Kurti naudotoją">
+        <FormPageLayout title="Kurti naudotoją" actions={<button className="od-back-btn" onClick={() => navigate(-1)}><FiArrowLeft size={16} /> Grįžti</button>}>
             <SmartForm
                 fields={fields}
                 initialValues={initialValues}

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import SmartForm from "../../components/SmartForm";
 import FormPageLayout from "../../components/FormPageLayout";
-
+import { FiArrowLeft } from "react-icons/fi";
 export default function UserEditPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -94,7 +94,7 @@ export default function UserEditPage() {
   if (!initialValues) return null;
 
   return (
-    <FormPageLayout title="Redaguoti naudotoją">
+    <FormPageLayout title="Redaguoti naudotoją" actions={<button className="od-back-btn" onClick={() => navigate(-1)}><FiArrowLeft size={16} /> Grįžti</button>}>
       <SmartForm
         fields={fields}
         initialValues={initialValues}

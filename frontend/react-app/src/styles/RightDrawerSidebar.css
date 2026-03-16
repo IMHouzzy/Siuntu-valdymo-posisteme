@@ -248,6 +248,7 @@
   gap: 28px;
   margin-top: 10px;
   width: 100%;
+  text-align: center;
 
 }
 
@@ -903,16 +904,21 @@ color: var(--color-text-muted);
 }
 .rd--company .company-logo-wrapper {
   position: relative;
-  display: inline-block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--color-border);
+  border-radius: 100%;
 }
 
 .rd--company .company-logo {
+ border-radius: 100%;
   width: 100px;
   height: 100px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid var(--color-border);
-  flex-shrink: 0;
+  object-fit:scale-down;
+  padding: 2px;
+
+
 }
 
 .rd--company .company-logo-initials {

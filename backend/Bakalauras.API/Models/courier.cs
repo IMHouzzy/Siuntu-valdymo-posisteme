@@ -15,5 +15,11 @@ public partial class courier
 
     public double? deliveryPrice { get; set; }
 
+    public string type { get; set; } = null!;
+
+    public int? fk_Companyid_Company { get; set; }
+
+    public virtual company? fk_Companyid_CompanyNavigation { get; set; }
+
     public virtual ICollection<shipment> shipments { get; set; } = new List<shipment>();
 }

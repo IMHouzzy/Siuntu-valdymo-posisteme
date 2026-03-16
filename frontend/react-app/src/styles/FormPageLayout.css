@@ -2,7 +2,11 @@
   max-width: 900px;
   margin:  50px auto;
 }
-
+.fpl-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 .fpl-header {
   display: flex;
   justify-content: space-between;

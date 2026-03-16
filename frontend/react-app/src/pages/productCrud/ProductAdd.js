@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SmartForm from "../../components/SmartForm";
 import FormPageLayout from "../../components/FormPageLayout";
-
+import { FiArrowLeft } from "react-icons/fi";
 export default function ProductFormPage() {
   const navigate = useNavigate();
 
@@ -73,7 +73,7 @@ export default function ProductFormPage() {
   }), []);
 
   return (
-    <FormPageLayout title="Kurti prekę">
+    <FormPageLayout title="Kurti prekę" actions={<button className="od-back-btn" onClick={() => navigate(-1)}><FiArrowLeft size={16} /> Grįžti</button>}>
       <SmartForm
         fields={fields}
         initialValues={initialValues}

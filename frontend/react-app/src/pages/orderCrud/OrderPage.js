@@ -5,7 +5,7 @@ import RightDrawer from "../../components/RightDrawers/RightDrawerSidebar";
 import "../../styles/UserPage.css";
 import StatusBadge from "../../components/StatusBadge";
 import TableToolbar from "../../components/TableToolbar";
-import { FiTrash2, FiEdit, FiTruck } from "react-icons/fi";
+import { FiTrash2, FiEdit, FiTruck,FiExternalLink } from "react-icons/fi";
 import { useAuth } from "../../services/AuthContext";
 import NoImage from "../../images/no-camera.png";
 function OrdersList() {
@@ -141,6 +141,10 @@ function OrdersList() {
             align: "right",
             cell: (_v, p) => (
                 <div className="dt-actions">
+                    <button className="dt-icon-btn" title="Peržiūrėti"
+                        onClick={(e) => { e.stopPropagation(); navigate(`/orders/${p.id_Orders}/detail`); }}>
+                        <FiExternalLink />
+                    </button>
                     <button className="dt-icon-btn" title="Redaguoti"
                         onClick={(e) => { e.stopPropagation(); navigate(`/orderEdit/${p.id_Orders}`); }}>
                         <FiEdit />
@@ -168,19 +172,28 @@ function OrdersList() {
                         <div className="rd-subtitle"><span>Doc: {o.externalDocumentId || "—"}</span> </div>
                     </div>
                     <div className="order-hero-actions">
+                        <button className="rd-action-btn" title="Peržiūrėti"
+                            onClick={() => navigate(`/orders/${o.id_Orders}/detail`)}>
+                            <FiExternalLink size={18} />
+                        </button>
                         <button className="rd-action-btn" title="Redaguoti" onClick={() => navigate(`/orderEdit/${o.id_Orders}`)}>
                             <FiEdit size={18} />
                         </button>
-                        <button className="rd-action-btn" title="Registruoti siuntą" onClick={() => navigate(`/orders/${o.id_Orders}/shipment/new`)}>
-                            <FiTruck size={18} />
-                        </button>
+                        {!o.hasShipment && (
+                            <button
+                                className="rd-action-btn"
+                                title="Registruoti siuntą"
+                                onClick={() => navigate(`/orders/${o.id_Orders}/shipment/new`)}>
+                                <FiTruck size={18} />
+                            </button>
+                        )}
                         <button className="rd-action-btn danger" title="Ištrinti" onClick={() => deleteOrder(o)}>
                             <FiTrash2 size={18} />
                         </button>
                     </div>
                 </div>
 
-  
+
 
                 {/* stats */}
                 <div className="order-stats-strip">
@@ -208,9 +221,9 @@ function OrdersList() {
                             {o.products?.length ?? 0}
                         </div>
                     </div>
-                    
+
                     <div className="order-hero-divider" />
-                       <div className="order-hero-stat">
+                    <div className="order-hero-stat">
                         <div className="order-hero-stat-label">Būsena</div>
                         <div className="order-hero-stat-value">
                             <StatusBadge status={o.statusName} />
@@ -294,6 +307,7 @@ function OrdersList() {
                 filters={statusFilters}
                 filterValue={status}
                 onFilterChange={setStatus}
+                connectBottom
             />
             <DataTable
                 columns={columns}

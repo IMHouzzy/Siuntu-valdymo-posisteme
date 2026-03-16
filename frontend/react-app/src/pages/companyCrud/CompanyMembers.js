@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import DataTable from "../../components/DataTable";
 import SearchSelect from "../../components/SearchSelect";
 import { useAuth } from "../../services/AuthContext";
-import { FiTrash2 } from "react-icons/fi";
+import { FiTrash2, FiArrowLeft  } from "react-icons/fi";
 import "../../styles/UserPage.css";
 import "../../styles/CompanyMembers.css";
 const API = "http://localhost:5065";
@@ -258,7 +258,7 @@ export default function CompanyMembers() {
       <div className="co-members-wrapper">
         <h2 className="co-title-members">{`Įmonės ${company ? `${company.name} nariai:` : ""}`}</h2>
         {canManageHere ? (
-          <div className="tb-tools">
+          <div className="tb-tools tb-tools-flat">
             <div className="co-tool-left">
               <div style={{ minWidth: 320 }}>
                 <SearchSelect
