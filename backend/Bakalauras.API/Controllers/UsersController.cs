@@ -153,6 +153,7 @@ public class UsersController : ControllerBase
                 role = dto.Position switch
                 {
                     "ADMIN" or "OWNER" => dto.Position,
+                    "COURIER"          => "COURIER",
                     _                  => "STAFF"
                 };
             else if (dto.IsClient)
@@ -240,7 +241,7 @@ public class UsersController : ControllerBase
 
             // Staff data (from company_users)
             role      = cu?.role,
-            isEmployee = cu != null && (cu.role == "STAFF" || cu.role == "ADMIN" || cu.role == "OWNER"),
+            isEmployee = cu != null && (cu.role == "STAFF" || cu.role == "ADMIN" || cu.role == "OWNER" || cu.role == "COURIER"),
             position  = cu?.position,
             startDate = cu?.startDate,
             active    = cu?.active ?? false,
@@ -320,6 +321,7 @@ public class UsersController : ControllerBase
                 newRole = dto.Position switch
                 {
                     "ADMIN" or "OWNER" => dto.Position,
+                    "COURIER"          => "COURIER",
                     _                  => "STAFF"
                 };
             else if (dto.IsClient)

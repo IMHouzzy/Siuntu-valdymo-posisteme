@@ -1,9 +1,43 @@
+// ============================================================
+// CHANGES TO App.jsx
+// ============================================================
+// 1. Add imports (add alongside existing imports):
+//
+//   import CourierLayout from "./layouts/CourierLayout";
+//   import CourierShipmentsList from "./pages/Courier/CourierShipmentsList";
+//   import CourierShipmentDetail from "./pages/Courier/CourierShipmentDetail";
+//
+// 2. Add a new <Route> block for the COURIER role, alongside the CLIENT block:
+//
+//   {/* COURIER */}
+//   <Route
+//     path="/courier"
+//     element={
+//       <RequireAuth>
+//         <RequireRole allow={["MASTER", "ADMIN", "STAFF", "COURIER"]}>
+//           <CourierLayout />
+//         </RequireRole>
+//       </RequireAuth>
+//     }
+//   >
+//     <Route index element={<CourierShipmentsList />} />
+//     <Route path="shipments/:id" element={<CourierShipmentDetail />} />
+//   </Route>
+//
+// 3. In the STAFF block, also add RequireRole COURIER so admins can preview:
+//    (No change needed — staff already has access via RequireRole allow list)
+//
+// ============================================================
+// Full updated App.jsx below:
+// ============================================================
+
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import AuthLayout from "./layouts/AuthLayout";
 import StaffLayout from "./layouts/StaffLayout";
 import ClientLayout from "./layouts/ClientLayout";
+import CourierLayout from "./layouts/CourierLayout";
 
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
@@ -29,6 +63,11 @@ import UserEdit from "./pages/userCrud/UserEdit";
 // client UI
 import UserHome from "./pages/userCrud/UserHome";
 import UserOrders from "./pages/userCrud/UserOrders";
+import TrackingPage from "./pages/userCrud/TrackingPage";
+
+// courier UI
+import CourierShipmentsList from "./pages/Courier/CourierShipmentsList";
+import CourierShipmentDetail from "./pages/Courier/CourierShipmentDetail";
 
 import RequireAuth from "./components/routing/RequireAuth";
 import RequireRole from "./components/routing/RequireRole";
@@ -40,6 +79,7 @@ import CompanyIntegrations from "./pages/companyCrud/CompanyIntegrations";
 
 import ShipmentRegistration from "./pages/shipmentPages/ShipmentRegistration";
 import ShipmentsPage from "./pages/shipmentPages/ShipmentsPage";
+
 export default function App() {
   return (
     <Routes>
@@ -62,28 +102,24 @@ export default function App() {
           </RequireAuth>
         }
       >
-        {/* / */}
         <Route index element={<HomePage />} />
 
-        {/* /products... */}
         <Route path="productList" element={<ProductPage />} />
         <Route path="productAdd" element={<ProductAdd />} />
         <Route path="productEdit/:id" element={<ProductEdit />} />
 
-        {/* /orders... */}
         <Route path="orderList" element={<OrderPage />} />
         <Route path="orderAdd" element={<OrderAdd />} />
         <Route path="orderEdit/:id" element={<OrderEdit />} />
         <Route path="/orders/:orderId/detail" element={<OrderDetailPage />} />
 
-        {/* /users... */}
         <Route path="usersList" element={<UsersPage />} />
         <Route path="userAdd" element={<UserAdd />} />
         <Route path="userEdit/:id" element={<UserEdit />} />
-        {/* /shipments... */}
+
         <Route path="/orders/:orderId/shipment/new" element={<ShipmentRegistration />} />
         <Route path="/shipmentsList" element={<ShipmentsPage />} />
-        {/* /companies... */}
+
         <Route path="companiesList" element={<CompaniesList />} />
         <Route path="companyAdd" element={<CompanyEdit />} />
         <Route path="companyEdit/:id" element={<CompanyEdit />} />
@@ -104,6 +140,22 @@ export default function App() {
       >
         <Route index element={<UserHome />} />
         <Route path="orders" element={<UserOrders />} />
+        <Route path="track/:trackingNumber" element={<TrackingPage />} />
+      </Route>
+
+      {/* COURIER */}
+      <Route
+        path="/courier"
+        element={
+          <RequireAuth>
+            <RequireRole allow={["MASTER", "ADMIN", "STAFF", "COURIER"]}>
+              <CourierLayout />
+            </RequireRole>
+          </RequireAuth>
+        }
+      >
+        <Route index element={<CourierShipmentsList />} />
+        <Route path="shipments/:id" element={<CourierShipmentDetail />} />
       </Route>
 
       {/* fallback */}

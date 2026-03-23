@@ -81,6 +81,7 @@ export default function UserEditPage() {
           options: [
             { value: "ADMIN", label: "Administratorius" },
             { value: "STAFF", label: "Darbuotojas" },
+            { value: "COURIER", label: "Kurjeris" },
           ],
         },
         { name: "startDate", label: "Įdarbinimo data", type: "date", colSpan: 1 },

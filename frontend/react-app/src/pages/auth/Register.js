@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../../services/AuthContext";
-
+import Logo from "../../images/Full_track_sync_logo2.png"
 function Register() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -53,6 +53,7 @@ function Register() {
     return (
         <div className="login-container">
             <div className="login-wrapper">
+                <img className="login-logo" src={Logo} />
                 <div className="login-select">
                     <Link
                         to="/login"

@@ -50,6 +50,7 @@ const ROLE_OPTIONS = [
   { value: "OWNER", label: "Savininkas" },
   { value: "ADMIN", label: "Administratorius" },
   { value: "STAFF", label: "Darbuotojas" },
+  { value: "COURIER", label: "Kurjeris" }, 
 ];
 
 export default function CompanyMembers() {

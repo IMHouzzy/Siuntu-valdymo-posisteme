@@ -28,3 +28,9 @@ namespace Bakalauras.API.Dtos
         public double? DeliveryPrice    { get; set; }
     }
 }
+
+public class CourierStatusUpdateDto
+{
+    public int     StatusTypeId     { get; set; }
+    public string? SignatureDataUrl { get; set; }
+}

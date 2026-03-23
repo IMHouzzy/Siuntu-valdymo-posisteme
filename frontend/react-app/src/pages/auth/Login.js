@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../../services/AuthContext";
-
+import Logo from "../../images/Full_track_sync_logo2.png"
 function Login() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -46,6 +46,7 @@ function Login() {
     return (
         <div className="login-container">
             <div className="login-wrapper">
+                <img className= "login-logo"src={Logo}/>
                 <div className="login-select">
                     <Link
                         to="/login"
@@ -67,7 +68,7 @@ function Login() {
                         <input type="password" placeholder="Slaptažodis" value={password} onChange={e => setPassword(e.target.value)} required />
                     </div>
                     <div className="forgot-password">
-                        <Link to="#">Pamiršote slaptažodį?</Link>
+                        <Link to="/confirm">Pamiršote slaptažodį?</Link>
                     </div>
 
                     <button type="submit" className="login-button">Prisijungti</button>

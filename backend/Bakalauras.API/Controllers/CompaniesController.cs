@@ -292,7 +292,7 @@ public class CompaniesController : ControllerBase
 
         var members = await _db.company_users.AsNoTracking()
             .Where(cu => cu.fk_Companyid_Company == id)
-            .Where(cu => cu.role == "OWNER" || cu.role == "ADMIN" || cu.role == "STAFF")
+            .Where(cu => cu.role == "OWNER" || cu.role == "ADMIN" || cu.role == "STAFF"|| cu.role == "COURIER")
             .Select(cu => new
             {
                 userId = cu.fk_Usersid_Users,
@@ -321,21 +321,21 @@ public class CompaniesController : ControllerBase
         if (dto.UserId <= 0) return BadRequest("UserId invalid.");
 
         var roleToSet = (dto.Role ?? "STAFF").Trim().ToUpperInvariant();
-        if (roleToSet is not ("OWNER" or "ADMIN" or "STAFF" or "CLIENT"))
-            return BadRequest("Invalid role. Allowed: OWNER, ADMIN, STAFF, CLIENT.");
+        if (roleToSet is not ("OWNER" or "ADMIN" or "STAFF" or "CLIENT" or "COURIER"))
+            return BadRequest("Invalid role. Allowed: OWNER, ADMIN, STAFF, CLIENT OR COURIER.");
 
         if (!await _db.companies.AnyAsync(c => c.id_Company == id))
             return NotFound("Company not found.");
         if (!await _db.users.AnyAsync(u => u.id_Users == dto.UserId))
             return NotFound("User not found.");
 
-        if (roleToSet is "OWNER" or "ADMIN" or "STAFF")
+        if (roleToSet is "OWNER" or "ADMIN" or "STAFF" or "COURIER")
         {
             var hasStaffElsewhere = await _db.company_users.AsNoTracking()
                 .AnyAsync(cu =>
                     cu.fk_Usersid_Users == dto.UserId &&
                     cu.fk_Companyid_Company != id &&
-                    (cu.role == "OWNER" || cu.role == "ADMIN" || cu.role == "STAFF"));
+                    (cu.role == "OWNER" || cu.role == "ADMIN" || cu.role == "STAFF" ||cu.role == "COURIER"));
             if (hasStaffElsewhere)
                 return Conflict("This user already has STAFF/ADMIN/OWNER role in another company.");
         }
@@ -400,16 +400,16 @@ public class CompaniesController : ControllerBase
         }
 
         var nextRole = (dto.Role ?? "STAFF").Trim().ToUpperInvariant();
-        if (nextRole is not ("OWNER" or "ADMIN" or "STAFF" or "CLIENT"))
+        if (nextRole is not ("OWNER" or "ADMIN" or "STAFF" or "CLIENT"or "CLIENT" or "COURIER"))
             return BadRequest("Invalid role.");
 
-        if (nextRole is "OWNER" or "ADMIN" or "STAFF")
+        if (nextRole is "OWNER" or "ADMIN" or "STAFF" or "COURIER")
         {
             var hasStaffElsewhere = await _db.company_users.AsNoTracking()
                 .AnyAsync(cu =>
                     cu.fk_Usersid_Users == userId &&
                     cu.fk_Companyid_Company != id &&
-                    (cu.role == "OWNER" || cu.role == "ADMIN" || cu.role == "STAFF"));
+                    (cu.role == "OWNER" || cu.role == "ADMIN" || cu.role == "STAFF" || cu.role=="COURIER"));
             if (hasStaffElsewhere)
                 return Conflict("This user already has STAFF/ADMIN/OWNER role in another company.");
         }

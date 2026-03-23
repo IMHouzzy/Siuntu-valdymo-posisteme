@@ -16,7 +16,11 @@
     box-shadow: var(--shadow-lg);
     background-color: var(--color-bg-card);
 }
-
+.login-header{
+    width: 400px;
+    display: flex;
+    align-items: start;
+}
 .login-select {
 
     display: flex;
@@ -162,4 +166,9 @@
     color: var(--color-text-secondary);
     margin-bottom: var(--space-sm);
     
+}
+
+.login-logo{
+    max-width: 400px;
+    padding: 20px;
 }

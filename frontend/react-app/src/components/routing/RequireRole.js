@@ -11,6 +11,7 @@ export default function RequireRole({ allow, children }) {
   if (!allow.includes(role)) {
     // jei klientas bandė eiti į staff, permetam į /client
     if (role === "CLIENT") return <Navigate to="/client" replace />;
+    if (role === "COURIER") return <Navigate to= "/courier" replace/>;
     // jei staff bandė eiti į klientų pusę, į /
     return <Navigate to="/" replace />;
   }
