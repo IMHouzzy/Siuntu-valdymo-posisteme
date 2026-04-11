@@ -18,15 +18,18 @@ public class ShipmentController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IWebHostEnvironment _env;
     private readonly CourierProviderFactory _providerFactory;
+    private readonly INotificationService _notif;
 
     public ShipmentController(
         AppDbContext db,
         IWebHostEnvironment env,
-        CourierProviderFactory providerFactory)
+        CourierProviderFactory providerFactory,
+        INotificationService notif)
     {
         _db = db;
         _env = env;
         _providerFactory = providerFactory;
+        _notif = notif;
     }
 
     private int GetRequiredCompanyId()
@@ -659,6 +662,7 @@ public class ShipmentController : ControllerBase
 
             await _db.SaveChangesAsync();
             await tx.CommitAsync();
+            await _notif.NotifyShipmentStatusAsync(shipment.id_Shipment, 1, companyId);
 
             return Ok(new
             {
@@ -702,6 +706,7 @@ public class ShipmentController : ControllerBase
         });
 
         await _db.SaveChangesAsync();
+        await _notif.NotifyShipmentStatusAsync(id, dto.StatusTypeId, companyId);
         return Ok();
     }
 

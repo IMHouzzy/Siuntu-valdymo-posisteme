@@ -62,7 +62,7 @@ import UserEdit from "./pages/userCrud/UserEdit";
 
 // client UI
 import UserHome from "./pages/userCrud/UserHome";
-import UserOrders from "./pages/userCrud/UserOrders";
+import ClientOrdersPage from "./pages/userCrud/ClientOrdersPage";
 import TrackingPage from "./pages/userCrud/TrackingPage";
 
 // courier UI
@@ -79,6 +79,8 @@ import CompanyIntegrations from "./pages/companyCrud/CompanyIntegrations";
 
 import ShipmentRegistration from "./pages/shipmentPages/ShipmentRegistration";
 import ShipmentsPage from "./pages/shipmentPages/ShipmentsPage";
+
+import ReturnsList from "./pages/Returns/ReturnsList";
 
 export default function App() {
   return (
@@ -125,6 +127,9 @@ export default function App() {
         <Route path="companyEdit/:id" element={<CompanyEdit />} />
         <Route path="companyMembers/:id" element={<CompanyMembers />} />
         <Route path="/companyIntegrations/:companyId" element={<CompanyIntegrations />} />
+        
+        <Route path="returnsList" element={<ReturnsList />} />
+
       </Route>
 
       {/* CLIENT */}
@@ -132,14 +137,14 @@ export default function App() {
         path="/client"
         element={
           <RequireAuth>
-            <RequireRole allow={["CLIENT"]}>
+            <RequireRole allow={["CLIENT", "MASTER", "ADMIN", "STAFF", "COURIER"]}>
               <ClientLayout />
             </RequireRole>
           </RequireAuth>
         }
       >
         <Route index element={<UserHome />} />
-        <Route path="orders" element={<UserOrders />} />
+        <Route path="orders" element={<ClientOrdersPage />} />
         <Route path="track/:trackingNumber" element={<TrackingPage />} />
       </Route>
 
@@ -148,7 +153,7 @@ export default function App() {
         path="/courier"
         element={
           <RequireAuth>
-            <RequireRole allow={["MASTER", "ADMIN", "STAFF", "COURIER"]}>
+            <RequireRole allow={["MASTER", "ADMIN", "COURIER"]}>
               <CourierLayout />
             </RequireRole>
           </RequireAuth>

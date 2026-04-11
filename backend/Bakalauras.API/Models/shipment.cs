@@ -29,11 +29,15 @@ public partial class shipment
 
     public string? providerParcelNumber { get; set; }
 
+    public int? fk_Returnsid_Returns { get; set; }
+
     public virtual company fk_Companyid_CompanyNavigation { get; set; } = null!;
 
     public virtual courier? fk_Courierid_CourierNavigation { get; set; }
 
     public virtual order fk_Ordersid_OrdersNavigation { get; set; } = null!;
+
+    public virtual product_return? fk_Returnsid_ReturnsNavigation { get; set; }
 
     public virtual ICollection<package> packages { get; set; } = new List<package>();
 

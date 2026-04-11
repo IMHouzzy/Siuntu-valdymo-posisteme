@@ -28,6 +28,10 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<courier> couriers { get; set; }
 
+    public virtual DbSet<invoice> invoices { get; set; }
+
+    public virtual DbSet<notification> notifications { get; set; }
+
     public virtual DbSet<order> orders { get; set; }
 
     public virtual DbSet<ordersproduct> ordersproducts { get; set; }
@@ -45,6 +49,8 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<productgroup> productgroups { get; set; }
 
     public virtual DbSet<return_item> return_items { get; set; }
+
+    public virtual DbSet<return_reason> return_reasons { get; set; }
 
     public virtual DbSet<return_status_type> return_status_types { get; set; }
 
@@ -253,6 +259,86 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("FK_courier_company");
         });
 
+        modelBuilder.Entity<invoice>(entity =>
+        {
+            entity.HasKey(e => e.id_Invoice).HasName("PRIMARY");
+
+            entity
+                .ToTable("invoice")
+                .UseCollation("utf8mb4_unicode_ci");
+
+            entity.HasIndex(e => e.date, "IX_invoice_date");
+
+            entity.HasIndex(e => e.fk_Ordersid_Orders, "UQ_invoice_order").IsUnique();
+
+            entity.Property(e => e.id_Invoice).HasColumnType("int(11)");
+            entity.Property(e => e.date)
+                .HasDefaultValueSql("current_timestamp()")
+                .HasColumnType("datetime");
+            entity.Property(e => e.dueDate).HasColumnType("datetime");
+            entity.Property(e => e.emailSentAt).HasColumnType("datetime");
+            entity.Property(e => e.fileUrl)
+                .HasMaxLength(500)
+                .HasComment("Path to generated PDF invoice");
+            entity.Property(e => e.fk_Ordersid_Orders).HasColumnType("int(11)");
+            entity.Property(e => e.invoiceNumber).HasMaxLength(100);
+            entity.Property(e => e.notes).HasMaxLength(1000);
+            entity.Property(e => e.paidAt).HasColumnType("datetime");
+
+            entity.HasOne(d => d.fk_Ordersid_OrdersNavigation).WithOne(p => p.invoice)
+                .HasForeignKey<invoice>(d => d.fk_Ordersid_Orders)
+                .HasConstraintName("FK_invoice_order");
+        });
+
+        modelBuilder.Entity<notification>(entity =>
+        {
+            entity.HasKey(e => e.id_Notification).HasName("PRIMARY");
+
+            entity
+                .ToTable("notification")
+                .UseCollation("utf8mb4_unicode_ci");
+
+            entity.HasIndex(e => e.fk_Companyid_Company, "IX_notification_company");
+
+            entity.HasIndex(e => e.date, "IX_notification_date");
+
+            entity.HasIndex(e => e.fk_Usersid_Users, "IX_notification_user");
+
+            entity.Property(e => e.id_Notification).HasColumnType("int(11)");
+            entity.Property(e => e.content).HasMaxLength(1000);
+            entity.Property(e => e.date)
+                .HasDefaultValueSql("current_timestamp()")
+                .HasColumnType("datetime");
+            entity.Property(e => e.fk_Companyid_Company)
+                .HasComment("Company whose staff can see this notification in the bell")
+                .HasColumnType("int(11)");
+            entity.Property(e => e.fk_Usersid_Users).HasColumnType("int(11)");
+            entity.Property(e => e.referenceId)
+                .HasComment("orderId / shipmentId / returnId")
+                .HasColumnType("int(11)");
+            entity.Property(e => e.referenceType)
+                .HasMaxLength(50)
+                .HasComment("ORDER | SHIPMENT | RETURN");
+            entity.Property(e => e.theme).HasMaxLength(255);
+            entity.Property(e => e.type)
+                .HasMaxLength(50)
+                .HasDefaultValueSql("'INFO'")
+                .HasComment("INFO | ORDER | SHIPMENT | RETURN | INVOICE");
+            entity.Property(e => e.visibleToClient)
+                .IsRequired()
+                .HasDefaultValueSql("'1'");
+
+            entity.HasOne(d => d.fk_Companyid_CompanyNavigation).WithMany(p => p.notifications)
+                .HasForeignKey(d => d.fk_Companyid_Company)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_notification_company");
+
+            entity.HasOne(d => d.fk_Usersid_UsersNavigation).WithMany(p => p.notifications)
+                .HasForeignKey(d => d.fk_Usersid_Users)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_notification_user");
+        });
+
         modelBuilder.Entity<order>(entity =>
         {
             entity.HasKey(e => e.id_Orders).HasName("PRIMARY");
@@ -274,6 +360,10 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.fk_Companyid_Company).HasColumnType("int(11)");
             entity.Property(e => e.fk_Reportid_Report).HasColumnType("int(11)");
             entity.Property(e => e.paymentMethod).HasMaxLength(255);
+            entity.Property(e => e.snapshotCity).HasMaxLength(100);
+            entity.Property(e => e.snapshotCountry).HasMaxLength(100);
+            entity.Property(e => e.snapshotDeliveryAddress).HasMaxLength(255);
+            entity.Property(e => e.snapshotPhone).HasMaxLength(50);
             entity.Property(e => e.status).HasColumnType("int(11)");
 
             entity.HasOne(d => d.fk_Clientid_UsersNavigation).WithMany(p => p.orders)
@@ -434,6 +524,10 @@ public partial class AppDbContext : DbContext
         {
             entity.HasKey(e => e.id_Returns).HasName("PRIMARY");
 
+            entity.HasIndex(e => e.returnCourierId, "FK_returns_courier");
+
+            entity.HasIndex(e => e.fk_ordersid_orders, "FK_returns_orders");
+
             entity.HasIndex(e => e.fk_Adminid_Users, "IX_returns_admin");
 
             entity.HasIndex(e => e.fk_Clientid_Users, "IX_returns_client");
@@ -442,14 +536,31 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => e.fk_ReturnStatusTypeid_ReturnStatusType, "IX_returns_status");
 
+            entity.HasIndex(e => e.fk_Courierid_Courier, "fk_return_courier");
+
             entity.Property(e => e.id_Returns).HasColumnType("int(11)");
+            entity.Property(e => e.clientNote).HasMaxLength(1000);
             entity.Property(e => e.date)
                 .HasDefaultValueSql("current_timestamp()")
                 .HasColumnType("datetime");
+            entity.Property(e => e.employeeNote).HasMaxLength(1000);
             entity.Property(e => e.fk_Adminid_Users).HasColumnType("int(11)");
             entity.Property(e => e.fk_Clientid_Users).HasColumnType("int(11)");
             entity.Property(e => e.fk_Companyid_Company).HasColumnType("int(11)");
+            entity.Property(e => e.fk_Courierid_Courier).HasColumnType("int(11)");
             entity.Property(e => e.fk_ReturnStatusTypeid_ReturnStatusType).HasColumnType("int(11)");
+            entity.Property(e => e.fk_ordersid_orders).HasColumnType("int(11)");
+            entity.Property(e => e.returnCity).HasMaxLength(100);
+            entity.Property(e => e.returnCountry).HasMaxLength(100);
+            entity.Property(e => e.returnCourierId).HasColumnType("int(11)");
+            entity.Property(e => e.returnLockerAddress).HasMaxLength(300);
+            entity.Property(e => e.returnLockerId).HasMaxLength(100);
+            entity.Property(e => e.returnLockerName).HasMaxLength(200);
+            entity.Property(e => e.returnMethod)
+                .HasMaxLength(30)
+                .HasDefaultValueSql("'CUSTOM'");
+            entity.Property(e => e.returnPostalCode).HasMaxLength(20);
+            entity.Property(e => e.returnStreet).HasMaxLength(255);
 
             entity.HasOne(d => d.fk_Adminid_UsersNavigation).WithMany(p => p.product_returnfk_Adminid_UsersNavigations)
                 .HasForeignKey(d => d.fk_Adminid_Users)
@@ -466,10 +577,23 @@ public partial class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_returns_company");
 
+            entity.HasOne(d => d.fk_Courierid_CourierNavigation).WithMany(p => p.product_returnfk_Courierid_CourierNavigations)
+                .HasForeignKey(d => d.fk_Courierid_Courier)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_return_courier");
+
             entity.HasOne(d => d.fk_ReturnStatusTypeid_ReturnStatusTypeNavigation).WithMany(p => p.product_returns)
                 .HasForeignKey(d => d.fk_ReturnStatusTypeid_ReturnStatusType)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_returns_status_type");
+
+            entity.HasOne(d => d.fk_ordersid_ordersNavigation).WithMany(p => p.product_returns)
+                .HasForeignKey(d => d.fk_ordersid_orders)
+                .HasConstraintName("fk_product_returns_order");
+
+            entity.HasOne(d => d.returnCourier).WithMany(p => p.product_returnreturnCouriers)
+                .HasForeignKey(d => d.returnCourierId)
+                .HasConstraintName("fk_product_returns_courier");
         });
 
         modelBuilder.Entity<productgroup>(entity =>
@@ -488,15 +612,21 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("return_item");
 
+            entity.HasIndex(e => e.reasonId, "FK_ri_reason");
+
             entity.HasIndex(e => e.fk_OrdersProductid_OrdersProduct, "IX_ri_ordersproduct");
 
             entity.HasIndex(e => e.fk_Returnsid_Returns, "IX_ri_return");
 
             entity.Property(e => e.id_ReturnItem).HasColumnType("int(11)");
+            entity.Property(e => e.evaluation).HasDefaultValueSql("'0'");
+            entity.Property(e => e.evaluationComment).HasMaxLength(1000);
             entity.Property(e => e.fk_OrdersProductid_OrdersProduct).HasColumnType("int(11)");
             entity.Property(e => e.fk_Returnsid_Returns).HasColumnType("int(11)");
+            entity.Property(e => e.imageUrls).HasColumnType("text");
             entity.Property(e => e.quantity).HasColumnType("int(11)");
             entity.Property(e => e.reason).HasMaxLength(255);
+            entity.Property(e => e.reasonId).HasColumnType("int(11)");
 
             entity.HasOne(d => d.fk_OrdersProductid_OrdersProductNavigation).WithMany(p => p.return_items)
                 .HasForeignKey(d => d.fk_OrdersProductid_OrdersProduct)
@@ -506,6 +636,21 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.fk_Returnsid_ReturnsNavigation).WithMany(p => p.return_items)
                 .HasForeignKey(d => d.fk_Returnsid_Returns)
                 .HasConstraintName("FK_ri_returns");
+
+            entity.HasOne(d => d.reasonNavigation).WithMany(p => p.return_items)
+                .HasForeignKey(d => d.reasonId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_ri_reason");
+        });
+
+        modelBuilder.Entity<return_reason>(entity =>
+        {
+            entity.HasKey(e => e.id_ReturnReason).HasName("PRIMARY");
+
+            entity.ToTable("return_reason");
+
+            entity.Property(e => e.id_ReturnReason).HasColumnType("int(11)");
+            entity.Property(e => e.name).HasMaxLength(100);
         });
 
         modelBuilder.Entity<return_status_type>(entity =>
@@ -532,11 +677,14 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => e.fk_Ordersid_Orders, "IX_shipment_order");
 
+            entity.HasIndex(e => e.fk_Returnsid_Returns, "fk_shipment_return");
+
             entity.Property(e => e.id_Shipment).HasColumnType("int(11)");
             entity.Property(e => e.estimatedDeliveryDate).HasColumnType("datetime");
             entity.Property(e => e.fk_Companyid_Company).HasColumnType("int(11)");
             entity.Property(e => e.fk_Courierid_Courier).HasColumnType("int(11)");
             entity.Property(e => e.fk_Ordersid_Orders).HasColumnType("int(11)");
+            entity.Property(e => e.fk_Returnsid_Returns).HasColumnType("int(11)");
             entity.Property(e => e.providerLockerId).HasMaxLength(20);
             entity.Property(e => e.providerParcelNumber).HasMaxLength(500);
             entity.Property(e => e.providerShipmentId).HasMaxLength(36);
@@ -556,6 +704,11 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.fk_Ordersid_OrdersNavigation).WithMany(p => p.shipments)
                 .HasForeignKey(d => d.fk_Ordersid_Orders)
                 .HasConstraintName("FK_shipment_orders");
+
+            entity.HasOne(d => d.fk_Returnsid_ReturnsNavigation).WithMany(p => p.shipments)
+                .HasForeignKey(d => d.fk_Returnsid_Returns)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_shipment_return");
         });
 
         modelBuilder.Entity<shipment_status>(entity =>

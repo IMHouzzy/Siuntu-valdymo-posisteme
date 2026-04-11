@@ -9,6 +9,7 @@ import {
   FiBriefcase,
   FiLock,
   FiPackage,
+  FiRotateCcw,
 } from "react-icons/fi";
 import { LuLayoutDashboard } from "react-icons/lu";
 import "../styles/SidebarLeft.css";
@@ -70,6 +71,7 @@ export default function SidebarLeft({ collapsed, onToggle }) {
         ],
       },
       { type: "link", id: "Siuntos", label: "Siuntos", icon: <FiPackage />, to: "/shipmentsList" },
+      { type: "link", id: "Grąžinimai", label: "Grąžinimai", icon: <FiRotateCcw />, to: "/returnsList" },
       {
         type: "group",
         id: "Naudotojai",
@@ -94,6 +96,7 @@ export default function SidebarLeft({ collapsed, onToggle }) {
         ],
       });
     }
+    
 
     return base;
   }, [canSeeCompaniesGroup, canCreateCompany]);

@@ -14,19 +14,22 @@ using Bakalauras.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Bakalauras.API.Services;
 
 [ApiController]
 [Route("api/courier")]
 [Authorize]
 public class CourierShipmentController : ControllerBase
 {
-    private readonly AppDbContext        _db;
+    private readonly AppDbContext _db;
     private readonly IWebHostEnvironment _env;
+    private readonly INotificationService _notif;
 
-    public CourierShipmentController(AppDbContext db, IWebHostEnvironment env)
+    public CourierShipmentController(AppDbContext db, IWebHostEnvironment env, INotificationService notif)
     {
-        _db  = db;
+        _db = db;
         _env = env;
+        _notif = notif;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -42,7 +45,7 @@ public class CourierShipmentController : ControllerBase
     {
         if (User.IsMasterAdmin()) return true;
         var companyId = User.GetCompanyId();
-        var userId    = User.GetUserId();
+        var userId = User.GetUserId();
         var role = await _db.company_users.AsNoTracking()
             .Where(cu => cu.fk_Companyid_Company == companyId && cu.fk_Usersid_Users == userId)
             .Select(cu => cu.role)
@@ -72,12 +75,12 @@ public class CourierShipmentController : ControllerBase
                 s.estimatedDeliveryDate,
                 s.providerParcelNumber,
                 orderId = s.fk_Ordersid_Orders,
-                courierName  = s.fk_Courierid_CourierNavigation == null ? null : s.fk_Courierid_CourierNavigation.name,
-                courierType  = s.fk_Courierid_CourierNavigation == null ? null : s.fk_Courierid_CourierNavigation.type,
+                courierName = s.fk_Courierid_CourierNavigation == null ? null : s.fk_Courierid_CourierNavigation.name,
+                courierType = s.fk_Courierid_CourierNavigation == null ? null : s.fk_Courierid_CourierNavigation.type,
                 // client name from order
-                clientName    = s.fk_Ordersid_OrdersNavigation.fk_Clientid_UsersNavigation.name,
+                clientName = s.fk_Ordersid_OrdersNavigation.fk_Clientid_UsersNavigation.name,
                 clientSurname = s.fk_Ordersid_OrdersNavigation.fk_Clientid_UsersNavigation.surname,
-                clientPhone   = s.fk_Ordersid_OrdersNavigation.fk_Clientid_UsersNavigation.phoneNumber,
+                clientPhone = s.fk_Ordersid_OrdersNavigation.fk_Clientid_UsersNavigation.phoneNumber,
                 deliveryAddress = _db.client_companies
                     .Where(cc => cc.fk_Companyid_Company == companyId
                               && cc.fk_Clientid_Users == s.fk_Ordersid_OrdersNavigation.fk_Clientid_Users)
@@ -89,7 +92,7 @@ public class CourierShipmentController : ControllerBase
                     {
                         ss.id_ShipmentStatus,
                         ss.date,
-                        typeId   = ss.fk_ShipmentStatusTypeid_ShipmentStatusType,
+                        typeId = ss.fk_ShipmentStatusTypeid_ShipmentStatusType,
                         typeName = ss.fk_ShipmentStatusTypeid_ShipmentStatusTypeNavigation.name
                     })
                     .FirstOrDefault(),
@@ -128,16 +131,16 @@ public class CourierShipmentController : ControllerBase
                 x.providerLockerId,
                 x.DeliveryLat,
                 x.DeliveryLng,
-                orderId      = x.fk_Ordersid_Orders,
-                orderStatus  = x.fk_Ordersid_OrdersNavigation.status,
-                courierName  = x.fk_Courierid_CourierNavigation == null ? null : x.fk_Courierid_CourierNavigation.name,
-                courierType  = x.fk_Courierid_CourierNavigation == null ? null : x.fk_Courierid_CourierNavigation.type,
+                orderId = x.fk_Ordersid_Orders,
+                orderStatus = x.fk_Ordersid_OrdersNavigation.status,
+                courierName = x.fk_Courierid_CourierNavigation == null ? null : x.fk_Courierid_CourierNavigation.name,
+                courierType = x.fk_Courierid_CourierNavigation == null ? null : x.fk_Courierid_CourierNavigation.type,
                 client = new
                 {
-                    name    = x.fk_Ordersid_OrdersNavigation.fk_Clientid_UsersNavigation.name,
+                    name = x.fk_Ordersid_OrdersNavigation.fk_Clientid_UsersNavigation.name,
                     surname = x.fk_Ordersid_OrdersNavigation.fk_Clientid_UsersNavigation.surname,
-                    phone   = x.fk_Ordersid_OrdersNavigation.fk_Clientid_UsersNavigation.phoneNumber,
-                    email   = x.fk_Ordersid_OrdersNavigation.fk_Clientid_UsersNavigation.email,
+                    phone = x.fk_Ordersid_OrdersNavigation.fk_Clientid_UsersNavigation.phoneNumber,
+                    email = x.fk_Ordersid_OrdersNavigation.fk_Clientid_UsersNavigation.email,
                 },
                 clientCompany = _db.client_companies
                     .Where(cc => cc.fk_Companyid_Company == companyId
@@ -150,7 +153,7 @@ public class CourierShipmentController : ControllerBase
                     {
                         ss.id_ShipmentStatus,
                         ss.date,
-                        typeId   = ss.fk_ShipmentStatusTypeid_ShipmentStatusType,
+                        typeId = ss.fk_ShipmentStatusTypeid_ShipmentStatusType,
                         typeName = ss.fk_ShipmentStatusTypeid_ShipmentStatusTypeNavigation.name
                     })
                     .ToList(),
@@ -237,15 +240,15 @@ public class CourierShipmentController : ControllerBase
 
             await _db.SaveChangesAsync();
             await tx.CommitAsync();
-
+            await _notif.NotifyShipmentStatusAsync(id, dto.StatusTypeId, companyId);
             string? sigUrl = null;
             if (!string.IsNullOrWhiteSpace(dto.SignatureDataUrl))
                 sigUrl = await SaveSignatureAsync(dto.SignatureDataUrl, id);
 
             return Ok(new
             {
-                shipmentId   = id,
-                newStatusId  = dto.StatusTypeId,
+                shipmentId = id,
+                newStatusId = dto.StatusTypeId,
                 newStatusName = statusType.name,
                 signatureUrl = sigUrl
             });
@@ -282,7 +285,7 @@ public class CourierShipmentController : ControllerBase
             var comma = dataUrl.IndexOf(',');
             if (comma < 0) return null;
             var base64 = dataUrl[(comma + 1)..];
-            var bytes  = Convert.FromBase64String(base64);
+            var bytes = Convert.FromBase64String(base64);
 
             var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
             var dir = Path.Combine(webRoot, "signatures", shipmentId.ToString());

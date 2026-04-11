@@ -3,16 +3,18 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Bakalauras.API.Dtos;
+using Bakalauras.API.Services;
 [ApiController]
 [Route("api/orders/")]
 [Authorize]
 public class OrderController : ControllerBase
 {
     private readonly AppDbContext _db;
-
-    public OrderController(AppDbContext db)
+private readonly INotificationService _notif;
+    public OrderController(AppDbContext db, INotificationService notif)
     {
         _db = db;
+        _notif = notif;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -330,7 +332,14 @@ public async Task<IActionResult> GetOrderFull(int id)
                 deliveryPrice        = dto.DeliveryPrice,
                 status               = dto.Status,
                 fk_Clientid_Users    = dto.ClientUserId,
-                externalDocumentId   = dto.ExternalDocumentId
+                externalDocumentId   = dto.ExternalDocumentId,
+                snapshotDeliveryAddress = dto.ClientInfo?.DeliveryAddress,
+                snapshotCity            = dto.ClientInfo?.City,
+                snapshotCountry         = dto.ClientInfo?.Country,
+                snapshotPhone           = _db.users.AsNoTracking()
+                                            .Where(u => u.id_Users == dto.ClientUserId)
+                                            .Select(u => u.phoneNumber)
+                                            .FirstOrDefault()
             };
 
             _db.orders.Add(order);
@@ -350,7 +359,7 @@ public async Task<IActionResult> GetOrderFull(int id)
 
             await _db.SaveChangesAsync();
             await tx.CommitAsync();
-
+            await _notif.NotifyOrderStatusAsync(order.id_Orders, dto.Status, companyId);
             return Ok(new { orderId = order.id_Orders });
         }
         catch (Exception ex)
@@ -471,6 +480,7 @@ public async Task<IActionResult> GetOrderFull(int id)
 
             await _db.SaveChangesAsync();
             await tx.CommitAsync();
+            await _notif.NotifyOrderStatusAsync(id, dto.Status, companyId);
             return Ok();
         }
         catch (Exception ex)

@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using QuestPDF.Infrastructure;
-
+using Bakalauras.API.Services;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,6 +21,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     )
 );
 
+builder.Services.AddScoped<IEmailService,        SmtpEmailService>();
+builder.Services.AddScoped<IInvoiceService,      InvoiceService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 // JWT service
 builder.Services.AddScoped<JwtService>();
 
@@ -85,6 +88,8 @@ builder.Services.AddHostedService<ProductSyncWorker>();
 builder.Services.AddHostedService<OrderSyncWorker>();
 
 builder.Services.AddScoped<CourierProviderFactory>();
+
+
 var app = builder.Build();
 
 // ✅ svarbi tvarka:

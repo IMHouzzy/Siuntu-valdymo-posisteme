@@ -35,6 +35,8 @@ public partial class user
 
     public virtual company? fk_Companyid_CompanyNavigation { get; set; }
 
+    public virtual ICollection<notification> notifications { get; set; } = new List<notification>();
+
     public virtual ICollection<order> orders { get; set; } = new List<order>();
 
     public virtual ICollection<product_return> product_returnfk_Adminid_UsersNavigations { get; set; } = new List<product_return>();

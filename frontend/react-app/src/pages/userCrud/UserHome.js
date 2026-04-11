@@ -6,8 +6,8 @@ import "../../styles/UserHome.css";
 
 function TruckIllustration() {
   return (
-    <div className="uh-hero-illustration" aria-hidden="true">
-      <svg viewBox="0 0 420 280" fill="none" xmlns="http://www.w3.org/2000/svg" className="uh-truck-svg">
+    <div className="uhome-hero-illustration" aria-hidden="true">
+      <svg viewBox="0 0 420 280" fill="none" xmlns="http://www.w3.org/2000/svg" className="uhome-truck-svg">
         {/* Road */}
         <rect x="0" y="230" width="420" height="8" rx="4" fill="rgba(255,255,255,0.06)" />
         <rect x="30" y="232" width="60" height="4" rx="2" fill="rgba(255,255,255,0.12)" />
@@ -59,12 +59,12 @@ function TruckIllustration() {
         <circle cx="390" cy="130" r="1.5" fill="rgba(255,255,255,0.15)" />
       </svg>
 
-      <div className="uh-float-card uh-float-card--1">
-        <div className="uh-float-dot uh-float-dot--green" />
+      <div className="uhome-float-card uhome-float-card--1">
+        <div className="uhome-float-dot uhome-float-dot--green" />
         <span>Pristatyta</span>
       </div>
-      <div className="uh-float-card uh-float-card--2">
-        <div className="uh-float-dot uh-float-dot--blue" />
+      <div className="uhome-float-card uhome-float-card--2">
+        <div className="uhome-float-dot uhome-float-dot--blue" />
         <span>Vežama</span>
       </div>
     </div>
@@ -108,29 +108,29 @@ export default function UserHome() {
   };
 
   return (
-    <div className="uh-page">
-      <section className="uh-hero">
-        <div className="uh-hero-bg">
-          <div className="uh-hero-orb uh-hero-orb--1" />
-          <div className="uh-hero-orb uh-hero-orb--2" />
-          <div className="uh-hero-grid" />
+    <div className="uhome-page">
+      <section className="uhome-hero">
+        <div className="uhome-hero-bg">
+          <div className="uhome-hero-orb uhome-hero-orb--1" />
+          <div className="uhome-hero-orb uhome-hero-orb--2" />
+          <div className="uhome-hero-grid" />
         </div>
 
-        <div className="uh-hero-layout">
-          <div className="uh-hero-content">
-            <div className="uh-hero-badge"><FiTruck size={14} /><span>Siuntų sekimas</span></div>
-            <h1 className="uh-hero-title">
+        <div className="uhome-hero-layout">
+          <div className="uhome-hero-content">
+            <div className="uhome-hero-badge"><FiTruck size={14} /><span>Siuntų sekimas</span></div>
+            <h1 className="uhome-hero-title">
               Sekite savo siuntą<br />
-              <span className="uh-hero-title-accent">realiuoju laiku</span>
+              <span className="uhome-hero-title-accent">realiuoju laiku</span>
             </h1>
-            <p className="uh-hero-subtitle">
+            <p className="uhome-hero-subtitle">
               Įveskite sekimo numerį ir sužinokite, kur šiuo metu yra jūsų siunta.
             </p>
-            <form className="uh-search-form" onSubmit={handleTrack}>
-              <div className="uh-search-wrap">
-                <FiSearch className="uh-search-icon" size={20} />
+            <form className="uhome-search-form" onSubmit={handleTrack}>
+              <div className="uhome-search-wrap">
+                <FiSearch className="uhome-search-icon" size={20} />
                 <input
-                  className="uh-search-input"
+                  className="uhome-search-input"
                   type="text"               
                   placeholder="pvz. PKG-0-00-0000000000-0000"
                   value={trackingInput}
@@ -138,37 +138,37 @@ export default function UserHome() {
                   autoComplete="off"
                   spellCheck={false}
                 />
-                <button className="uh-search-btn" type="submit" disabled={loading}>
-                  {loading ? <span className="uh-spinner" /> : <><span>Sekti</span><FiArrowRight size={16} /></>}
+                <button className="uhome-search-btn" type="submit" disabled={loading}>
+                  {loading ? <span className="uhome-spinner" /> : <><span>Sekti</span><FiArrowRight size={16} /></>}
                 </button>
               </div>
-              {error && <p className="uh-search-error">{error}</p>}
+              {error && <p className="uhome-search-error">{error}</p>}
             </form>
           </div>
           <TruckIllustration />
         </div>
       </section>
 
-      <section className="uh-steps">
-        <div className="uh-steps-inner">
+      <section className="uhome-steps">
+        <div className="uhome-steps-inner">
           <Step icon={<FiPackage size={22} />} num="01" title="Įveskite sekimo numerį"
             desc="Sekimo numerį rasite užsakymo patvirtinimo el. laiške arba siuntos etiketėje." />
-          <div className="uh-steps-line" />
+          <div className="uhome-steps-line" />
           <Step icon={<FiTruck size={22} />} num="02" title="Stebėkite maršrutą"
             desc="Matykite visą siuntos kelionės istoriją — nuo sukūrimo iki pristatymo." />
-          <div className="uh-steps-line" />
+          <div className="uhome-steps-line" />
           <Step icon={<FiCheckCircle size={22} />} num="03" title="Gaukite siuntą"
             desc="Sužinokite tikslų pristatymo laiką ir adresą." />
         </div>
       </section>
 
-      <section className="uh-orders-cta">
-        <div className="uh-orders-cta-inner">
+      <section className="uhome-orders-cta">
+        <div className="uhome-orders-cta-inner">
           <div>
-            <div className="uh-orders-cta-title">Jūsų užsakymai</div>
-            <div className="uh-orders-cta-sub">Peržiūrėkite visus savo užsakymus ir jų siuntas vienoje vietoje.</div>
+            <div className="uhome-orders-cta-title">Jūsų užsakymai</div>
+            <div className="uhome-orders-cta-sub">Peržiūrėkite visus savo užsakymus ir jų siuntas vienoje vietoje.</div>
           </div>
-          <button className="uh-orders-btn" onClick={() => navigate("/client/orders")}>
+          <button className="uhome-orders-btn" onClick={() => navigate("/client/orders")}>
             Mano užsakymai <FiArrowRight size={15} />
           </button>
         </div>
@@ -179,11 +179,11 @@ export default function UserHome() {
 
 function Step({ icon, num, title, desc }) {
   return (
-    <div className="uh-step">
-      <div className="uh-step-num">{num}</div>
-      <div className="uh-step-icon">{icon}</div>
-      <div className="uh-step-title">{title}</div>
-      <div className="uh-step-desc">{desc}</div>
+    <div className="uhome-step">
+      <div className="uhome-step-num">{num}</div>
+      <div className="uhome-step-icon">{icon}</div>
+      <div className="uhome-step-title">{title}</div>
+      <div className="uhome-step-desc">{desc}</div>
     </div>
   );
 }

@@ -53,6 +53,8 @@ public partial class company
 
     public virtual ICollection<courier> couriers { get; set; } = new List<courier>();
 
+    public virtual ICollection<notification> notifications { get; set; } = new List<notification>();
+
     public virtual ICollection<order> orders { get; set; } = new List<order>();
 
     public virtual ICollection<product_return> product_returns { get; set; } = new List<product_return>();
