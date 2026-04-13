@@ -358,7 +358,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.externalDocumentId).HasColumnType("int(11)");
             entity.Property(e => e.fk_Clientid_Users).HasColumnType("int(11)");
             entity.Property(e => e.fk_Companyid_Company).HasColumnType("int(11)");
-            entity.Property(e => e.fk_Reportid_Report).HasColumnType("int(11)");
             entity.Property(e => e.paymentMethod).HasMaxLength(255);
             entity.Property(e => e.snapshotCity).HasMaxLength(100);
             entity.Property(e => e.snapshotCountry).HasMaxLength(100);
@@ -435,7 +434,6 @@ public partial class AppDbContext : DbContext
                 .HasColumnType("datetime");
             entity.Property(e => e.fk_Shipmentid_Shipment).HasColumnType("int(11)");
             entity.Property(e => e.labelFile).HasMaxLength(500);
-            entity.Property(e => e.parcelTrackingNumber).HasMaxLength(50);
             entity.Property(e => e.trackingNumber).HasMaxLength(100);
 
             entity.HasOne(d => d.fk_Shipmentid_ShipmentNavigation).WithMany(p => p.packages)
@@ -462,7 +460,6 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.externalCode).HasColumnType("int(11)");
             entity.Property(e => e.fk_Companyid_Company).HasColumnType("int(11)");
             entity.Property(e => e.name).HasMaxLength(255);
-            entity.Property(e => e.picture).HasMaxLength(255);
             entity.Property(e => e.shipping_mode).HasMaxLength(255);
             entity.Property(e => e.unit)
                 .HasMaxLength(6)
@@ -612,14 +609,13 @@ public partial class AppDbContext : DbContext
 
             entity.ToTable("return_item");
 
-            entity.HasIndex(e => e.reasonId, "FK_ri_reason");
-
             entity.HasIndex(e => e.fk_OrdersProductid_OrdersProduct, "IX_ri_ordersproduct");
+
+            entity.HasIndex(e => e.reasonId, "IX_ri_reason");
 
             entity.HasIndex(e => e.fk_Returnsid_Returns, "IX_ri_return");
 
             entity.Property(e => e.id_ReturnItem).HasColumnType("int(11)");
-            entity.Property(e => e.evaluation).HasDefaultValueSql("'0'");
             entity.Property(e => e.evaluationComment).HasMaxLength(1000);
             entity.Property(e => e.fk_OrdersProductid_OrdersProduct).HasColumnType("int(11)");
             entity.Property(e => e.fk_Returnsid_Returns).HasColumnType("int(11)");
@@ -772,6 +768,8 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.name).HasMaxLength(255);
             entity.Property(e => e.password).HasMaxLength(255);
             entity.Property(e => e.phoneNumber).HasMaxLength(255);
+            entity.Property(e => e.resetToken).HasMaxLength(128);
+            entity.Property(e => e.resetTokenExpiry).HasColumnType("datetime");
             entity.Property(e => e.surname).HasMaxLength(255);
 
             entity.HasOne(d => d.fk_Companyid_CompanyNavigation).WithMany(p => p.users)

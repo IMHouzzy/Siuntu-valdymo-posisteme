@@ -15,8 +15,6 @@ public partial class product
 
     public string? currency { get; set; }
 
-    public string? picture { get; set; }
-
     public bool canTheProductBeProductReturned { get; set; }
 
     public bool countableItem { get; set; }

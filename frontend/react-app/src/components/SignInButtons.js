@@ -17,7 +17,7 @@ import {
   FiTrash2,
 } from "react-icons/fi";
 import "../styles/SignInButtons.css";
-
+import { notificationsApi } from "../services/api";
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function getInitials(name = "") {
@@ -46,79 +46,64 @@ function formatRelativeTime(dateStr) {
 function NotifIcon({ type }) {
   const props = { size: 14 };
   switch (type) {
-    case "ORDER":    return <FiShoppingBag {...props} />;
+    case "ORDER": return <FiShoppingBag {...props} />;
     case "SHIPMENT": return <FiPackage {...props} />;
-    case "RETURN":   return <FiRefreshCw {...props} />;
-    case "INVOICE":  return <FiCheckCircle {...props} />;
-    default:         return <FiInfo {...props} />;
+    case "RETURN": return <FiRefreshCw {...props} />;
+    case "INVOICE": return <FiCheckCircle {...props} />;
+    default: return <FiInfo {...props} />;
   }
 }
 
 function notifAccentClass(type) {
   switch (type) {
-    case "ORDER":    return "sb-notif-item--order";
+    case "ORDER": return "sb-notif-item--order";
     case "SHIPMENT": return "sb-notif-item--shipment";
-    case "RETURN":   return "sb-notif-item--return";
-    case "INVOICE":  return "sb-notif-item--invoice";
-    default:         return "";
+    case "RETURN": return "sb-notif-item--return";
+    case "INVOICE": return "sb-notif-item--invoice";
+    default: return "";
   }
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function SignInButtons() {
-  const { token, logout, user } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
 
-  const [open, setOpen]           = useState(false);
+  const [open, setOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
 
   const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount]     = useState(0);
-  const [loading, setLoading]             = useState(false);
-  const [fetched, setFetched]             = useState(false);   // only fetch once per open
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [fetched, setFetched] = useState(false);   // only fetch once per open
 
-  const bellRef  = useRef(null);
-  const dropRef  = useRef(null);
+  const bellRef = useRef(null);
+  const dropRef = useRef(null);
 
   const displayName = user?.fullName || user?.name || "";
-  const initials    = getInitials(displayName);
+  const initials = getInitials(displayName);
 
   // ── API helpers ─────────────────────────────────────────────────────────────
 
-  const apiFetch = useCallback(async (url, options = {}) => {
-    const res = await fetch(url, {
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      ...options,
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
-  }, [token]);
 
   const fetchUnreadCount = useCallback(async () => {
-    if (!token) return;
     try {
-      const data = await apiFetch("http://localhost:5065/api/notifications/unread-count");
+      const data = await notificationsApi.getUnreadCount();
       setUnreadCount(data.count ?? 0);
     } catch { /* silent */ }
-  }, [apiFetch, token]);
+  }, []);
 
   const fetchNotifications = useCallback(async () => {
-    if (!token) return;
     setLoading(true);
     try {
-      const data = await apiFetch("http://localhost:5065/api/notifications?pageSize=20");
+      const data = await notificationsApi.getAll(20);
       setNotifications(data.items ?? []);
       setUnreadCount((data.items ?? []).filter(n => !n.isRead).length);
       setFetched(true);
-    } catch { /* silent */ } finally {
-      setLoading(false);
-    }
-    console.log("Fetched notifications, data:", notifications);
-  }, [apiFetch, token]);
+    } catch { /* silent */ }
+    finally { setLoading(false); }
+  }, []);
 
   // ── Poll unread count every 60 s ────────────────────────────────────────────
   useEffect(() => {
@@ -148,21 +133,16 @@ export default function SignInButtons() {
   // ── Actions ─────────────────────────────────────────────────────────────────
 
   const markRead = async (id) => {
-    setNotifications(prev =>
-      prev.map(n => n.id_Notification === id ? { ...n, isRead: true } : n)
-    );
+    setNotifications(prev => prev.map(n => n.id_Notification === id ? { ...n, isRead: true } : n));
     setUnreadCount(c => Math.max(0, c - 1));
-    try { await apiFetch(`http://localhost:5065/api/notifications/${id}/read`, { method: "PUT" }); }
-    catch { /* revert silently */ }
+    try { await notificationsApi.markRead(id); } catch { /* silent */ }
   };
 
   const markAllRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     setUnreadCount(0);
-    try { await apiFetch("http://localhost:5065/api/notifications/mark-all-read", { method: "PUT" }); }
-    catch { /* silent */ }
+    try { await notificationsApi.markAllRead(); } catch { /* silent */ }
   };
-
   const deleteNotif = async (e, id) => {
     e.stopPropagation();
     setNotifications(prev => {
@@ -170,15 +150,14 @@ export default function SignInButtons() {
       if (n && !n.isRead) setUnreadCount(c => Math.max(0, c - 1));
       return prev.filter(x => x.id_Notification !== id);
     });
-    try { await apiFetch(`http://localhost:5065/api/notifications/${id}`, { method: "DELETE" }); }
-    catch { /* silent */ }
+    try { await notificationsApi.remove(id); } catch { /* silent */ }
   };
 
   const handleNotifClick = (n) => {
     if (!n.isRead) markRead(n.id_Notification);
-    if (n.referenceType === "ORDER"    && n.referenceId) navigate(`/orders/${n.referenceId}`);
+    if (n.referenceType === "ORDER" && n.referenceId) navigate(`/orders/${n.referenceId}`);
     if (n.referenceType === "SHIPMENT" && n.referenceId) navigate(`/shipments/${n.referenceId}`);
-    if (n.referenceType === "RETURN"   && n.referenceId) navigate(`/returns/${n.referenceId}`);
+    if (n.referenceType === "RETURN" && n.referenceId) navigate(`/returns/${n.referenceId}`);
     setNotifOpen(false);
   };
 
@@ -298,9 +277,9 @@ export default function SignInButtons() {
       <div className="sb-user-wrap" onMouseLeave={() => setOpen(false)}>
         <button className="sb-user-btn" onClick={() => setOpen(v => !v)}>
           <div className="sb-avatar">
-            {token ? <span>{initials}</span> : <FiUser size={14} />}
+            {user ? <span>{initials}</span> : <FiUser size={14} />}
           </div>
-          {token && <span className="sb-user-name">{displayName}</span>}
+          {user && <span className="sb-user-name">{displayName}</span>}
           <FiChevronDown
             size={14}
             className={`sb-chev ${open ? "sb-chev--open" : ""}`}
@@ -308,7 +287,7 @@ export default function SignInButtons() {
         </button>
 
         <div className={`sb-dropdown ${open ? "sb-dropdown--open" : ""}`}>
-          {token ? (
+          {user ? (
             <>
               <div className="sb-dropdown-top">
                 <div className="sb-dropdown-avatar">{initials}</div>
@@ -322,7 +301,7 @@ export default function SignInButtons() {
 
               <button
                 className="sb-dropdown-item"
-                onClick={() => { setOpen(false); navigate("/settings"); }}
+                onClick={() => { setOpen(false); navigate("/profile"); }}
               >
                 <FiSettings size={14} />
                 Profilis

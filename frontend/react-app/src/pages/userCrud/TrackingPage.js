@@ -8,7 +8,7 @@ import {
 } from "react-icons/fi";
 import "../../styles/TrackingPage.css";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:5065";
+import { trackingApi } from "../../services/api";
 
 const STATUS_CONFIG = {
   "Sukurta": {
@@ -92,20 +92,14 @@ export default function TrackingPage() {
   const { trackingNumber } = useParams();
   const navigate = useNavigate();
 
-  const [data, setData]       = useState(null);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     setLoading(true);
-    fetch(`${API}/api/tracking/${encodeURIComponent(trackingNumber)}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error(r.status === 404 ? "notfound" : "error");
-        return r.json();
-      })
-      .then((d) => {
+    trackingApi.track(trackingNumber)
+      .then(d => {
         if (d.type === "dpd") {
           window.open(d.dpdUrl, "_blank", "noopener,noreferrer");
           navigate(-1);
@@ -113,7 +107,7 @@ export default function TrackingPage() {
         }
         setData(d);
       })
-      .catch((e) => setError(e.message))
+      .catch(e => setError(e.message?.includes("404") ? "notfound" : "error"))
       .finally(() => setLoading(false));
   }, [trackingNumber]);
 
@@ -189,9 +183,9 @@ export default function TrackingPage() {
             {statuses?.length > 0 ? (
               <div className="tp-timeline">
                 {statuses.map((s, i) => {
-                  const cfg      = getStatusConfig(s.typeName);
+                  const cfg = getStatusConfig(s.typeName);
                   const isLatest = i === 0;
-                  const msg      = cfg.message(deliveryAddress);
+                  const msg = cfg.message(deliveryAddress);
 
                   return (
                     <div
@@ -246,7 +240,7 @@ export default function TrackingPage() {
               <FiTruck size={14} /> Pristatymo informacija
             </div>
             <div className="tp-rows">
-              <TRow label="Siuntimo data"       value={formatDateOnly(shipment.shippingDate)} />
+              <TRow label="Siuntimo data" value={formatDateOnly(shipment.shippingDate)} />
               <TRow
                 label="Numatoma pristatyti"
                 value={shipment.estimatedDeliveryDate
@@ -318,10 +312,10 @@ export default function TrackingPage() {
               </div>
               <div className="tp-rows">
                 <TRow label="Užsakymo Nr." value={`#${order.id_Orders}`} />
-                <TRow label="Data"         value={formatDateOnly(order.OrdersDate)} />
-                <TRow label="Suma"         value={`€${Number(order.totalAmount ?? 0).toFixed(2)}`} />
-                <TRow label="Apmokėjimas"  value={order.paymentMethod || "—"} />
-                <TRow label="Būsena"       value={order.statusName || "—"} />
+                <TRow label="Data" value={formatDateOnly(order.OrdersDate)} />
+                <TRow label="Suma" value={`€${Number(order.totalAmount ?? 0).toFixed(2)}`} />
+                <TRow label="Apmokėjimas" value={order.paymentMethod || "—"} />
+                <TRow label="Būsena" value={order.statusName || "—"} />
               </div>
             </div>
           )}

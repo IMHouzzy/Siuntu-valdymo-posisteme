@@ -19,8 +19,6 @@ public partial class order
 
     public int fk_Clientid_Users { get; set; }
 
-    public int? fk_Reportid_Report { get; set; }
-
     public int? externalDocumentId { get; set; }
 
     public int fk_Companyid_Company { get; set; }

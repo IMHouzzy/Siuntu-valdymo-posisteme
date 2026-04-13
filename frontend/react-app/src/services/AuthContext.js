@@ -1,135 +1,135 @@
-import { createContext, useContext, useMemo, useState, useEffect } from "react";
-import { jwtDecode } from "jwt-decode";
+// AuthContext.jsx
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 
 const AuthContext = createContext();
 
-function safeJsonParse(value, fallback) {
-  try { return JSON.parse(value); } catch { return fallback; }
-}
+const API = "http://localhost:5065/api"; // ← single source of truth, includes /api
 
-function decodeAuth(token) {
-  try {
-    const p = jwtDecode(token);
-
-    const now = Date.now() / 1000;
-
-    if (p.exp && p.exp < now) {
-      // token expired
-      localStorage.removeItem("token");
-      return { user: null, companies: [], activeCompany: null, companyRole: "" };
-    }
-
-    const companies =
-      typeof p.companies === "string"
-        ? safeJsonParse(p.companies, [])
-        : Array.isArray(p.companies)
-          ? p.companies
-          : [];
-
-    const activeCompany = {
-      id: Number(p.companyId || 0),
-      name: p.companyName || "",
-      code: p.companyCode || "",
-      image: p.companyImage || ""
-    };
-
-    return {
-      user: {
-        id: Number(p.sub || 0),
-        email: p.email,
-        provider: p.provider,
-        fullName: p.fullName || `${p.name || ""} ${p.surname || ""}`.trim(),
-        isMasterAdmin: String(p.isMasterAdmin || "0") === "1",
-      },
-      companies,
-      activeCompany,
-      companyRole: p.companyRole || "",
-    };
-  } catch (e) {
-    console.log("JWT decode error:", e);
-    return { user: null, companies: [], activeCompany: null, companyRole: "" };
-  }
-}
+const apiFetch = (url, options = {}) =>
+    fetch(url, { credentials: "include", ...options });
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(localStorage.getItem("token") || null);
-  const [companySwitchLocked, setCompanySwitchLocked] = useState(false);
-  useEffect(() => {
-    if (!token) return;
+    const [user,                setUser]                = useState(null);
+    const [companies,           setCompanies]           = useState([]);
+    const [activeCompany,       setActiveCompany]       = useState(null);
+    const [companyRole,         setCompanyRole]         = useState("");
+    const [loading,             setLoading]             = useState(true);
+    const [companySwitchLocked, setCompanySwitchLocked] = useState(false);
 
-    const { exp } = jwtDecode(token);
+    const applySession = (data) => {
+        if (!data?.userId) {
+            setUser(null);
+            setCompanies([]);
+            setActiveCompany(null);
+            setCompanyRole("");
+            return;
+        }
+        setUser({
+            id:           data.userId,
+            email:        data.email,
+            fullName:     data.fullName,
+            name:         data.fullName?.split(" ")[0] ?? "",
+            isMasterAdmin: data.isMasterAdmin,
+            authProvider: data.authProvider,
+        });
+        setCompanies(data.companies ?? []);
+        setActiveCompany(data.activeCompany ?? null);
+        setCompanyRole(data.companyRole ?? data.activeCompany?.role ?? "");
+    };
 
-    if (!exp) return;
+    // Restore session on app load — if the cookie exists /me returns user info
+    const restoreSession = useCallback(async () => {
+        try {
+            const res = await apiFetch(`${API}/auth/me`);
+            if (res.ok) applySession(await res.json());
+        } catch { /* network error — stay logged out */ }
+        finally { setLoading(false); }
+    }, []);
 
-    const expiryTime = exp * 1000 - Date.now();
+    useEffect(() => { restoreSession(); }, [restoreSession]);
 
-    if (expiryTime <= 0) {
-      logout();
-      return;
-    }
+    const login = async (email, password) => {
+        const res = await apiFetch(`${API}/auth/login`, {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ email, password }),
+        });
+        if (!res.ok) {
+            const text = await res.text().catch(() => "");
+            throw new Error(text || "Prisijungimas nepavyko.");
+        }
+        applySession(await res.json());
+    };
 
-    const timer = setTimeout(() => {
-      logout();
-    }, expiryTime);
+    const register = async (dto) => {
+        const res = await apiFetch(`${API}/auth/register`, {  // ✅ was missing /api/
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify(dto),
+        });
+        if (!res.ok) {
+            const text = await res.text().catch(() => "");
+            throw new Error(text || "Registracija nepavyko.");
+        }
+        applySession(await res.json());
+    };
 
-    return () => clearTimeout(timer);
-  }, [token]);
-  const decoded = useMemo(() => {
-    return token ? decodeAuth(token) : { user: null, companies: [], activeCompany: null, companyRole: "" };
-  }, [token]);
+    const googleLogin = async (idToken) => {
+        const res = await apiFetch(`${API}/auth/google`, {    // ✅ was missing /api/
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ idToken }),
+        });
+        if (!res.ok) throw new Error("Google prisijungimas nepavyko.");
+        applySession(await res.json());
+    };
 
-  const login = (newToken) => {
-    localStorage.setItem("token", newToken);
-    setToken(newToken);
-  };
+    const logout = async () => {
+        try {
+            await apiFetch(`${API}/auth/logout`, { method: "POST" }); // ✅ was missing /api/
+        } catch { /* ignore */ }
+        setUser(null);
+        setCompanies([]);
+        setActiveCompany(null);
+        setCompanyRole("");
+    };
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    setToken(null);
-  };
+    const switchCompany = async (companyId) => {
+        if (companySwitchLocked) return;
+        const res = await apiFetch(`${API}/auth/switch-company/${companyId}`, { // ✅ was missing /api/
+            method: "POST",
+        });
+        if (!res.ok) {
+            const text = await res.text().catch(() => "");
+            throw new Error(text || "Switch company failed.");
+        }
+        applySession(await res.json());
+    };
 
-  const switchCompany = async (companyId) => {
-    if (companySwitchLocked) return;
-    if (!token) throw new Error("No token");
-
-    const res = await fetch(`http://localhost:5065/api/auth/switch-company/${companyId}`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (!res.ok) {
-      const t = await res.text().catch(() => "");
-      throw new Error(t || "Switch company failed");
-    }
-
-    const data = await res.json().catch(() => ({}));
-    if (!data?.token) throw new Error("No token in response");
-    login(data.token);
-  };
-
-  return (
-    <AuthContext.Provider
-      value={{
-        token,
-        user: decoded.user,
-        companies: decoded.companies,
-        activeCompany: decoded.activeCompany,
-        activeCompanyId: decoded.activeCompany?.id || 0,
-        companyRole: decoded.companyRole,
-
-        login,
-        logout,
-        switchCompany,
-
-        companySwitchLocked,
-        setCompanySwitchLocked,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+    return (
+        <AuthContext.Provider
+            value={{
+                user,
+                companies,
+                activeCompany,
+                activeCompanyId: activeCompany?.id_Company ?? 0,
+                companyRole,
+                loading,
+                login,
+                register,
+                googleLogin,
+                logout,
+                switchCompany,
+                token: null,
+                companySwitchLocked,
+                setCompanySwitchLocked,
+            }}
+        >
+            {!loading && children}
+        </AuthContext.Provider>
+    );
 }
 
 export function useAuth() {
-  return useContext(AuthContext);
+    return useContext(AuthContext);
 }

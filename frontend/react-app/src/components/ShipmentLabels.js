@@ -3,9 +3,8 @@
 import { useState } from "react";
 import "../styles/ShipmentLabels.css";
 import { FiBox, FiCheck, FiArrowLeft, FiDownload, FiPrinter } from "react-icons/fi";
-const API = "http://localhost:5065";
-const auth = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
-
+import { shipmentLabelsApi } from "../services/api";
+const ASSET_BASE = process.env.REACT_APP_API_BASE_URL
 /**
  * @param {object}   props
  * @param {number}   props.shipmentId
@@ -20,10 +19,7 @@ export default function ShipmentLabels({ shipmentId, trackingNumber, packages, o
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   const labelUrl = (pkg) =>
-    pkg.labelFile?.startsWith("http")
-      ? pkg.labelFile
-      : `${API}${pkg.labelFile}`;
-
+    pkg.labelFile?.startsWith("http") ? pkg.labelFile : `${ASSET_BASE}${pkg.labelFile}`;
   // ── Single label: download ────────────────────────────────────────────────
   const handleDownload = (pkg) => {
     const link = document.createElement("a");
@@ -45,60 +41,39 @@ export default function ShipmentLabels({ shipmentId, trackingNumber, packages, o
   const handleDownloadZip = async () => {
     setDownloadingZip(true);
     try {
-      const res = await fetch(
-        `${API}/api/shipments/${shipmentId}/labels/zip`,
-        { headers: auth() }
-      );
+      const res = await shipmentLabelsApi.downloadZip(shipmentId);
       if (!res.ok) throw new Error(`Klaida: ${res.status}`);
-
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = url;
-      link.download = `labels_${trackingNumber}.zip`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      link.href = url; link.download = `labels_${trackingNumber}.zip`;
+      document.body.appendChild(link); link.click();
+      document.body.removeChild(link); URL.revokeObjectURL(url);
     } catch (err) {
       alert(`Nepavyko atsisiųsti ZIP: ${err.message}`);
-    } finally {
-      setDownloadingZip(false);
-    }
+    } finally { setDownloadingZip(false); }
   };
-
   // ── Bulk: open merged PDF (all labels in one PDF) for printing ────────────
   const handlePrintAll = async () => {
     setLoadingMergedPdf(true);
     try {
-      const res = await fetch(
-        `${API}/api/shipments/${shipmentId}/labels/merged`,
-        { headers: auth() }
-      );
+      const res = await shipmentLabelsApi.downloadMerged(shipmentId);
       if (!res.ok) throw new Error(`Klaida: ${res.status}`);
-
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const newTab = window.open(url, "_blank", "noopener,noreferrer");
-
       if (newTab) {
-        // Revoke after enough time for the tab to load
         setTimeout(() => URL.revokeObjectURL(url), 60_000);
       } else {
-        // Pop-up blocked — fall back to downloading the merged PDF
         const link = document.createElement("a");
-        link.href = url;
-        link.download = `all_labels_${trackingNumber}.pdf`;
-        document.body.appendChild(link);
-        link.click();
+        link.href = url; link.download = `all_labels_${trackingNumber}.pdf`;
+        document.body.appendChild(link); link.click();
         document.body.removeChild(link);
         setTimeout(() => URL.revokeObjectURL(url), 5_000);
       }
     } catch (err) {
       alert(`Nepavyko sukurti bendro PDF: ${err.message}`);
-    } finally {
-      setLoadingMergedPdf(false);
-    }
+    } finally { setLoadingMergedPdf(false); }
   };
 
   // ── Render ────────────────────────────────────────────────────────────────

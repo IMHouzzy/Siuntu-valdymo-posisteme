@@ -12,29 +12,30 @@ import {
 } from "recharts";
 import "../styles/Dashboard.css";
 
-const API = "http://localhost:5065";
+import { dashboardApi } from "../services/api";
+
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 const ORDER_COLORS = {
   "Awaiting confirmation": "#d97706",
-  "Cancelled":             "#dc2626",
-  "Completed":             "#16a34a",
-  "In progress":           "#1d4ed8",
-  "Sent":                  "#7c3aed",
+  "Cancelled": "#dc2626",
+  "Completed": "#16a34a",
+  "In progress": "#1d4ed8",
+  "Sent": "#7c3aed",
 };
 
 const SHIPMENT_COLORS = {
-  "Sukurta":                "#64748b",
-  "Vežama":                 "#1d4ed8",
-  "Pristatyta":             "#16a34a",
-  "Vėluoja":                "#dc2626",
-  "Grąžinimas sukurtas":    "#f59e0b",
-  "Grąžinimas vežamas":     "#8b5cf6",
+  "Sukurta": "#64748b",
+  "Vežama": "#1d4ed8",
+  "Pristatyta": "#16a34a",
+  "Vėluoja": "#dc2626",
+  "Grąžinimas sukurtas": "#f59e0b",
+  "Grąžinimas vežamas": "#8b5cf6",
   "Grąžinimas pristatytas": "#10b981",
-  "Grąžinimas vėluoja":     "#ef4444",
+  "Grąžinimas vėluoja": "#ef4444",
 };
 
-const CHART_COLORS = ["#1d4ed8","#16a34a","#d97706","#7c3aed","#ef4444","#10b981","#f59e0b","#64748b"];
+const CHART_COLORS = ["#1d4ed8", "#16a34a", "#d97706", "#7c3aed", "#ef4444", "#10b981", "#f59e0b", "#64748b"];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmt(n, dec = 0) {
@@ -104,7 +105,7 @@ const PieTooltip = ({ active, payload }) => {
 // ── KPI Summary Card ──────────────────────────────────────────────────────────
 function KpiCard({ icon, label, value, sub, accent, delta, loading, prefix = "" }) {
   const isPositive = delta > 0;
-  const isNeutral  = delta === 0 || delta == null;
+  const isNeutral = delta === 0 || delta == null;
 
   return (
     <div className={`dash-kpi-card dash-kpi-card--${accent}`}>
@@ -200,25 +201,16 @@ function CourierRows({ items }) {
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const [period,  setPeriod]  = useState("month");
-  const [data,    setData]    = useState(null);
+  const [period, setPeriod] = useState("month");
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState(null);
+  const [error, setError] = useState(null);
 
   const load = useCallback(async (p) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API}/api/dashboard/stats?period=${p}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setData(await res.json());
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true); setError(null);
+    try { setData(await dashboardApi.stats(p)); }
+    catch (e) { setError(e.message); }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(period); }, [period, load]);
@@ -234,30 +226,30 @@ export default function Dashboard() {
     const stt = new Map(data.shipments.overTime.map(x => [x.label, x.count]));
     const labels = [...new Set([...ott.keys(), ...rtt.keys(), ...stt.keys()])].sort();
     return labels.map(l => ({
-      label:     l,
-      orders:    ott.get(l) ?? 0,
-      revenue:   rtt.get(l) ?? 0,
+      label: l,
+      orders: ott.get(l) ?? 0,
+      revenue: rtt.get(l) ?? 0,
       shipments: stt.get(l) ?? 0,
     }));
   })();
 
-  const orderDonutData    = (data?.orders.byStatus    ?? []).filter(x => x.count > 0);
+  const orderDonutData = (data?.orders.byStatus ?? []).filter(x => x.count > 0);
   const shipmentDonutData = (data?.shipments.byStatus ?? []).filter(x => x.count > 0);
 
   const PERIODS = [
-    { key: "day",   label: "24h" },
-    { key: "week",  label: "7d" },
+    { key: "day", label: "24h" },
+    { key: "week", label: "7d" },
     { key: "month", label: "30d" },
-    { key: "year",  label: "1y" },
-    { key: "all",   label: "Visas" },
+    { key: "year", label: "1y" },
+    { key: "all", label: "Visas" },
   ];
 
   const periodLabel = {
-    day:   "paskutinę parą",
-    week:  "paskutines 7 dienas",
+    day: "paskutinę parą",
+    week: "paskutines 7 dienas",
     month: "paskutinius 30 dienų",
-    year:  "paskutinius 12 mėnesių",
-    all:   "visą laikotarpį",
+    year: "paskutinius 12 mėnesių",
+    all: "visą laikotarpį",
   }[period];
 
   return (
@@ -369,11 +361,11 @@ export default function Dashboard() {
               <BarChart data={overTimeData} barGap={1} barCategoryGap="30%">
                 <defs>
                   <linearGradient id="gradOrders" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%"   stopColor="#1d4ed8" stopOpacity={1} />
+                    <stop offset="0%" stopColor="#1d4ed8" stopOpacity={1} />
                     <stop offset="100%" stopColor="#1d4ed8" stopOpacity={0.7} />
                   </linearGradient>
                   <linearGradient id="gradShipments" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%"   stopColor="#16a34a" stopOpacity={1} />
+                    <stop offset="0%" stopColor="#16a34a" stopOpacity={1} />
                     <stop offset="100%" stopColor="#16a34a" stopOpacity={0.7} />
                   </linearGradient>
                 </defs>
@@ -392,8 +384,8 @@ export default function Dashboard() {
                   allowDecimals={false}
                 />
                 <Tooltip content={<CustomTooltip period={period} />} cursor={{ fill: "var(--color-bg)", radius: 4 }} />
-                <Bar dataKey="orders"    name="Užsakymai" fill="url(#gradOrders)"    radius={[4,4,0,0]} />
-                <Bar dataKey="shipments" name="Siuntos"   fill="url(#gradShipments)" radius={[4,4,0,0]} />
+                <Bar dataKey="orders" name="Užsakymai" fill="url(#gradOrders)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="shipments" name="Siuntos" fill="url(#gradShipments)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )
@@ -409,12 +401,12 @@ export default function Dashboard() {
               <LineChart data={overTimeData}>
                 <defs>
                   <linearGradient id="gradRevLine" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%"   stopColor="#16a34a" stopOpacity={0.4} />
+                    <stop offset="0%" stopColor="#16a34a" stopOpacity={0.4} />
                     <stop offset="100%" stopColor="#16a34a" stopOpacity={1} />
                   </linearGradient>
                 </defs>
                 <Line type="monotone" dataKey="revenue" name="Pajamos (€)" stroke="url(#gradRevLine)" strokeWidth={2} dot={false} />
-                     <XAxis
+                <XAxis
                   dataKey="label"
                   tickFormatter={l => formatLabel(l, period)}
                   tick={{ fontSize: 11, fill: "var(--color-text-muted)", fontFamily: "var(--font-family-mono)" }}
@@ -566,11 +558,11 @@ export default function Dashboard() {
                   <Tooltip content={<CustomTooltip period={period} />} />
                   <defs>
                     <linearGradient id="gradReturns" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%"   stopColor="#d97706" stopOpacity={1} />
+                      <stop offset="0%" stopColor="#d97706" stopOpacity={1} />
                       <stop offset="100%" stopColor="#d97706" stopOpacity={0.6} />
                     </linearGradient>
                   </defs>
-                  <Bar dataKey="count" name="Grąžinimai" fill="url(#gradReturns)" radius={[4,4,0,0]} />
+                  <Bar dataKey="count" name="Grąžinimai" fill="url(#gradReturns)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )

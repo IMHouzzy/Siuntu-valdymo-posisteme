@@ -1,5 +1,4 @@
 // Program.cs
-using System.Net.Http.Headers;
 using System.Text;
 using Bakalauras.API.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -8,12 +7,12 @@ using Microsoft.IdentityModel.Tokens;
 using QuestPDF.Infrastructure;
 using Bakalauras.API.Services;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
-// DbContext
+// ── DbContext ─────────────────────────────────────────────────────────────────
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(
         builder.Configuration.GetConnectionString("Default"),
@@ -21,18 +20,21 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     )
 );
 
+// ── Services ──────────────────────────────────────────────────────────────────
+
 builder.Services.AddScoped<IEmailService,        SmtpEmailService>();
 builder.Services.AddScoped<IInvoiceService,      InvoiceService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
-// JWT service
 builder.Services.AddScoped<JwtService>();
-
-// Optional but often useful
+builder.Services.AddScoped<CourierProviderFactory>();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient();
 
-// Auth
+// ── JWT auth — reads token from httpOnly cookie ───────────────────────────────
+
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-var jwtKey = jwtSettings["Key"];
+var jwtKey      = jwtSettings["Key"];
+
 if (string.IsNullOrWhiteSpace(jwtKey))
     throw new InvalidOperationException("Jwt:Key is missing in configuration.");
 
@@ -44,64 +46,69 @@ builder.Services
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
+            ValidateIssuer           = true,
+            ValidateAudience         = true,
+            ValidateLifetime         = true,
             ValidateIssuerSigningKey = true,
 
-            ValidIssuer = jwtSettings["Issuer"],
-            ValidAudience = jwtSettings["Audience"],
+            ValidIssuer      = jwtSettings["Issuer"],
+            ValidAudience    = jwtSettings["Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
 
             NameClaimType = System.Security.Claims.ClaimTypes.NameIdentifier,
-            ClockSkew = TimeSpan.Zero
+            ClockSkew     = TimeSpan.Zero,
+        };
+
+        // ── Read JWT from the httpOnly cookie instead of Authorization header ─
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                if (ctx.Request.Cookies.TryGetValue("auth_token", out var cookieToken))
+                    ctx.Token = cookieToken;
+                return Task.CompletedTask;
+            }
         };
     });
 
 builder.Services.AddAuthorization();
 
-// Butent API client
-builder.Services.AddHttpClient();
+// ── CORS — credentials require an explicit origin, not a wildcard ─────────────
 
-// CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("LocalDev", policy =>
-    {
+    options.AddPolicy("Frontend", policy =>
         policy
-            .WithOrigins("http://localhost:3000")
+            .WithOrigins(
+                "http://localhost:3000",   // CRA
+                "http://localhost:5173"    // Vite  ← add/remove as needed
+            )
             .AllowAnyHeader()
-            .AllowAnyMethod();
-        // .AllowCredentials(); // ✅ tik jei naudoji cookies. Su Bearer dažniausiai nereikia
-    });
+            .AllowAnyMethod()
+            .AllowCredentials());          // required so the browser sends cookies
 });
 
-// Encryption key for integration secrets
+// ── Misc ──────────────────────────────────────────────────────────────────────
+
 var encKey = builder.Configuration["Encryption:Key"]
-    ?? throw new InvalidOperationException("Encryption:Key is missing in configuration.");
+    ?? throw new InvalidOperationException("Encryption:Key is missing.");
 IntegrationSecrets.Configure(encKey);
 
 QuestPDF.Settings.License = LicenseType.Community;
-// Workers
+
 builder.Services.AddHostedService<ClientSyncWorker>();
 builder.Services.AddHostedService<ProductSyncWorker>();
 builder.Services.AddHostedService<OrderSyncWorker>();
 
-builder.Services.AddScoped<CourierProviderFactory>();
-
+// ── Pipeline ──────────────────────────────────────────────────────────────────
 
 var app = builder.Build();
 
-// ✅ svarbi tvarka:
 app.UseRouting();
-
-app.UseCors("LocalDev"); // ✅ po routing, prieš auth
-
+app.UseCors("Frontend");       // must be before UseAuthentication
 app.UseStaticFiles();
-
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();

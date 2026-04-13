@@ -3,57 +3,54 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../../services/AuthContext";
-import Logo from "../../images/Full_track_sync_logo2.png"
+import Logo from "../../images/Full_track_sync_logo2.png";
+
 function Register() {
     const location = useLocation();
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const { register, googleLogin } = useAuth();
 
-    const [name, setName] = useState("");
-    const [surname, setSurname] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+    const [name, setName]                   = useState("");
+    const [surname, setSurname]             = useState("");
+    const [email, setEmail]                 = useState("");
+    const [password, setPassword]           = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [error, setError]                 = useState("");
+    const [loading, setLoading]             = useState(false);
 
     const handleRegister = async (e) => {
         e.preventDefault();
+        setError("");
+
         if (password !== confirmPassword) {
-            alert("Passwords do not match!");
+            setError("Slaptažodžiai nesutampa.");
             return;
         }
+
+        setLoading(true);
         try {
-            const res = await fetch(`${process.env.REACT_APP_API_URL}/auth/register`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, surname, email, password }),
-            });
-            const data = await res.json();
-            login(data.token);
+            await register({ name, surname, email, password });
             navigate("/");
         } catch (err) {
-            console.error(err);
+            setError(err.message || "Registracija nepavyko.");
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleGoogleRegister = async (credentialResponse) => {
         try {
-            const res = await fetch(`${process.env.REACT_APP_API_URL}/auth/google`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ idToken: credentialResponse.credential }),
-            });
-            const data = await res.json();
-            login(data.token);
+            await googleLogin(credentialResponse.credential);
             navigate("/");
         } catch (err) {
-            console.error(err);
+            setError(err.message || "Google registracija nepavyko.");
         }
     };
 
     return (
         <div className="login-container">
             <div className="login-wrapper">
-                <img className="login-logo" src={Logo} />
+                <img className="login-logo" src={Logo} alt="Logo" />
                 <div className="login-select">
                     <Link
                         to="/login"
@@ -74,9 +71,8 @@ function Register() {
                     <div className="form-group">
                         <input type="text" placeholder="Pavardė" value={surname} onChange={e => setSurname(e.target.value)} required />
                     </div>
-
                     <div className="form-group">
-                        <input type="email" placeholder="El.paštas" value={email} onChange={e => setEmail(e.target.value)} required />
+                        <input type="email" placeholder="El. paštas" value={email} onChange={e => setEmail(e.target.value)} required />
                     </div>
                     <div className="form-group">
                         <input type="password" placeholder="Slaptažodis" value={password} onChange={e => setPassword(e.target.value)} required />
@@ -85,17 +81,24 @@ function Register() {
                         <input type="password" placeholder="Pakartokite slaptažodį" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required />
                     </div>
 
-                    <button type="submit" className="login-button">Registruotis</button>
+                    {error && (
+                        <p style={{ color: "var(--color-danger)", fontSize: "0.8rem", margin: "4px 0" }}>
+                            {error}
+                        </p>
+                    )}
+
+                    <button type="submit" className="login-button" disabled={loading}>
+                        {loading ? "Registruojama…" : "Registruotis"}
+                    </button>
                 </form>
 
                 <div className="other-login">
                     <div className="or-divider">
                         <span>Arba registruokitės su</span>
                     </div>
-
                     <GoogleLogin
                         onSuccess={handleGoogleRegister}
-                        onError={() => console.log("Google registration failed")}
+                        onError={() => setError("Google registracija nepavyko.")}
                     />
                 </div>
             </div>

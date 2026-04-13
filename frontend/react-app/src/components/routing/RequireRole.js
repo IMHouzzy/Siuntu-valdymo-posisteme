@@ -1,20 +1,18 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../../services/AuthContext";
-
-// allow pvz: ["CLIENT"] arba ["ADMIN","STAFF","MASTER"]
+ 
 export default function RequireRole({ allow, children }) {
-  const { user, companyRole } = useAuth(); // ⬅️ įsidėk companyRole į AuthContext decode
-
-  const role = user?.isMasterAdmin ? "MASTER" : (companyRole || "STAFF");
-
-  if (!allow.includes(role)) {
-    // jei klientas bandė eiti į staff, permetam į /client
-    if (role === "CLIENT") return <Navigate to="/client" replace />;
-    if (role === "COURIER") return <Navigate to= "/courier" replace/>;
-    // jei staff bandė eiti į klientų pusę, į /
-    return <Navigate to="/" replace />;
-  }
-
-  return children;
+    const { user, companyRole } = useAuth();
+ 
+    const role = user?.isMasterAdmin ? "MASTER" : (companyRole || "STAFF");
+ 
+    if (!allow.includes(role)) {
+        if (role === "CLIENT")  return <Navigate to="/client"  replace />;
+        if (role === "COURIER") return <Navigate to="/courier" replace />;
+        return <Navigate to="/" replace />;
+    }
+ 
+    return children;
 }
+ 

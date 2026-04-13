@@ -7,40 +7,32 @@ import TableToolbar from "../../components/TableToolbar";
 import { FiTrash2, FiEdit } from "react-icons/fi";
 import NoImage from "../../images/no-camera.png";
 import { useAuth } from "../../services/AuthContext";
+import { productsApi } from "../../services/api";
 
-const API = "http://localhost:5065";
-
+const API = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065";
 function ProductList() {
     const navigate = useNavigate();
     const [products, setProducts] = useState([]);
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [q, setQ] = useState("");
     const [group, setGroup] = useState("all");
-    const { token, activeCompanyId } = useAuth();
+    const { activeCompanyId } = useAuth();
 
     useEffect(() => {
-        if (!token) return;
+        if (!activeCompanyId) return;  // remove the `token` guard — cookie handles auth
         setProducts([]);
         setSelectedProduct(null);
-        fetch(`${API}/api/products/allProductsFullInfo`, {
-            headers: { Authorization: `Bearer ${token}` },
-        })
-            .then((res) => { if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`); return res.json(); })
-            .then(setProducts)
-            .catch(console.error);
-        console.log("Fetched products:", products);
-    }, [token, activeCompanyId]);
+        productsApi.getAll().then(setProducts).catch(console.error);
+    }, [activeCompanyId]);
 
+    // REPLACE deleteProduct:
     const deleteProduct = async (p) => {
-        const ok = window.confirm(`Ištrinti prekę "${p.name}"?`);
-        if (!ok) return;
-        const res = await fetch(`${API}/api/products/deleteProduct/${p.id_Product}`, {
-            method: "DELETE",
-            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        });
-        if (!res.ok) { alert("Ištrinti nepavyko"); return; }
-        setProducts((prev) => prev.filter((x) => x.id_Product !== p.id_Product));
-        setSelectedProduct(null);
+        if (!window.confirm(`Ištrinti prekę "${p.name}"?`)) return;
+        try {
+            await productsApi.remove(p.id_Product);
+            setProducts(prev => prev.filter(x => x.id_Product !== p.id_Product));
+            setSelectedProduct(null);
+        } catch { alert("Ištrinti nepavyko"); }
     };
 
     const groupFilters = useMemo(() => {
@@ -169,7 +161,7 @@ function ProductList() {
                     {/* Main Image */}
                     <div className={`rd-product-hero-img ${!product.images?.[0]?.url ? "rd-product-img-placeholder" : ""}`}>
                         {product.images?.[0]?.url ? (
-                            <img src={`http://localhost:5065/${product.images[0].url}`} alt={product.name || "product"} />
+                            <img src={`${API}/${product.images[0].url}`} alt={product.name || "product"} />
                         ) : (
                             <img src={NoImage} alt="No image" />
                         )}
@@ -187,7 +179,7 @@ function ProductList() {
                 </div>
                 {/* Action Buttons */}
                 <div className="rd-product-hero-actions">
-                    <button className="rd-action-btn" title="Redaguoti"onClick={() => navigate(`/productEdit/${product.id_Product}`)}>
+                    <button className="rd-action-btn" title="Redaguoti" onClick={() => navigate(`/productEdit/${product.id_Product}`)}>
                         <FiEdit size={18} />
                     </button>
                     <button className="rd-action-btn danger" title="Ištrinti" onClick={() => onDelete(product)}>

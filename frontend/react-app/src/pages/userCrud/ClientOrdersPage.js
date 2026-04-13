@@ -10,25 +10,26 @@ import {
 } from "react-icons/fi";
 import ReturnFormModal from "../../components/ReturnFormModal";
 import "../../styles/ClientOrdersPage.css";
+import { clientApi } from "../../services/api";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:5065";
+const API = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065";
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 const ORDER_STATUS = {
   1: { label: "Laukia patvirtinimo", color: "var(--color-warning)", icon: FiClock },
-  2: { label: "Atšauktas",           color: "var(--color-danger)",  icon: FiXCircle },
-  3: { label: "Įvykdytas",           color: "var(--color-accent)",  icon: FiCheckCircle },
-  4: { label: "Vykdomas",            color: "var(--color-secondary)", icon: FiPackage },
-  5: { label: "Išsiųstas",           color: "var(--color-primary)", icon: FiTruck },
+  2: { label: "Atšauktas", color: "var(--color-danger)", icon: FiXCircle },
+  3: { label: "Įvykdytas", color: "var(--color-accent)", icon: FiCheckCircle },
+  4: { label: "Vykdomas", color: "var(--color-secondary)", icon: FiPackage },
+  5: { label: "Išsiųstas", color: "var(--color-primary)", icon: FiTruck },
 };
 
 const RETURN_STATUS = {
-  1: { label: "Sukurtas",           color: "var(--color-secondary)", icon: FiClock },
-  2: { label: "Įvykdytas",          color: "var(--color-accent)",    icon: FiCheckCircle },
-  3: { label: "Vertinamas",         color: "var(--color-warning)",   icon: FiAlertCircle },
-  4: { label: "Patvirtintas",       color: "var(--color-accent)",    icon: FiCheckCircle },
-  5: { label: "Atmestas",           color: "var(--color-danger)",    icon: FiXCircle },
-  6: { label: "Etiketės paruoštos", color: "var(--color-primary)",   icon: FiFileText },
+  1: { label: "Sukurtas", color: "var(--color-secondary)", icon: FiClock },
+  2: { label: "Įvykdytas", color: "var(--color-accent)", icon: FiCheckCircle },
+  3: { label: "Vertinamas", color: "var(--color-warning)", icon: FiAlertCircle },
+  4: { label: "Patvirtintas", color: "var(--color-accent)", icon: FiCheckCircle },
+  5: { label: "Atmestas", color: "var(--color-danger)", icon: FiXCircle },
+  6: { label: "Etiketės paruoštos", color: "var(--color-primary)", icon: FiFileText },
 };
 
 function getOrderStatus(id) {
@@ -53,11 +54,6 @@ function fmtDateTime(d) {
 }
 function fmtEur(v) {
   return `€${Number(v ?? 0).toFixed(2)}`;
-}
-
-function authH() {
-  const t = localStorage.getItem("token");
-  return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -88,25 +84,19 @@ function InfoRow({ icon: Icon, label, value }) {
 function EditContactModal({ order, onClose, onSaved }) {
   const [form, setForm] = useState({
     DeliveryAddress: order.snapshotDeliveryAddress || "",
-    City:            order.snapshotCity            || "",
-    Country:         order.snapshotCountry         || "",
-    Phone:           order.snapshotPhone           || "",
+    City: order.snapshotCity || "",
+    Country: order.snapshotCountry || "",
+    Phone: order.snapshotPhone || "",
   });
   const [saving, setSaving] = useState(false);
-  const [error, setError]   = useState("");
+  const [error, setError] = useState("");
 
   const save = async () => {
     setSaving(true);
     setError("");
     try {
-      const r = await fetch(`${API}/api/client/orders/${order.id_Orders}/contact`, {
-        method:  "PUT",
-        headers: { "Content-Type": "application/json", ...authH() },
-        body:    JSON.stringify(form),
-      });
-      if (!r.ok) { setError((await r.text()) || "Klaida išsaugant."); return; }
-      onSaved();
-      onClose();
+      await clientApi.updateContact(order.id_Orders, form);
+      onSaved(); onClose();
     } catch {
       setError("Serverio klaida.");
     } finally {
@@ -138,14 +128,14 @@ function EditContactModal({ order, onClose, onSaved }) {
             Galite keisti pristatymo adresą ir kontaktinius duomenis.
           </p>
           {field("DeliveryAddress", "Pristatymo adresas", "Gatvė, namas, butas")}
-          {field("City",            "Miestas",           "Miestas")}
-          {field("Country",         "Šalis",             "Lietuva")}
-          {field("Phone",           "Telefono numeris",  "+370...")}
+          {field("City", "Miestas", "Miestas")}
+          {field("Country", "Šalis", "Lietuva")}
+          {field("Phone", "Telefono numeris", "+370...")}
           {error && <div className="uh-form-error">{error}</div>}
         </div>
         <div className="uh-modal-footer">
-          <button className="uh-btn uh-btn--ghost"   onClick={onClose} disabled={saving}>Atšaukti</button>
-          <button className="uh-btn uh-btn--primary" onClick={save}    disabled={saving}>
+          <button className="uh-btn uh-btn--ghost" onClick={onClose} disabled={saving}>Atšaukti</button>
+          <button className="uh-btn uh-btn--primary" onClick={save} disabled={saving}>
             {saving ? <span className="uh-spinner-sm" /> : <><FiSave size={13} /> Išsaugoti</>}
           </button>
         </div>
@@ -156,26 +146,21 @@ function EditContactModal({ order, onClose, onSaved }) {
 
 // ── Order Detail Panel ────────────────────────────────────────────────────────
 function OrderDetail({ orderId, onReturnCreated }) {
-  const [data, setData]             = useState(null);
-  const [loading, setLoading]       = useState(true);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [editContact, setEditContact] = useState(false);
   const [showReturn, setShowReturn] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    try {
-      const r = await fetch(`${API}/api/client/orders/${orderId}`, { headers: authH() });
-      if (r.ok) setData(await r.json());
-    } finally {
-      setLoading(false);
-    }
-    console.log("Loaded order detail for order", data);
+    try { setData(await clientApi.getOrderDetail(orderId)); }
+    finally { setLoading(false); }
   }, [orderId]);
 
   useEffect(() => { load(); }, [load]);
 
   if (loading) return <div className="uh-detail-loading"><span className="uh-spinner" /></div>;
-  if (!data)   return <div className="uh-detail-empty">Nepavyko įkelti užsakymo.</div>;
+  if (!data) return <div className="uh-detail-empty">Nepavyko įkelti užsakymo.</div>;
 
   const {
     id_Orders, OrdersDate, totalAmount, deliveryPrice, paymentMethod,
@@ -192,8 +177,8 @@ function OrderDetail({ orderId, onReturnCreated }) {
           <FiCalendar size={13} /> Užsakymo informacija
         </div>
         <div className="uh-info-rows">
-          <InfoRow icon={FiCalendar} label="Data"    value={fmtDate(data.ordersDate)} />
-          <InfoRow icon={FiPackage}  label="Statusas" value={statusName} />
+          <InfoRow icon={FiCalendar} label="Data" value={fmtDate(data.ordersDate)} />
+          <InfoRow icon={FiPackage} label="Statusas" value={statusName} />
           {paymentMethod && (
             <InfoRow icon={FiShoppingBag} label="Apmokėjimas" value={paymentMethod} />
           )}
@@ -261,10 +246,10 @@ function OrderDetail({ orderId, onReturnCreated }) {
         <div className="uh-detail-section">
           <div className="uh-detail-section-header"><FiTruck size={13} /> Siunta</div>
           <div className="uh-info-rows">
-            <InfoRow icon={FiCalendar} label="Išsiųsta"  value={fmtDate(shipment.shippingDate)} />
-            <InfoRow icon={FiCalendar} label="Numatoma"  value={fmtDate(shipment.estimatedDeliveryDate)} />
-            <InfoRow icon={FiTruck}    label="Kurjeris"  value={shipment.courierName} />
-            <InfoRow icon={FiMapPin}   label="Paštomatas" value={shipment.providerLockerId} />
+            <InfoRow icon={FiCalendar} label="Išsiųsta" value={fmtDate(shipment.shippingDate)} />
+            <InfoRow icon={FiCalendar} label="Numatoma" value={fmtDate(shipment.estimatedDeliveryDate)} />
+            <InfoRow icon={FiTruck} label="Kurjeris" value={shipment.courierName} />
+            <InfoRow icon={FiMapPin} label="Paštomatas" value={shipment.providerLockerId} />
           </div>
           {shipment.latestStatus && (
             <div className="uh-shipment-status">
@@ -397,36 +382,28 @@ function OrderCard({ order, onReturnCreated }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ClientOrdersPage() {
-  const [orders, setOrders]               = useState([]);
-  const [loading, setLoading]             = useState(true);
-  const [error, setError]                 = useState(null);
-  const [activeTab, setActiveTab]         = useState("orders");
-  const [returns, setReturns]             = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState("orders");
+  const [returns, setReturns] = useState([]);
   const [loadingReturns, setLoadingReturns] = useState(false);
   const navigate = useNavigate();
 
   const loadOrders = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     try {
-      const r = await fetch(`${API}/api/client/orders`, { headers: authH() });
-      if (!r.ok) throw new Error(r.status === 401 ? "auth" : "error");
-      setOrders(await r.json());
+      setOrders(await clientApi.getOrders());
     } catch (e) {
-      setError(e.message === "auth" ? "Prisijunkite iš naujo." : "Klaida įkeliant užsakymus.");
-    } finally {
-      setLoading(false);
-    }
+      setError(e.message === "HTTP 401" ? "Prisijunkite iš naujo." : "Klaida įkeliant užsakymus.");
+    } finally { setLoading(false); }
   }, []);
 
   const loadReturns = useCallback(async () => {
     setLoadingReturns(true);
-    try {
-      const r = await fetch(`${API}/api/client/returns`, { headers: authH() });
-      if (r.ok) setReturns(await r.json());
-    } finally {
-      setLoadingReturns(false);
-    }
+    try { setReturns(await clientApi.getReturns()); }
+    catch { /* silent */ }
+    finally { setLoadingReturns(false); }
   }, []);
 
   useEffect(() => { loadOrders(); }, [loadOrders]);

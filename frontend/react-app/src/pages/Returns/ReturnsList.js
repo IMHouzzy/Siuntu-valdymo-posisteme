@@ -1,13 +1,3 @@
-// pages/Returns/ReturnsList.jsx
-// Changes vs previous version:
-//   1. Table never shows "Atmesta" if evaluation hasn't been submitted yet
-//      (backend now returns displayStatusId / evaluationSubmitted flag — we use statusName directly
-//       since the backend already clamps it)
-//   2. Opening the evaluation form calls PUT /evaluate/open → sets status to "Vertinamas"
-//   3. Evaluation form no longer has a manual status dropdown — status is auto-derived server-side
-//   4. Client-uploaded images are shown prominently inside the evaluation form
-//   5. On successful submit the drawer reloads and shows the final auto status
-
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import DataTable from "../../components/DataTable";
@@ -23,19 +13,20 @@ import {
 } from "react-icons/fi";
 import { useAuth } from "../../services/AuthContext";
 import NoImage from "../../images/no-camera.png";
+import { returnsApi } from "../../services/api";
 
-const API = "http://localhost:5065";
-const authH = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
+const API = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065";
+
 
 // ── Status config ─────────────────────────────────────────────────────────────
 const RETURN_STATUS = {
-    1: { label: "Sukurtas",            color: "var(--color-secondary)" },
-    2: { label: "Vertinamas",          color: "var(--color-warning)" },
-    3: { label: "Gauta",               color: "var(--color-warning)" },
-    4: { label: "Užbaigta",            color: "var(--color-accent)" },
-    5: { label: "Patvirtinta",         color: "var(--color-accent)" },
-    6: { label: "Atmesta",             color: "var(--color-danger)" },
-    7: { label: "Etiketės paruoštos",  color: "var(--color-primary)" },
+    1: { label: "Sukurtas", color: "var(--color-secondary)" },
+    2: { label: "Vertinamas", color: "var(--color-warning)" },
+    3: { label: "Gauta", color: "var(--color-warning)" },
+    4: { label: "Užbaigta", color: "var(--color-accent)" },
+    5: { label: "Patvirtinta", color: "var(--color-accent)" },
+    6: { label: "Atmesta", color: "var(--color-danger)" },
+    7: { label: "Etiketės paruoštos", color: "var(--color-primary)" },
 };
 
 const METHOD_LABELS = {
@@ -95,7 +86,7 @@ function ItemImages({ imageUrls, expanded, onToggle }) {
 // ── Drawer hero ───────────────────────────────────────────────────────────────
 function ReturnHero({ ret, onNavigate }) {
     if (!ret) return null;
-    const cfg   = RETURN_STATUS[ret.displayStatusId ?? ret.fk_ReturnStatusTypeid_ReturnStatusType] ?? { label: "—", color: "var(--color-text-muted)" };
+    const cfg = RETURN_STATUS[ret.displayStatusId ?? ret.fk_ReturnStatusTypeid_ReturnStatusType] ?? { label: "—", color: "var(--color-text-muted)" };
     const total = (ret.items ?? []).reduce((s, i) => s + Number(i.returnSubTotal ?? 0), 0);
 
     return (
@@ -159,7 +150,7 @@ function EvaluationForm({ ret, onDone }) {
         const init = {};
         (ret.items ?? []).forEach(item => {
             init[item.id_ReturnItem] = {
-                eval:    item.evaluation != null ? !!item.evaluation : null,
+                eval: item.evaluation != null ? !!item.evaluation : null,
                 comment: item.evaluationComment ?? "",
             };
         });
@@ -167,8 +158,8 @@ function EvaluationForm({ ret, onDone }) {
     });
     const [employeeNote, setEmployeeNote] = useState(ret.employeeNote ?? "");
     const [expandedImages, setExpandedImages] = useState({});
-    const [submitting, setSubmitting]   = useState(false);
-    const [error, setError]             = useState("");
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState("");
 
     const setItemEval = (itemId, val) =>
         setItemState(prev => ({ ...prev, [itemId]: { ...prev[itemId], eval: val } }));
@@ -189,8 +180,8 @@ function EvaluationForm({ ret, onDone }) {
         const allDeclined = items.every(i => itemState[i.id_ReturnItem]?.eval === false);
         const anyApproved = items.some(i => itemState[i.id_ReturnItem]?.eval === true);
         if (!allEvaluated) return null;
-        if (allDeclined)  return { id: 6, ...RETURN_STATUS[6] };
-        if (anyApproved)  return { id: 7, ...RETURN_STATUS[7] }; // optimistic — may be 5 if labels fail
+        if (allDeclined) return { id: 6, ...RETURN_STATUS[6] };
+        if (anyApproved) return { id: 7, ...RETURN_STATUS[7] }; // optimistic — may be 5 if labels fail
         return null;
     }, [itemState, ret.items, allEvaluated]);
 
@@ -199,21 +190,17 @@ function EvaluationForm({ ret, onDone }) {
         setError("");
         try {
             const itemEvals = (ret.items ?? []).map(item => ({
-                ReturnItemId:      item.id_ReturnItem,
-                Evaluation:        itemState[item.id_ReturnItem]?.eval ?? false,
+                ReturnItemId: item.id_ReturnItem,
+                Evaluation: itemState[item.id_ReturnItem]?.eval ?? false,
                 EvaluationComment: itemState[item.id_ReturnItem]?.comment?.trim() || null,
             }));
 
             const body = {
                 EmployeeNote: employeeNote.trim() || null,
-                Items:        itemEvals,
+                Items: itemEvals,
             };
 
-            const r = await fetch(`${API}/api/returns/${ret.id_Returns}/evaluate`, {
-                method:  "PUT",
-                headers: { ...authH(), "Content-Type": "application/json" },
-                body:    JSON.stringify(body),
-            });
+            const r = await returnsApi.evaluate(ret.id_Returns, body);
 
             if (!r.ok) {
                 const txt = await r.text();
@@ -237,7 +224,7 @@ function EvaluationForm({ ret, onDone }) {
             {/* Per-item evaluation */}
             <div className="rl-eval-items">
                 {(ret.items ?? []).map((item, idx) => {
-                    const st   = itemState[item.id_ReturnItem] ?? {};
+                    const st = itemState[item.id_ReturnItem] ?? {};
                     const name = item.product?.name ?? `Prekė ${idx + 1}`;
                     const imgExpanded = !!expandedImages[item.id_ReturnItem];
 
@@ -358,24 +345,20 @@ function EvaluationForm({ ret, onDone }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function ReturnsList() {
     const navigate = useNavigate();
-    const { token, activeCompanyId } = useAuth();
+    const { activeCompanyId } = useAuth();
 
-    const [returns, setReturns]             = useState([]);
+    const [returns, setReturns] = useState([]);
     const [selectedReturn, setSelectedReturn] = useState(null);
-    const [detailData, setDetailData]       = useState(null);
+    const [detailData, setDetailData] = useState(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
-    const [showEvalForm, setShowEvalForm]   = useState(false);
-    const [q, setQ]       = useState("");
+    const [showEvalForm, setShowEvalForm] = useState(false);
+    const [q, setQ] = useState("");
     const [status, setStatus] = useState("all");
 
     // ── Load list ─────────────────────────────────────────────────────────────
     const loadList = useCallback(() => {
-        if (!token) return;
-        fetch(`${API}/api/returns/all`, { headers: authH() })
-            .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-            .then(setReturns)
-            .catch(console.error);
-    }, [token, activeCompanyId]);
+        returnsApi.getAll().then(setReturns).catch(console.error);
+    }, [activeCompanyId]);
 
     useEffect(() => {
         setReturns([]);
@@ -389,9 +372,8 @@ export default function ReturnsList() {
         if (!selectedReturn) { setDetailData(null); return; }
         setLoadingDetail(true);
         setShowEvalForm(false);
-        fetch(`${API}/api/returns/${selectedReturn.id_Returns}`, { headers: authH() })
-            .then(r => r.ok ? r.json() : null)
-            .then(d => setDetailData(d))
+        returnsApi.getOne(selectedReturn.id_Returns)
+            .then(setDetailData)
             .catch(console.error)
             .finally(() => setLoadingDetail(false));
     }, [selectedReturn]);
@@ -401,17 +383,11 @@ export default function ReturnsList() {
         if (!detailData) return;
         setShowEvalForm(true);
         try {
-            await fetch(`${API}/api/returns/${detailData.id_Returns}/evaluate/open`, {
-                method:  "PUT",
-                headers: authH(),
-            });
-            // Refresh detail so the status pill in the hero updates to "Vertinamas"
-            const r = await fetch(`${API}/api/returns/${detailData.id_Returns}`, { headers: authH() });
-            if (r.ok) setDetailData(await r.json());
+            await returnsApi.openEvaluation(detailData.id_Returns);
+            const refreshed = await returnsApi.getOne(detailData.id_Returns);
+            setDetailData(refreshed);
             loadList();
-        } catch {
-            // non-critical — just open the form anyway
-        }
+        } catch { /* non-critical */ }
     }, [detailData, loadList]);
 
     // ── Status filter pills ───────────────────────────────────────────────────
@@ -437,7 +413,7 @@ export default function ReturnsList() {
         if (!s) return byStatus;
         return byStatus.filter(r =>
             [r.id_Returns, r.orderId, r.clientName, r.clientEmail,
-             r.returnMethod, r.statusName, r.clientNote]
+            r.returnMethod, r.statusName, r.clientNote]
                 .some(v => String(v ?? "").toLowerCase().includes(s))
         );
     }, [returns, q, status]);
@@ -518,28 +494,28 @@ export default function ReturnsList() {
 
         const infoRows = [
             { label: "Grąžinimo ID", value: d.id_Returns },
-            { label: "Užsakymas",    value: d.orderId ? `#${d.orderId}` : "—" },
-            { label: "Data",         value: fmtDate(d.date) },
+            { label: "Užsakymas", value: d.orderId ? `#${d.orderId}` : "—" },
+            { label: "Data", value: fmtDate(d.date) },
             { label: "Grąžinimo būdas", value: METHOD_LABELS[d.returnMethod] ?? d.returnMethod ?? "—" },
             ...(d.returnLockerId == null ? [{
                 label: "Adresas",
                 value: [d.returnStreet, d.returnCity, d.returnPostalCode, d.returnCountry]
                     .filter(Boolean).join(", ") || "—",
             }] : [
-                { label: "Paštomato ID",       value: d.returnLockerId },
+                { label: "Paštomato ID", value: d.returnLockerId },
                 { label: "Paštomato pavadinimas", value: d.returnLockerName ?? "—" },
-                { label: "Paštomato adresas",  value: d.returnLockerAddress ?? "—" },
+                { label: "Paštomato adresas", value: d.returnLockerAddress ?? "—" },
             ]),
         ];
 
         const clientRows = [
-            { label: "Vardas",    value: d.clientName  ?? "—" },
+            { label: "Vardas", value: d.clientName ?? "—" },
             { label: "El. paštas", value: d.clientEmail ?? "—" },
-            { label: "Telefonas", value: d.clientPhone  ?? "—" },
+            { label: "Telefonas", value: d.clientPhone ?? "—" },
         ];
 
         const noteRows = [];
-        if (d.clientNote)   noteRows.push({ label: "Kliento pastaba",        value: d.clientNote });
+        if (d.clientNote) noteRows.push({ label: "Kliento pastaba", value: d.clientNote });
         if (d.employeeNote) noteRows.push({ label: "Darbuotojo komentaras", value: d.employeeNote });
 
         // Items — show product + client images
@@ -558,7 +534,7 @@ export default function ReturnsList() {
 
                             let imageUrls = [];
                             if (typeof item.imageUrls === "string") {
-                                try { imageUrls = JSON.parse(item.imageUrls); } catch {}
+                                try { imageUrls = JSON.parse(item.imageUrls); } catch { }
                             } else if (Array.isArray(item.imageUrls)) {
                                 imageUrls = item.imageUrls;
                             }
@@ -580,7 +556,7 @@ export default function ReturnsList() {
                                             {item.reason && <span>· {item.reason}</span>}
                                         </div>
                                         {item.evaluationComment && (
-                                            <div className="rl-item-comment"><FiMessageSquare size={12}/> {item.evaluationComment}</div>
+                                            <div className="rl-item-comment"><FiMessageSquare size={12} /> {item.evaluationComment}</div>
                                         )}
                                         {/* Client-uploaded images in detail view */}
                                         {imageUrls.length > 0 && (

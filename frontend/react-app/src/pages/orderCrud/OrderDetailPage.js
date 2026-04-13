@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../services/AuthContext";
+import { ordersApi } from "../../services/api";
 import StatusBadge from "../../components/StatusBadge";
 import NoImage from "../../images/no-camera.png";
 import {
@@ -12,13 +13,13 @@ import {
 } from "react-icons/fi";
 import "../../styles/OrderDetail.css";
 
-const API = "http://localhost:5065";
-const auth = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
+const API = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065";
+
 
 export default function OrderDetailPage() {
     const { orderId } = useParams();
     const navigate = useNavigate();
-    const { activeCompanyId } = useAuth();
+
 
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -26,10 +27,9 @@ export default function OrderDetailPage() {
 
     useEffect(() => {
         setLoading(true);
-        fetch(`${API}/api/orders/order/${orderId}/full`, { headers: auth() })
-            .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); })
+        ordersApi.getOneFull(orderId)
             .then(setOrder)
-            .catch((e) => setError(e.message))
+            .catch(e => setError(e.message))
             .finally(() => setLoading(false));
     }, [orderId]);
 

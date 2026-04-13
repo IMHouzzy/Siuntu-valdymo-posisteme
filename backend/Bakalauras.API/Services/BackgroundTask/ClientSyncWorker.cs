@@ -3,6 +3,12 @@ using System.Text;
 using Bakalauras.API.Models;
 using Microsoft.EntityFrameworkCore;
 
+/// <summary>
+/// Fixed sync worker: instead of fabricating per-company unique emails like
+/// "butent-c1-client5@local", we now try to match on the client's real VAT/name,
+/// fall back to a stable synthetic email keyed only on the external client ID
+/// (not the company), so one real person stays one user row across companies.
+/// </summary>
 public class ClientSyncWorker : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
@@ -52,11 +58,9 @@ public class ClientSyncWorker : BackgroundService
             var (u, p, b) = IntegrationSecrets.TryUnpack(integ.encryptedSecrets);
             var baseUrl = !string.IsNullOrWhiteSpace(integ.baseUrl) ? integ.baseUrl : b;
 
-            if (string.IsNullOrWhiteSpace(baseUrl) ||
-                string.IsNullOrWhiteSpace(u) ||
-                string.IsNullOrWhiteSpace(p))
+            if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(u) || string.IsNullOrWhiteSpace(p))
             {
-                Console.WriteLine($"[ClientSyncWorker] Skipping company {integ.fk_Companyid_Company}: missing baseUrl/username/password.");
+                Console.WriteLine($"[ClientSyncWorker] Skipping company {integ.fk_Companyid_Company}: missing credentials.");
                 continue;
             }
 
@@ -78,10 +82,10 @@ public class ClientSyncWorker : BackgroundService
         var butent = new ButentApiService(http);
 
         var externalClients = await butent.GetClientsAsync(ct);
-        Console.WriteLine($"[ClientSyncWorker] Company={companyId} external clients from API: {externalClients.Count}");
+        Console.WriteLine($"[ClientSyncWorker] Company={companyId} external clients: {externalClients.Count}");
         if (externalClients.Count == 0) return;
 
-        // Find which externalClientIds we already have for this company
+        // Which externalClientIds already have a client_company row for this company?
         var existingExternalIds = await db.client_companies
             .AsNoTracking()
             .Where(cc => cc.fk_Companyid_Company == companyId && cc.externalClientId.HasValue)
@@ -98,101 +102,103 @@ public class ClientSyncWorker : BackgroundService
 
         try
         {
-            // Pre-load any users that already exist by the emails we are about to create
-            var emails = newClients
-                .Select(ext => BuildClientEmail(companyId, ext.ClientID))
-                .Distinct()
-                .ToList();
-
-            var usersByEmail = await db.users
-                .Where(u => emails.Contains(u.email))
-                .ToDictionaryAsync(u => u.email, u => u, ct);
-
-            var usersToAdd = new List<user>();
-            var linksToAdd  = new List<client_company>();
-
             foreach (var ext in newClients)
             {
                 ct.ThrowIfCancellationRequested();
 
-                var email = BuildClientEmail(companyId, ext.ClientID);
+                // ── 1. Find or create the user ────────────────────────────────
+                //
+                // Strategy (in order):
+                //   a) If the external client has a VAT number, look for an
+                //      existing user whose vat matches across ANY company
+                //      (same legal entity = same person).
+                //   b) Otherwise fall back to a stable synthetic email keyed
+                //      ONLY on the external client ID (not company-scoped),
+                //      so the same vendor appearing in two companies maps to
+                //      the same user row.
+                //
+                user? existingUser = null;
 
-                if (!usersByEmail.TryGetValue(email, out var u))
+                if (!string.IsNullOrWhiteSpace(ext.Vat))
                 {
-                    u = new user
-                    {
-                        email            = email,
-                        password         = BCrypt.Net.BCrypt.HashPassword("123"),
-                        name             = ext.Name ?? $"Client {ext.ClientID}",
-                        surname          = "Klientas",
-                        authProvider     = "LOCAL",
-                        creationDate     = DateTime.Now,
-                        fk_Companyid_Company = null,
-                        isMasterAdmin    = false
-                    };
+                    // Try to find an existing client_company row with this VAT
+                    var matchByVat = await db.client_companies
+                        .AsNoTracking()
+                        .Where(cc => cc.vat == ext.Vat)
+                        .Select(cc => cc.fk_Clientid_Users)
+                        .FirstOrDefaultAsync(ct);
 
-                    usersToAdd.Add(u);
-                    usersByEmail[email] = u;
+                    if (matchByVat != 0)
+                        existingUser = await db.users.FirstOrDefaultAsync(u => u.id_Users == matchByVat, ct);
                 }
 
-                linksToAdd.Add(new client_company
+                if (existingUser == null)
                 {
-                    fk_Companyid_Company = companyId,
-                    externalClientId     = ext.ClientID,
-                    deliveryAddress      = ext.Address ?? string.Empty,
-                    city                 = ext.City    ?? string.Empty,
-                    country              = ext.Country ?? string.Empty,
-                    vat                  = ext.Vat,
-                    bankCode             = int.TryParse(ext.BankCode, out var bc) ? bc : null
-                });
-            }
+                    // Stable synthetic email — NOT company-scoped
+                    var syntheticEmail = BuildSyntheticEmail(ext.ClientID);
 
-            // 1) Persist new users so EF assigns id_Users
-            if (usersToAdd.Count > 0)
-            {
-                db.users.AddRange(usersToAdd);
-                await db.SaveChangesAsync(ct);
-            }
+                    existingUser = await db.users.FirstOrDefaultAsync(u => u.email == syntheticEmail, ct);
 
-            // 2) Build client_company rows (fk now resolvable) + ensure company_users CLIENT link
-            foreach (var link in linksToAdd)
-            {
-                var email = BuildClientEmail(companyId, link.externalClientId ?? 0);
-                var u     = usersByEmail[email];
+                    if (existingUser == null)
+                    {
+                        existingUser = new user
+                        {
+                            email                = syntheticEmail,
+                            password             = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()),
+                            name                 = ext.Name ?? $"Client {ext.ClientID}",
+                            surname              = "Klientas",
+                            authProvider         = "LOCAL",
+                            creationDate         = DateTime.Now,
+                            fk_Companyid_Company = null,
+                            isMasterAdmin        = false
+                        };
 
-                link.fk_Clientid_Users = u.id_Users;
+                        db.users.Add(existingUser);
+                        await db.SaveChangesAsync(ct); // get id_Users assigned
+                    }
+                }
 
-                // Add CLIENT role to company_users if not already present
+                // ── 2. Add company_users CLIENT link if missing ───────────────
                 var cuExists = await db.company_users.AnyAsync(cu =>
                     cu.fk_Companyid_Company == companyId &&
-                    cu.fk_Usersid_Users     == u.id_Users, ct);
+                    cu.fk_Usersid_Users     == existingUser.id_Users, ct);
 
                 if (!cuExists)
                 {
                     db.company_users.Add(new company_user
                     {
                         fk_Companyid_Company = companyId,
-                        fk_Usersid_Users     = u.id_Users,
+                        fk_Usersid_Users     = existingUser.id_Users,
                         role                 = "CLIENT",
                         active               = true
                     });
                 }
-            }
 
-            // 3) Insert client_company rows (skip any that already snuck in via race)
-            foreach (var link in linksToAdd)
-            {
-                var already = await db.client_companies.AnyAsync(cc =>
+                // ── 3. Add client_company row (skip if already exists via race) ──
+                var ccExists = await db.client_companies.AnyAsync(cc =>
                     cc.fk_Companyid_Company == companyId &&
-                    cc.externalClientId     == link.externalClientId, ct);
+                    cc.externalClientId     == ext.ClientID, ct);
 
-                if (!already) db.client_companies.Add(link);
+                if (!ccExists)
+                {
+                    db.client_companies.Add(new client_company
+                    {
+                        fk_Clientid_Users    = existingUser.id_Users,
+                        fk_Companyid_Company = companyId,
+                        externalClientId     = ext.ClientID,
+                        deliveryAddress      = ext.Address ?? string.Empty,
+                        city                 = ext.City    ?? string.Empty,
+                        country              = ext.Country ?? string.Empty,
+                        vat                  = ext.Vat,
+                        bankCode             = int.TryParse(ext.BankCode, out var bc) ? bc : null
+                    });
+                }
+
+                await db.SaveChangesAsync(ct);
             }
 
-            await db.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
-
-            Console.WriteLine($"[ClientSyncWorker] Company={companyId} sync complete: added {newClients.Count} client_company links.");
+            Console.WriteLine($"[ClientSyncWorker] Company={companyId} sync complete: {newClients.Count} processed.");
         }
         catch (Exception ex)
         {
@@ -201,6 +207,10 @@ public class ClientSyncWorker : BackgroundService
         }
     }
 
-    private static string BuildClientEmail(int companyId, int clientId)
-        => $"butent-c{companyId}-client{clientId}@local";
+    /// <summary>
+    /// Stable synthetic email keyed on the external client ID only —
+    /// NOT company-scoped, so the same external entity maps to the same user.
+    /// </summary>
+    private static string BuildSyntheticEmail(int clientId)
+        => $"butent-client{clientId}@sync.local";
 }

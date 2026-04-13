@@ -148,7 +148,6 @@ public class ProductSyncWorker : BackgroundService
 
                 description = null,
                 price = GeneratePrice(ext.Code),
-                picture = null,
                 currency = "EUR",
 
                 canTheProductBeProductReturned = canReturn,

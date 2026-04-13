@@ -3,6 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import SmartForm from "../../components/SmartForm";
 import FormPageLayout from "../../components/FormPageLayout";
 import { FiArrowLeft } from "react-icons/fi";
+import { productsApi } from "../../services/api";
+
 export default function ProductEditPage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -14,27 +16,11 @@ export default function ProductEditPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("http://localhost:5065/api/products/categories", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }).then(r => r.json()),
-      fetch("http://localhost:5065/api/products/productgroups", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }).then(r => r.json()),
-      fetch(`http://localhost:5065/api/products/product/${id}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }).then(r => r.json()),
+      productsApi.getCategories(),
+      productsApi.getGroups(),
+      productsApi.getOne(id),
     ])
-      .then(([cats, grps, p]) => {
-        setCategories(cats);
-        setGroups(grps);
-        setProduct(p);
-      })
+      .then(([cats, grps, p]) => { setCategories(cats); setGroups(grps); setProduct(p); })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [id]);
@@ -107,14 +93,7 @@ export default function ProductEditPage() {
             )
           ));
           newInOrder.forEach(x => fd.append("images", x.file));
-          await fetch(`http://localhost:5065/api/products/editProduct/${id}`, {
-            method: "PUT",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`
-            },
-            body: fd,
-          });
-
+          await productsApi.update(id, fd);
           navigate("/productList");
         }}
       />

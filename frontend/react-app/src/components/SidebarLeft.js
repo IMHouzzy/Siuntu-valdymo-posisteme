@@ -26,7 +26,7 @@ function normalizeRole(r) {
 
 export default function SidebarLeft({ collapsed, onToggle }) {
   const location = useLocation();
-  const { token, companies, activeCompany, switchCompany, companySwitchLocked, user } = useAuth();
+  const { companies, activeCompany, switchCompany, companySwitchLocked, user } = useAuth();
   const [companyOpen, setCompanyOpen] = useState(false);
 
   const isMaster = !!user?.isMasterAdmin;
@@ -112,13 +112,12 @@ export default function SidebarLeft({ collapsed, onToggle }) {
   // Company switching: tik master + >1 įmonė + ne lock
   const canSwitchCompany = useMemo(() => {
     return (
-      !!token &&
       isMaster &&
       Array.isArray(companies) &&
       companies.length > 1 &&
       !companySwitchLocked
     );
-  }, [token, isMaster, companies, companySwitchLocked]);
+  }, [ isMaster, companies, companySwitchLocked]);
 
   useEffect(() => {
     if (collapsed || !canSwitchCompany) setCompanyOpen(false);

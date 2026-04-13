@@ -4,9 +4,9 @@ import "../styles/SmartForm.css";
 import SearchSelect from "./SearchSelect";
 import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
 import { FiTrash2, FiImage, FiRefreshCw } from "react-icons/fi";
+import { lockerApi, companiesApi } from "../services/api";
+const ASSET_BASE = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065";
 
-const API_BASE = "http://localhost:5065";
-const getToken = () => localStorage.getItem("token");
 
 // ─── Overlay root — one fixed div at z-index 99999, all portals go here ──────
 // This escapes every stacking context because it's a direct child of <body>
@@ -62,14 +62,14 @@ async function geocodeAddress(address) {
   } catch { return null; }
 }
 // ─── LogoUploaderWidget ───────────────────────────────────────────────────────
-function LogoUploaderWidget({ currentUrl, companyId, token, isCreate, onPendingFile, onChange }) {
+function LogoUploaderWidget({ currentUrl, companyId, isCreate, onPendingFile, onChange }) {
   const fileRef = useRef(null);
   const [preview, setPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
 
   const displaySrc = preview
     || (currentUrl
-      ? (currentUrl.startsWith("http") ? currentUrl : `${API_BASE}${currentUrl}`)
+      ? (currentUrl.startsWith("http") ? currentUrl : `${ASSET_BASE}${currentUrl}`)
       : null);
 
   const handleFile = async (file) => {
@@ -86,12 +86,7 @@ function LogoUploaderWidget({ currentUrl, companyId, token, isCreate, onPendingF
     try {
       const form = new FormData();
       form.append("file", file);
-      const res = await fetch(
-        `${API_BASE}/api/companies/${companyId}/logo`,
-        { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form }
-      );
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+      const data = await companiesApi.uploadLogo(companyId, form);
       onChange?.(data.imageUrl);
       setPreview(null); // let the saved URL drive the display
     } catch (e) {
@@ -125,7 +120,7 @@ function LogoUploaderWidget({ currentUrl, companyId, token, isCreate, onPendingF
           </>
         ) : (
           <div className="sf-logo-placeholder">
-            <span className="sf-logo-icon"><FiImage size={45}/></span>
+            <span className="sf-logo-icon"><FiImage size={45} /></span>
             <span>{uploading ? "Keliama…" : "Spustelėkite arba vilkite logotipą čia"}</span>
             <span className="sf-logo-hint">JPG, PNG, WebP, SVG</span>
           </div>
@@ -134,7 +129,7 @@ function LogoUploaderWidget({ currentUrl, companyId, token, isCreate, onPendingF
       </div>
       {displaySrc && (
         <button type="button" className="sf-logo-clear" onClick={clear}>
-           <FiTrash2 size={15}/> Pašalinti logotipą
+          <FiTrash2 size={15} /> Pašalinti logotipą
         </button>
       )}
       <input
@@ -314,11 +309,9 @@ function LockerPickerWidget({ companyId, courierType, value, onChange }) {
   useEffect(() => {
     if (!companyId || !courierType) return;
     setLoading(true); setError(null);
-    fetch(`${API_BASE}/api/companies/${companyId}/courier-provider/${courierType}/lockers`,
-      { headers: { Authorization: `Bearer ${getToken()}` } })
-      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+    lockerApi.getLockers(companyId, courierType)
       .then(setLockers)
-      .catch((e) => setError(e.message))
+      .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, [companyId, courierType]);
 
@@ -407,7 +400,7 @@ function ProductViewWidget({ items }) {
         const product = it.product ?? {};
         const images = product.images ?? [];
         const primary = images.find((i) => i.isPrimary) ?? images[0];
-        const imgSrc = primary?.url ? (primary.url.startsWith("http") ? primary.url : `${API_BASE}${primary.url}`) : null;
+        const imgSrc = primary?.url ? (primary.url.startsWith("http") ? primary.url : `${ASSET_BASE}${primary.url}`) : null;
         return (
           <div key={it.id_OrdersProduct ?? idx} className="sf-pv-row">
             <div className="sf-pv-img-wrap">{imgSrc ? <img src={imgSrc} alt={product.name} className="sf-pv-img" /> : <div className="sf-pv-img-ph">📷</div>}</div>
@@ -488,7 +481,7 @@ export default function SmartForm({
       if (typeof f.validate === "function") { const msg = f.validate(v, values); if (msg) next[f.name] = msg; }
       if (f.type === "map" || f.type === "product-view" || f.type === "display"
         || f.type === "locker-picker" || f.type === "courier-cards"
-        || f.type === "packages" || f.type === "logo-uploader") continue; 
+        || f.type === "packages" || f.type === "logo-uploader") continue;
     }
     return next;
   }, [fields, values]);
@@ -550,12 +543,11 @@ export default function SmartForm({
       );
     }
     if (f.type === "logo-uploader") {
-      const { token, isCreate, companyId: ctxCompanyId } = logoUploaderContext;
+      const {  isCreate, companyId: ctxCompanyId } = logoUploaderContext;
       return (
         <LogoUploaderWidget
           currentUrl={value}
           companyId={f.companyId ?? ctxCompanyId}
-          token={token}
           isCreate={isCreate}
           onPendingFile={f.onPendingFile}
           onChange={onChange}
@@ -606,7 +598,7 @@ export default function SmartForm({
               {list.map((img, idx) => (
                 <div key={img.type === "existing" ? `ex-${img.id}` : img.tempKey} className="sf-img-card">
                   <div className="sf-img-top"><div className="sf-img-index">{idx + 1}</div>{idx === 0 ? <div className="sf-img-badge">Pagrindinė</div> : null}</div>
-                  <img className="sf-img-thumb" src={img.type === "existing" ? (img.url?.startsWith("http") ? img.url : `${API_BASE}${img.url}`) : img.previewUrl} alt={`img-${idx}`} />
+                  <img className="sf-img-thumb" src={img.type === "existing" ? (img.url?.startsWith("http") ? img.url : `${ASSET_BASE}${img.url}`) : img.previewUrl} alt={`img-${idx}`} />
                   <div className="sf-img-actions">
                     <button type="button" className="sf-btn sf-btn-ghost" onClick={() => move(idx, idx - 1)} disabled={idx === 0}><FaArrowLeft /></button>
                     <button type="button" className="sf-btn sf-btn-ghost" onClick={() => move(idx, idx + 1)} disabled={idx === list.length - 1}><FaArrowRight /></button>
@@ -655,7 +647,6 @@ export default function SmartForm({
                 <LogoUploaderWidget
                   currentUrl={values[f.name]}
                   companyId={f.companyId ?? logoUploaderContext.companyId}
-                  token={logoUploaderContext.token}
                   isCreate={logoUploaderContext.isCreate}
                   onPendingFile={f.onPendingFile}
                   onChange={(val) => setField(f.name, val)}

@@ -1,13 +1,8 @@
-// components/LockerPicker/LockerPicker.jsx
-// Dropdown rendered via React portal so it always floats on top of the form,
-// regardless of ancestor overflow/position/z-index.
-
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import "../styles/LockerPicker.css";
+import { lockerApi } from "../services/api";
 
-const API = "http://localhost:5065";
-const auth = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
 
 // ── Leaflet lazy loader ───────────────────────────────────────────────────────
 let _L = null;
@@ -18,8 +13,8 @@ async function getLeaflet() {
   delete _L.Icon.Default.prototype._getIconUrl;
   _L.Icon.Default.mergeOptions({
     iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-    iconUrl:       "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-    shadowUrl:     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
   });
   if (!document.getElementById("leaflet-css")) {
     const link = document.createElement("link");
@@ -33,8 +28,8 @@ async function getLeaflet() {
 // ── Single-pin map ────────────────────────────────────────────────────────────
 function LockerMap({ locker }) {
   const containerRef = useRef(null);
-  const mapRef       = useRef(null);
-  const markerRef    = useRef(null);
+  const mapRef = useRef(null);
+  const markerRef = useRef(null);
 
   useEffect(() => {
     if (!locker || !containerRef.current) return;
@@ -98,16 +93,16 @@ function PortalPanel({ triggerRef, children, onClose }) {
       const rect = triggerRef.current.getBoundingClientRect();
       setStyle({
         position: "fixed",
-        top:      rect.bottom + 4,
-        left:     rect.left,
-        width:    rect.width,
-        zIndex:   9999,
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+        zIndex: 9999,
       });
     };
 
     update();
-    window.addEventListener("scroll",  update, true);
-    window.addEventListener("resize",  update);
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
     return () => {
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
@@ -136,28 +131,21 @@ function PortalPanel({ triggerRef, children, onClose }) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function LockerPicker({ companyId, courierType, onChange }) {
-  const [lockers,  setLockers]  = useState([]);
+  const [lockers, setLockers] = useState([]);
   const [selected, setSelected] = useState(null);
-  const [search,   setSearch]   = useState("");
-  const [open,     setOpen]     = useState(false);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState(null);
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const triggerRef = useRef(null);
 
   // ── Fetch locker list ───────────────────────────────────────────────────────
   useEffect(() => {
     if (!companyId || !courierType) return;
-    setLoading(true);
-    setError(null);
-    setSelected(null);
-
-    fetch(
-      `${API}/api/companies/${companyId}/courier-provider/${courierType}/lockers`,
-      { headers: auth() }
-    )
-      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+    setLoading(true); setError(null); setSelected(null);
+    lockerApi.getLockers(companyId, courierType)
       .then(setLockers)
-      .catch((e) => setError(e.message))
+      .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, [companyId, courierType]);
 

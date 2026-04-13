@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import SmartForm from "../../components/SmartForm";
 import FormPageLayout from "../../components/FormPageLayout";
 import { FiArrowLeft } from "react-icons/fi";
+import { productsApi } from "../../services/api";
+
 export default function ProductFormPage() {
   const navigate = useNavigate();
 
@@ -11,21 +13,10 @@ export default function ProductFormPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("http://localhost:5065/api/products/categories", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }).then(r => r.json()),
-      fetch("http://localhost:5065/api/products/productgroups", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }).then(r => r.json()),
+      productsApi.getCategories(),
+      productsApi.getGroups(),
     ])
-      .then(([cats, grps]) => {
-        setCategories(cats);
-        setGroups(grps);
-      })
+      .then(([cats, grps]) => { setCategories(cats); setGroups(grps); })
       .catch(console.error);
   }, []);
 
@@ -104,14 +95,7 @@ export default function ProductFormPage() {
           fd.append("imageOrderJson", JSON.stringify(order));
           newFiles.forEach((img) => fd.append("images", img.file));
 
-          await fetch("http://localhost:5065/api/products/createProduct", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-            body: fd,
-          });
-
+          await productsApi.create(fd);
           navigate("/productList");
         }}
       />

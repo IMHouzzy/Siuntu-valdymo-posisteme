@@ -1,11 +1,3 @@
-// pages/client/ReturnFormModal.jsx
-// Fixed:
-//   1. Loads company's courier integrations dynamically (not hardcoded list)
-//   2. Shows locker picker or address map (same as ShipmentFormPage)
-//   3. Prefills address from order snapshot
-//   4. Image upload per return item
-//   5. Submit registers return WITHOUT labels (labels added after employee confirms)
-
 import { useState, useEffect, useMemo, useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -14,8 +6,8 @@ import {
   FiMapPin, FiMinus, FiPlus, FiBox, FiUpload, FiTrash2, FiImage,
 } from "react-icons/fi";
 import "../styles/ReturnFormModal.css";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:5065";
+import { lockerApi, companiesApi, clientReturnsApi } from "../services/api";
+const ASSET_BASE = process.env.REACT_APP_API_BASE_URL
 
 const RETURN_REASONS = [
   { id: 1, label: "Pažeistas" },
@@ -26,10 +18,6 @@ const RETURN_REASONS = [
   { id: 6, label: "Neveikia" },
 ];
 
-function authH() {
-  const t = localStorage.getItem("token");
-  return t ? { Authorization: `Bearer ${t}` } : {};
-}
 
 // ── Leaflet helper (same as SmartForm) ───────────────────────────────────────
 let _L = null;
@@ -225,11 +213,9 @@ function LockerPickerWidget({ companyId, courierType, value, onChange }) {
   useEffect(() => {
     if (!companyId || !courierType) return;
     setLoading(true); setError(null);
-    fetch(`${API}/api/companies/${companyId}/courier-provider/${courierType}/lockers`,
-      { headers: authH() })
-      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+    lockerApi.getLockers(companyId, courierType)
       .then(setLockers)
-      .catch((e) => setError(e.message))
+      .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, [companyId, courierType]);
 
@@ -382,7 +368,7 @@ function StepItems({ order, selections, setSelections }) {
             <div className="rfm-item-header" onClick={() => toggle(op.id_OrdersProduct)}>
               <div className="rfm-item-check">{checked ? <FiCheck size={12} /> : null}</div>
               {op.product.imageUrl
-                ? <img src={`${API}${op.product.imageUrl}`} className="rfm-item-img" alt={op.product.name} />
+                ? <img src={`${ASSET_BASE}${op.product.imageUrl}`} className="rfm-item-img" alt={op.product.name} />
                 : <div className="rfm-item-img rfm-item-img--ph"><FiBox size={16} /></div>
               }
               <div className="rfm-item-info">
@@ -674,12 +660,10 @@ export default function ReturnFormModal({ order, onClose, onCreated }) {
   useEffect(() => {
     if (!companyId) return;
     setLoadingCouriers(true);
-    fetch(`${API}/api/companies/${companyId}/couriers`, { headers: authH() })
-      .then(r => r.ok ? r.json() : [])
+    companiesApi.getCouriers(companyId)
       .then(data => {
         const list = Array.isArray(data) ? data : [];
         setCouriers(list);
-        // Auto-select first courier
         if (list.length > 0) setSelectedCourier(list[0]);
       })
       .catch(() => setCouriers([]))
@@ -712,15 +696,8 @@ export default function ReturnFormModal({ order, onClose, onCreated }) {
             const form = new FormData();
             s.images.forEach(img => form.append("files", img.file));
             try {
-              const r = await fetch(`${API}/api/client/returns/upload-images`, {
-                method: "POST",
-                headers: authH(),
-                body: form,
-              });
-              if (r.ok) {
-                const data = await r.json();
-                imageUrls = data.urls ?? [];
-              }
+              const data = await clientReturnsApi.uploadImages(form);
+              imageUrls = data.urls ?? [];
             } catch {
               // Continue without images on upload failure
             }
@@ -764,20 +741,10 @@ export default function ReturnFormModal({ order, onClose, onCreated }) {
         ReturnLng: lockerValue?.lng ?? null,
       };
 
-      const r = await fetch(`${API}/api/client/orders/${order.id_Orders}/returns`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authH() },
-        body: JSON.stringify(body),
-      });
+      const r = await clientReturnsApi.create(order.id_Orders, body);
 
-      if (!r.ok) {
-        const txt = await r.text();
-        setSubmitError(txt || "Klaida teikiant grąžinimą.");
-        return;
-      }
-
-      setDone(true);
-      onCreated?.();
+     setDone(true);
+        onCreated?.();
     } catch {
       setSubmitError("Serverio klaida.");
     } finally {

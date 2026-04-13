@@ -52,7 +52,7 @@
 /* Dropdown */
 .sb-dropdown {
   position: absolute;
-  top: calc(100% + 6px);
+  top: 100%;
   right: 0;
   width: 240px;
   background: var(--color-bg-card);

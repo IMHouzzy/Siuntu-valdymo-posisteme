@@ -29,6 +29,10 @@ public partial class user
 
     public bool isMasterAdmin { get; set; }
 
+    public string? resetToken { get; set; }
+
+    public DateTime? resetTokenExpiry { get; set; }
+
     public virtual ICollection<client_company> client_companies { get; set; } = new List<client_company>();
 
     public virtual ICollection<company_user> company_users { get; set; } = new List<company_user>();

@@ -1,35 +1,4 @@
-// ============================================================
-// CHANGES TO App.jsx
-// ============================================================
-// 1. Add imports (add alongside existing imports):
-//
-//   import CourierLayout from "./layouts/CourierLayout";
-//   import CourierShipmentsList from "./pages/Courier/CourierShipmentsList";
-//   import CourierShipmentDetail from "./pages/Courier/CourierShipmentDetail";
-//
-// 2. Add a new <Route> block for the COURIER role, alongside the CLIENT block:
-//
-//   {/* COURIER */}
-//   <Route
-//     path="/courier"
-//     element={
-//       <RequireAuth>
-//         <RequireRole allow={["MASTER", "ADMIN", "STAFF", "COURIER"]}>
-//           <CourierLayout />
-//         </RequireRole>
-//       </RequireAuth>
-//     }
-//   >
-//     <Route index element={<CourierShipmentsList />} />
-//     <Route path="shipments/:id" element={<CourierShipmentDetail />} />
-//   </Route>
-//
-// 3. In the STAFF block, also add RequireRole COURIER so admins can preview:
-//    (No change needed — staff already has access via RequireRole allow list)
-//
-// ============================================================
-// Full updated App.jsx below:
-// ============================================================
+
 
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
@@ -41,8 +10,10 @@ import CourierLayout from "./layouts/CourierLayout";
 
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
-import AccountConfirmationPassword from "./pages/auth/AccountConfirmationPassword";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
 import ChangePassword from "./pages/auth/ChangePasswordPage";
+import Profile from "./pages/userCrud/Profile";
 
 import HomePage from "./pages/HomePage";
 import NotFoundPage from "./pages/NotFoundPage";
@@ -89,8 +60,10 @@ export default function App() {
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/confirm" element={<AccountConfirmationPassword />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/change-password" element={<ChangePassword />} />
+        <Route path="/profile" element={<Profile />} />
       </Route>
 
       {/* STAFF (MASTER/ADMIN/STAFF) */}

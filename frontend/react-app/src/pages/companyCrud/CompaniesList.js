@@ -7,21 +7,10 @@ import {
 } from "react-icons/fi";
 import { useAuth } from "../../services/AuthContext";
 import "../../styles/CompaniesList.css";
+import { companiesApi } from "../../services/api";
+const API = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065";
 
-const API = "http://localhost:5065";
 
-async function apiFetch(url, token, options = {}) {
-  const res = await fetch(url, {
-    ...options,
-    headers: { ...(options.headers || {}), Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) {
-    const t = await res.text().catch(() => "");
-    throw new Error(t || `HTTP ${res.status}`);
-  }
-  if (res.status === 204) return null;
-  return res.json();
-}
 // Deterministic hue from company name — gives each card a unique accent colour
 function nameToHue(name = "") {
   let h = 0;
@@ -116,7 +105,7 @@ function CompanyCard({ c, index, onClick }) {
 
 export default function CompaniesList() {
   const navigate = useNavigate();
-  const { token, user, activeCompanyId, switchCompany } = useAuth();
+  const { user, activeCompanyId, switchCompany } = useAuth();
   const isMaster = !!user?.isMasterAdmin;
 
   const [items, setItems] = useState([]);
@@ -125,11 +114,8 @@ export default function CompaniesList() {
   const [status, setStatus] = useState("all");
 
   useEffect(() => {
-    if (!token) return;
-    apiFetch(`${API}/api/companies`, token)
-      .then((data) => setItems(Array.isArray(data) ? data : []))
-      .catch(console.error);
-  }, [token]);
+    companiesApi.getAll().then(data => setItems(Array.isArray(data) ? data : [])).catch(console.error);
+  }, []);
 
   const statusFilters = useMemo(() => {
     const activeCount = items.filter(x => !!x.active).length;
@@ -156,18 +142,13 @@ export default function CompaniesList() {
   }, [items, q, status]);
 
   const deleteCompany = async (c) => {
-    const ok = window.confirm(`Ištrinti įmonę "${c.name}"?`);
-    if (!ok) return;
+    if (!window.confirm(`Ištrinti įmonę "${c.name}"?`)) return;
     try {
-      await apiFetch(`${API}/api/companies/${c.id_Company}`, token, { method: "DELETE" });
-      setItems((prev) => prev.filter((x) => x.id_Company !== c.id_Company));
+      await companiesApi.remove(c.id_Company);
+      setItems(prev => prev.filter(x => x.id_Company !== c.id_Company));
       setSelected(null);
-    } catch (e) {
-      console.error(e);
-      alert("Nepavyko ištrinti įmonės");
-    }
+    } catch (e) { console.error(e); alert("Nepavyko ištrinti įmonės"); }
   };
-
   const withSwitch = async (id, cb) => {
     try {
       if (activeCompanyId !== id) await switchCompany(id);
@@ -254,83 +235,83 @@ export default function CompaniesList() {
     );
   }, [selected]);
 
- const drawerSections = useMemo(() => {
-  if (!selected) return [];
-  const c = selected;
+  const drawerSections = useMemo(() => {
+    if (!selected) return [];
+    const c = selected;
 
-  // Build addresses from structured fields, fall back to legacy
-  const shippingParts = [
-    c.shippingStreet,
-    c.shippingCity,
-    c.shippingPostalCode,
-    c.shippingCountry,
-  ].filter(Boolean);
-  const shippingAddr = shippingParts.length
-    ? shippingParts.join(", ")
-    : (c.shippingAddress || "—");
+    // Build addresses from structured fields, fall back to legacy
+    const shippingParts = [
+      c.shippingStreet,
+      c.shippingCity,
+      c.shippingPostalCode,
+      c.shippingCountry,
+    ].filter(Boolean);
+    const shippingAddr = shippingParts.length
+      ? shippingParts.join(", ")
+      : (c.shippingAddress || "—");
 
-  const returnParts = [
-    c.returnStreet,
-    c.returnCity,
-    c.returnPostalCode,
-    c.returnCountry,
-  ].filter(Boolean);
-  const returnAddr = returnParts.length
-    ? returnParts.join(", ")
-    : (c.returnAddress || "—");
+    const returnParts = [
+      c.returnStreet,
+      c.returnCity,
+      c.returnPostalCode,
+      c.returnCountry,
+    ].filter(Boolean);
+    const returnAddr = returnParts.length
+      ? returnParts.join(", ")
+      : (c.returnAddress || "—");
 
-  return [
-    {
-      title: "Bendra informacija",
-      rows: [
-        { label: "Įmonės kodas",    value: c.code          || "—" },
-        { label: "Dokumento kodas", value: c.documentCode  || "—" },
-        { label: "Būsena",          value: c.active ? "Aktyvi" : "Neaktyvi" },
-        {
-          label: "Sukurta",
-          value: c.creationDate
-            ? new Date(c.creationDate).toLocaleDateString("lt-LT")
-            : "—",
-        },
-      ],
-    },
-    {
-      title: "Kontaktai",
-      rows: [
-        { label: "El. paštas",  value: c.email       || "—" },
-        { label: "Telefonas",   value: c.phoneNumber  || "—" },
-      ],
-    },
-    {
-      title: "Adresai",
-      rows: [
-        { label: "Juridinis adresas", value: c.address      || "—" },
-        { label: "Siuntimo",          value: shippingAddr              },
-        { label: "Grąžinimo",         value: returnAddr                },
-      ],
-    },
-  ];
-}, [selected]);
- return (
-  <div className="user-cointainer">
-    <TableToolbar
-      title="Įmonės"
-      searchValue={q}
-      onSearchChange={setQ}
-      addLabel="Kurti įmonę"
-      onAdd={() => navigate("/companyAdd")}
-      filters={statusFilters}
-      filterValue={status}
-      onFilterChange={setStatus}
-      
-    />
+    return [
+      {
+        title: "Bendra informacija",
+        rows: [
+          { label: "Įmonės kodas", value: c.code || "—" },
+          { label: "Dokumento kodas", value: c.documentCode || "—" },
+          { label: "Būsena", value: c.active ? "Aktyvi" : "Neaktyvi" },
+          {
+            label: "Sukurta",
+            value: c.creationDate
+              ? new Date(c.creationDate).toLocaleDateString("lt-LT")
+              : "—",
+          },
+        ],
+      },
+      {
+        title: "Kontaktai",
+        rows: [
+          { label: "El. paštas", value: c.email || "—" },
+          { label: "Telefonas", value: c.phoneNumber || "—" },
+        ],
+      },
+      {
+        title: "Adresai",
+        rows: [
+          { label: "Juridinis adresas", value: c.address || "—" },
+          { label: "Siuntimo", value: shippingAddr },
+          { label: "Grąžinimo", value: returnAddr },
+        ],
+      },
+    ];
+  }, [selected]);
+  return (
+    <div className="user-cointainer">
+      <TableToolbar
+        title="Įmonės"
+        searchValue={q}
+        onSearchChange={setQ}
+        addLabel="Kurti įmonę"
+        onAdd={() => navigate("/companyAdd")}
+        filters={statusFilters}
+        filterValue={status}
+        onFilterChange={setStatus}
 
-    {!isMaster && <style>{`.tb-header-right button{display:none;}`}</style>}
+      />
 
-    <div className="co-grid">
-      {filtered.length === 0
-        ? <div className="co-empty">Nėra įmonių pagal pasirinktus filtrus</div>
-        : filtered.map((c, i) => (
+      {!isMaster && <style>{`.tb-header-right button{display:none;}`}</style>}
+
+      <div className="co-grid">
+        {filtered.length === 0
+          ? <div className="co-empty">Nėra įmonių pagal pasirinktus filtrus</div>
+          : filtered.map((c, i) => (
             <CompanyCard
               key={c.id_Company}
               c={c}
@@ -338,21 +319,21 @@ export default function CompaniesList() {
               onClick={() => setSelected(c)}
             />
           ))
-      }
-    </div>
+        }
+      </div>
 
-    <RightDrawer
-      variant="company"
-      open={!!selected}
-      title={selected?.name ?? ""}
-      subtitle={selected
-        ? (selected.code ? `Kodas: ${selected.code}` : `ID: ${selected.id_Company}`)
-        : ""}
-      hero={companyHero}
-      sections={drawerSections}
-      onClose={() => setSelected(null)}
-    />
-  </div>
+      <RightDrawer
+        variant="company"
+        open={!!selected}
+        title={selected?.name ?? ""}
+        subtitle={selected
+          ? (selected.code ? `Kodas: ${selected.code}` : `ID: ${selected.id_Company}`)
+          : ""}
+        hero={companyHero}
+        sections={drawerSections}
+        onClose={() => setSelected(null)}
+      />
+    </div>
 
   );
 }

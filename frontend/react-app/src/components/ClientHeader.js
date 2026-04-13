@@ -17,7 +17,7 @@ function getInitials(name = "") {
 }
 
 export default function ClientHeader() {
-  const { token, logout, user } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);

@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import SmartForm from "../../components/SmartForm";
 import FormPageLayout from "../../components/FormPageLayout";
 import { FiArrowLeft } from "react-icons/fi";
+import { ordersApi, usersApi } from "../../services/api";
+
 export default function OrderCreatePage() {
   const navigate = useNavigate();
 
@@ -17,27 +19,11 @@ export default function OrderCreatePage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("http://localhost:5065/api/orders/order-statuses", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }).then(r => r.json()),
-      fetch("http://localhost:5065/api/users/allUsersWithClients", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }).then(r => r.json()),
-      fetch("http://localhost:5065/api/orders/products?q=", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }).then(r => r.json()),
+      ordersApi.getStatuses(),
+      usersApi.getAllWithClients(),
+      ordersApi.getProducts(),
     ])
-      .then(([sts, us, pr]) => {
-        setStatuses(sts);
-        setUsers(us);
-        setProducts(pr);
-      })
+      .then(([sts, us, pr]) => { setStatuses(sts); setUsers(us); setProducts(pr); })
       .catch(console.error);
   }, []);
 
@@ -284,14 +270,7 @@ export default function OrderCreatePage() {
               })),
           };
 
-          const res = await fetch("http://localhost:5065/api/orders/createOrder", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(payload),
-          });
+          const res = await ordersApi.create(payload);
 
           if (!res.ok) {
             console.log(await res.text());

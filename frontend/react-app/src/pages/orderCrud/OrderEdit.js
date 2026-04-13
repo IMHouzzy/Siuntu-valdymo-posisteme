@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import SmartForm from "../../components/SmartForm";
 import FormPageLayout from "../../components/FormPageLayout";
 import { FiArrowLeft } from "react-icons/fi";
+import { ordersApi, usersApi } from "../../services/api";
 export default function OrderEditPage() {
     const navigate = useNavigate();
     const { id } = useParams();
@@ -24,29 +25,13 @@ export default function OrderEditPage() {
 
     useEffect(() => {
         Promise.all([
-            fetch("http://localhost:5065/api/orders/order-statuses", {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                },
-            }).then(r => r.json()),
-            fetch("http://localhost:5065/api/users/allUsersWithClients", {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                },
-            }).then(r => r.json()),
-            fetch("http://localhost:5065/api/orders/products?q=", {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                },
-            }).then(r => r.json()),
-            fetch(`http://localhost:5065/api/orders/order/${id}`, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                },
-            }).then(r => r.json()),
+            ordersApi.getStatuses(),
+            usersApi.getAllWithClients(),
+            ordersApi.getProducts(),
+            ordersApi.getOne(id),
         ])
             .then(async ([sts, us, pr, order]) => {
-                setStatuses(sts);
+                setStatuses(sts); setUsers(us); setProducts(pr);
                 setUsers(us);
                 setProducts(pr);
 
@@ -325,14 +310,7 @@ export default function OrderEditPage() {
                             })),
                     };
 
-                    const res = await fetch(`http://localhost:5065/api/orders/editOrder/${id}`, {
-                        method: "PUT",
-                        headers: {
-                            Authorization: `Bearer ${localStorage.getItem("token")}`,
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify(payload),
-                    });
+                    const res = await ordersApi.update(id, payload);
 
                     if (!res.ok) {
                         console.log(await res.text());

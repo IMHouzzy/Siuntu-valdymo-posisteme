@@ -6,11 +6,10 @@ import FormPageLayout from "../../components/FormPageLayout";
 import SmartForm from "../../components/SmartForm";
 import ShipmentLabels from "../../components/ShipmentLabels";
 import "../../styles/ShipmentRegistration.css";
-import { FiTruck, FiUser, FiPackage, FiMapPin, FiArrowLeft  } from "react-icons/fi";
+import { FiTruck, FiUser, FiPackage, FiMapPin, FiArrowLeft } from "react-icons/fi";
 import { useAuth } from "../../services/AuthContext";
+import { shipmentsApi, companiesApi } from "../../services/api";
 
-const API = "http://localhost:5065";
-const auth = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
 
 export default function ShipmentFormPage() {
   const [patchValues, setPatchValues] = useState({});
@@ -31,13 +30,11 @@ export default function ShipmentFormPage() {
   useEffect(() => {
     if (!activeCompanyId) return;
     Promise.all([
-      fetch(`${API}/api/shipments/order-for-shipment/${orderId}`, { headers: auth() })
-        .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); }),
-      fetch(`${API}/api/companies/${activeCompanyId}/couriers`, { headers: auth() })
-        .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); }),
+      shipmentsApi.getOrderForShipment(orderId),
+      companiesApi.getCouriers(activeCompanyId),
     ])
       .then(([ord, crs]) => { setOrder(ord); setCouriers(Array.isArray(crs) ? crs : []); })
-      .catch((e) => setError(e.message))
+      .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, [orderId, activeCompanyId]);
 
@@ -164,7 +161,7 @@ export default function ShipmentFormPage() {
         getItems: () => order.items ?? []
       },
       { type: "section", title: <span><FiPackage size={18} /> Pakuotės</span> },
-      
+
       { name: "packages", type: "packages", colSpan: 2 },
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -195,7 +192,7 @@ export default function ShipmentFormPage() {
   );
 
   if (error || !order) return (
-    <FormPageLayout title="Registruoti siuntą"actions={<button className="od-back-btn" onClick={() => navigate(-1)}><FiArrowLeft size={16} /> Grįžti</button>} >
+    <FormPageLayout title="Registruoti siuntą" actions={<button className="od-back-btn" onClick={() => navigate(-1)}><FiArrowLeft size={16} /> Grįžti</button>} >
       <div className="shp-state shp-state--error">⚠️ {error ?? "Užsakymas nerastas."}</div>
     </FormPageLayout>
   );
@@ -254,14 +251,10 @@ export default function ShipmentFormPage() {
       packageWeights: pkgs.map((p) => p.weight ? Number(p.weight) : null),
     };
 
-    const res = await fetch(`${API}/api/shipments/create`, {
-      method: "POST",
-      headers: { ...auth(), "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const res = await shipmentsApi.create(body);
 
     if (!res.ok) { const msg = await res.text(); throw new Error(msg || `Klaida: ${res.status}`); }
-    setCreatedShipment(await res.json());
+    setCreatedShipment(res);
   };
 
   // ── Render ────────────────────────────────────────────────────────────────

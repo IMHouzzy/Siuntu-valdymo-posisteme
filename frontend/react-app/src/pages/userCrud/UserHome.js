@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiSearch, FiPackage, FiTruck, FiCheckCircle, FiArrowRight } from "react-icons/fi";
 import "../../styles/UserHome.css";
-
+import { trackingApi } from "../../services/api";
 function TruckIllustration() {
   return (
     <div className="uhome-hero-illustration" aria-hidden="true">
@@ -83,26 +83,20 @@ export default function UserHome() {
     if (!num) { setError("Įveskite sekimo numerį."); return; }
     setError("");
     setLoading(true);
-
     try {
-      const res = await fetch(`http://localhost:5065/api/tracking/${encodeURIComponent(num)}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      if (res.status === 404) {
-        setError("Siunta su šiuo numeriu nerasta. Patikrinkite numerį ir bandykite dar kartą.");
-        setLoading(false);
-        return;
-      }
-      if (!res.ok) { setError("Įvyko klaida. Bandykite vėliau."); setLoading(false); return; }
-      const data = await res.json();
+      const data = await trackingApi.track(num);
       if (data.type === "dpd") {
         window.open(data.dpdUrl, "_blank", "noopener,noreferrer");
-        setLoading(false);
       } else {
         navigate(`/client/track/${encodeURIComponent(num)}`);
       }
-    } catch {
-      setError("Nepavyko prisijungti prie serverio.");
+    } catch (err) {
+      if (err.message?.includes("404")) {
+        setError("Siunta su šiuo numeriu nerasta. Patikrinkite numerį ir bandykite dar kartą.");
+      } else {
+        setError("Įvyko klaida. Bandykite vėliau.");
+      }
+    } finally {
       setLoading(false);
     }
   };
@@ -131,7 +125,7 @@ export default function UserHome() {
                 <FiSearch className="uhome-search-icon" size={20} />
                 <input
                   className="uhome-search-input"
-                  type="text"               
+                  type="text"
                   placeholder="pvz. PKG-0-00-0000000000-0000"
                   value={trackingInput}
                   onChange={(e) => { setTrackingInput(e.target.value); setError(""); }}

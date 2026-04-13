@@ -6,13 +6,14 @@ import StatusBadge from "../../components/StatusBadge";
 import TableToolbar from "../../components/TableToolbar";
 import { FiTrash2, FiMapPin, FiDownload, FiExternalLink, FiPackage } from "react-icons/fi";
 import { useAuth } from "../../services/AuthContext";
+import { shipmentsApi } from "../../services/api";
 import "../../styles/UserPage.css";
 
-const API = "http://localhost:5065";
+const API = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065";
 
 function ShipmentsList() {
   const navigate = useNavigate();
-  const { token, activeCompanyId } = useAuth();
+  const { activeCompanyId } = useAuth();
 
   const [shipments, setShipments] = useState([]);
   const [selectedShipment, setSelectedShipment] = useState(null);
@@ -21,40 +22,34 @@ function ShipmentsList() {
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const authHeaders = () => ({ Authorization: `Bearer ${token}` });
 
   useEffect(() => {
-    if (!token) return;
+    if (!activeCompanyId) return;
     setShipments([]);
     setSelectedShipment(null);
     setPackages([]);
-    fetch(`${API}/api/shipments/all`, { headers: authHeaders() })
-      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then(setShipments)
-      .catch(console.error);
-  }, [token, activeCompanyId]);
+    shipmentsApi.getAll().then(setShipments).catch(console.error);
+  }, [activeCompanyId]);
 
+  // REPLACE second useEffect (packages):
   useEffect(() => {
     if (!selectedShipment) { setPackages([]); return; }
     setLoadingPackages(true);
-    fetch(`${API}/api/shipments/${selectedShipment.id_Shipment}/packages`, { headers: authHeaders() })
-      .then((r) => r.ok ? r.json() : [])
+    shipmentsApi.getPackages(selectedShipment.id_Shipment)
       .then(setPackages)
       .catch(() => setPackages([]))
       .finally(() => setLoadingPackages(false));
   }, [selectedShipment?.id_Shipment]);
 
+  // REPLACE deleteShipment:
   const deleteShipment = async (s) => {
-    // Use order ID in confirm since shipment tracking is now package-level
-    const ok = window.confirm(`Ištrinti siuntą užsakymui #${s.orderId}?`);
-    if (!ok) return;
-    const res = await fetch(`${API}/api/shipments/${s.id_Shipment}`, {
-      method: "DELETE", headers: authHeaders(),
-    });
-    if (!res.ok) { alert("Ištrinti nepavyko"); return; }
-    setShipments((prev) => prev.filter((x) => x.id_Shipment !== s.id_Shipment));
-    setSelectedShipment(null);
-    setPackages([]);
+    if (!window.confirm(`Ištrinti siuntą užsakymui #${s.orderId}?`)) return;
+    try {
+      await shipmentsApi.remove(s.id_Shipment);
+      setShipments(prev => prev.filter(x => x.id_Shipment !== s.id_Shipment));
+      setSelectedShipment(null);
+      setPackages([]);
+    } catch { alert("Ištrinti nepavyko"); }
   };
 
   const statusFilters = useMemo(() => {

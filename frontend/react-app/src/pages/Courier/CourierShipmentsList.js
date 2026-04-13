@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../services/AuthContext";
 import StatusBadge from "../../components/StatusBadge";
 import "../../styles/CourierPages.css";
+import { courierApi } from "../../services/api";
 import {
   FiPackage,
   FiMapPin,
@@ -14,7 +15,6 @@ import {
   FiCalendar,
 } from "react-icons/fi";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:5065";
 
 const STATUS_ORDER = {
   "Sukurta": 0,
@@ -31,29 +31,22 @@ const DONE_STATUSES = ["Pristatyta", "Grąžinimas pristatytas"];
 
 export default function CourierShipmentsList() {
   const navigate = useNavigate();
-  const { token, activeCompanyId } = useAuth();
+  const { activeCompanyId } = useAuth();
 
   const [shipments, setShipments] = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(null);
-  const [q, setQ]                 = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [q, setQ] = useState("");
   const [filterStatus, setFilterStatus] = useState("active");
 
   useEffect(() => {
-    if (!token) return;
-    setLoading(true);
-    setError(null);
-    fetch(`${API}/api/courier/shipments`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
+    if (!activeCompanyId) return;
+    setLoading(true); setError(null);
+    courierApi.getShipments()
       .then(setShipments)
-      .catch((e) => setError(e.message))
+      .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  }, [token, activeCompanyId]);
+  }, [activeCompanyId]);
 
   const statusFilters = useMemo(() => {
     const active = shipments.filter(
@@ -61,9 +54,9 @@ export default function CourierShipmentsList() {
     ).length;
     const done = shipments.length - active;
     return [
-      { label: "Aktyvios",    value: "active", count: active },
-      { label: "Pristatytos", value: "done",   count: done },
-      { label: "Visos",       value: "all",    count: shipments.length },
+      { label: "Aktyvios", value: "active", count: active },
+      { label: "Pristatytos", value: "done", count: done },
+      { label: "Visos", value: "all", count: shipments.length },
     ];
   }, [shipments]);
 
@@ -153,8 +146,8 @@ export default function CourierShipmentsList() {
         <div className="cr-list">
           {filtered.map((s) => {
             const statusName = s.latestStatus?.typeName ?? "Sukurta";
-            const isDone     = DONE_STATUSES.includes(statusName);
-            const ref        = s.providerParcelNumber
+            const isDone = DONE_STATUSES.includes(statusName);
+            const ref = s.providerParcelNumber
               ? s.providerParcelNumber.split(",")[0].trim()
               : `#${s.id_Shipment}`;
 

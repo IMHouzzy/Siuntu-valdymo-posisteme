@@ -5,40 +5,35 @@ import RightDrawer from "../../components/RightDrawers/RightDrawerSidebar";
 import "../../styles/UserPage.css";
 import StatusBadge from "../../components/StatusBadge";
 import TableToolbar from "../../components/TableToolbar";
-import { FiTrash2, FiEdit, FiTruck,FiExternalLink } from "react-icons/fi";
+import { FiTrash2, FiEdit, FiTruck, FiExternalLink } from "react-icons/fi";
 import { useAuth } from "../../services/AuthContext";
+import { ordersApi } from "../../services/api";
 import NoImage from "../../images/no-camera.png";
+
+const API = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065";
 function OrdersList() {
     const navigate = useNavigate();
     const [orders, setOrders] = useState([]);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [q, setQ] = useState("");
     const [status, setStatus] = useState("all");
-    const { token, activeCompanyId } = useAuth();
+    const { activeCompanyId } = useAuth();
 
     useEffect(() => {
-        if (!token) return;
+        if (!activeCompanyId) return;
         setOrders([]);
         setSelectedOrder(null);
-        fetch("http://localhost:5065/api/orders/allOrdersFullInfo", {
-            headers: { Authorization: `Bearer ${token}` },
-        })
-            .then((res) => { if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`); return res.json(); })
-            .then(setOrders)
-            .catch(console.error);
-        console.log("Fetched orders:", orders);
-    }, [token, activeCompanyId]);
+        ordersApi.getAll().then(setOrders).catch(console.error);
+    }, [activeCompanyId]);
 
+    // REPLACE deleteOrder:
     const deleteOrder = async (p) => {
-        const ok = window.confirm(`Ištrinti užsakymą #${p.id_Orders}?`);
-        if (!ok) return;
-        const res = await fetch(`http://localhost:5065/api/orders/deleteOrder/${p.id_Orders}`, {
-            method: "DELETE",
-            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        });
-        if (!res.ok) { alert("Ištrinti nepavyko"); return; }
-        setOrders((prev) => prev.filter((x) => x.id_Orders !== p.id_Orders));
-        setSelectedOrder(null);
+        if (!window.confirm(`Ištrinti užsakymą #${p.id_Orders}?`)) return;
+        try {
+            await ordersApi.remove(p.id_Orders);
+            setOrders(prev => prev.filter(x => x.id_Orders !== p.id_Orders));
+            setSelectedOrder(null);
+        } catch { alert("Ištrinti nepavyko"); }
     };
 
     const sumVatTotal = (o) =>
@@ -268,7 +263,7 @@ function OrdersList() {
                                 <div key={i} className="rd-product-row">
                                     <div className={`rd-product-img ${!p.imageUrl ? "rd-product-img-placeholder" : ""}`}>
                                         {p.imageUrl ? (
-                                            <img src={`http://localhost:5065/${p.imageUrl}`} alt={p.name} />
+                                            <img src={`${API}/${p.imageUrl}`} alt={p.name} />
                                         ) : (
                                             <img src={NoImage} alt="No image" />
                                         )}

@@ -22,77 +22,150 @@ public class JwtService
     {
         if (user == null) throw new ArgumentNullException(nameof(user));
 
-        var issuer = _config["Jwt:Issuer"];
+        var jwtKey   = _config["Jwt:Key"]      ?? throw new InvalidOperationException("Jwt:Key missing");
+        var issuer   = _config["Jwt:Issuer"];
         var audience = _config["Jwt:Audience"];
-        var jwtKey = _config["Jwt:Key"];
 
-        if (string.IsNullOrWhiteSpace(jwtKey))
-            throw new InvalidOperationException("Jwt:Key is missing in configuration.");
-
-        // memberships
         var companies = await _db.company_users
             .AsNoTracking()
             .Where(cu => cu.fk_Usersid_Users == user.id_Users)
             .Select(cu => new
             {
                 id_Company = cu.fk_Companyid_Company,
-                name = cu.fk_Companyid_CompanyNavigation.name,
-                code = cu.fk_Companyid_CompanyNavigation.companyCode,
-                role = cu.role,
-                image = cu.fk_Companyid_CompanyNavigation.image
+                name       = cu.fk_Companyid_CompanyNavigation.name,
+                code       = cu.fk_Companyid_CompanyNavigation.companyCode,
+                role       = cu.role,
+                image      = cu.fk_Companyid_CompanyNavigation.image
             })
             .ToListAsync();
 
-        // pick active (based on user.fk_Companyid_Company)
         var desiredCompanyId = user.fk_Companyid_Company ?? 0;
-
         var active = companies.FirstOrDefault(c => c.id_Company == desiredCompanyId)
                      ?? companies.FirstOrDefault();
 
-        var activeCompanyId = active?.id_Company ?? 0;
-        var activeCompanyName = active?.name ?? "";
-        var activeCompanyCode = active?.code ?? "";
-        var activeCompanyRole = active?.role ?? ""; // ✅ IMPORTANT
-        var activeCompanyImage = active?.image ?? "";
-
-        var companiesJson = JsonSerializer.Serialize(companies);
-
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, user.id_Users.ToString()),
-            new Claim(JwtRegisteredClaimNames.Sub, user.id_Users.ToString()),
-            new Claim(JwtRegisteredClaimNames.Email, user.email ?? ""),
+            new(ClaimTypes.NameIdentifier, user.id_Users.ToString()),
+            new(JwtRegisteredClaimNames.Sub,   user.id_Users.ToString()),
+            new(JwtRegisteredClaimNames.Email, user.email ?? ""),
 
-            new Claim("provider", user.authProvider ?? "LOCAL"),
-            new Claim("name", user.name ?? ""),
-            new Claim("surname", user.surname ?? ""),
-            new Claim("fullName", $"{user.name} {user.surname}".Trim()),
+            new("provider",      user.authProvider ?? "LOCAL"),
+            new("name",          user.name         ?? ""),
+            new("surname",       user.surname       ?? ""),
+            new("fullName",      $"{user.name} {user.surname}".Trim()),
+            new("isMasterAdmin", user.isMasterAdmin ? "1" : "0"),
 
-            new Claim("isMasterAdmin", user.isMasterAdmin ? "1" : "0"),
+            // Active company
+            new("companyId",    (active?.id_Company ?? 0).ToString()),
+            new("companyName",   active?.name  ?? ""),
+            new("companyCode",   active?.code  ?? ""),
+            new("companyRole",   active?.role  ?? ""),
+            new("companyImage",  active?.image ?? ""),
 
-            // active company
-            new Claim("companyId", activeCompanyId.ToString()),
-            new Claim("companyName", activeCompanyName),
-            new Claim("companyCode", activeCompanyCode),
+            // All memberships (for company switcher)
+            new("companies", JsonSerializer.Serialize(companies)),
 
-            // ✅ active role for routing/permissions
-            new Claim("companyRole", activeCompanyRole),
-            new Claim("companyImage", activeCompanyImage),
-            // list for switching
-            new Claim("companies", companiesJson),
+            // ── Password-change sentinel ─────────────────────────────────────
+            // We store a SHORT hash fingerprint (first 8 chars of the bcrypt hash).
+            // This lets us invalidate old tokens when the user changes their
+            // password WITHOUT embedding the full hash in the token.
+            // The full bcrypt hash is never exposed.
+            new("pwdFp", (user.password ?? "").Length >= 8
+                            ? user.password![..8]
+                            : ""),
         };
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+        var key   = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
-            issuer: issuer,
-            audience: audience,
-            claims: claims,
-            expires: DateTime.UtcNow.AddDays(1), // Example: token expires in 1 day
-            signingCredentials: creds
-        );
+            issuer:             issuer,
+            audience:           audience,
+            claims:             claims,
+            expires:            DateTime.UtcNow.AddDays(1),
+            signingCredentials: creds);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    // ── Cookie helpers ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Writes the JWT as a secure httpOnly SameSite=Strict cookie.
+    /// The browser sends it automatically on every request; JS can't read it.
+    /// </summary>
+    public static void SetAuthCookie(HttpResponse response, string jwtToken, IConfiguration config)
+    {
+        var days   = int.TryParse(config["Jwt:CookieDays"],   out var d) ? d : 1;
+
+        // CookieSecure defaults to true (production).
+        // Set "Jwt:CookieSecure": "false" in appsettings.Development.json
+        // so cookies work on plain http://localhost during development.
+        var secure = !string.Equals(config["Jwt:CookieSecure"], "false",
+                         StringComparison.OrdinalIgnoreCase);
+
+        response.Cookies.Append("auth_token", jwtToken, new CookieOptions
+        {
+            HttpOnly = true,                // JS cannot read this
+            Secure   = secure,              // false in dev, true in prod
+            SameSite = SameSiteMode.Lax,   // Strict blocks cookie on first navigation; Lax is safe + works
+            Expires  = DateTimeOffset.UtcNow.AddDays(days),
+            Path     = "/",
+        });
+    }
+
+    public static void ClearAuthCookie(HttpResponse response)
+    {
+        response.Cookies.Delete("auth_token", new CookieOptions
+        {
+            HttpOnly = true,
+            Secure   = false,              // must match how it was set — browser won't clear otherwise
+            SameSite = SameSiteMode.Lax,
+            Path     = "/",
+        });
+    }
+
+    // ── Password-reset token (JWT-based, short-lived) ─────────────────────────
+
+    public string GeneratePasswordResetToken(int userId)
+    {
+        var jwtKey = _config["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key missing");
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, userId.ToString()),
+            new("type", "reset"),
+        };
+
+        var key   = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var token = new JwtSecurityToken(
+            claims:             claims,
+            expires:            DateTime.UtcNow.AddHours(1),
+            signingCredentials: creds);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public ClaimsPrincipal? ValidateResetToken(string token)
+    {
+        var jwtKey = _config["Jwt:Key"] ?? "";
+
+        try
+        {
+            var principal = new JwtSecurityTokenHandler().ValidateToken(token,
+                new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey        = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+                    ValidateIssuer          = false,
+                    ValidateAudience        = false,
+                    ClockSkew               = TimeSpan.Zero,
+                }, out _);
+
+            return principal.FindFirst("type")?.Value == "reset" ? principal : null;
+        }
+        catch { return null; }
     }
 }
