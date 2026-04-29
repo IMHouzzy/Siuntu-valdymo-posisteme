@@ -9,7 +9,7 @@ import "../../styles/ShipmentRegistration.css";
 import { FiTruck, FiUser, FiPackage, FiMapPin, FiArrowLeft } from "react-icons/fi";
 import { useAuth } from "../../services/AuthContext";
 import { shipmentsApi, companiesApi } from "../../services/api";
-
+import { validateShipment } from "./shipmentValidation";
 
 export default function ShipmentFormPage() {
   const [patchValues, setPatchValues] = useState({});
@@ -21,52 +21,91 @@ export default function ShipmentFormPage() {
   const [couriers, setCouriers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [submitError, setSubmitError] = useState(null);
 
   const [selectedCourier, setSelectedCourier] = useState(null);
   const [createdShipment, setCreatedShipment] = useState(null);
   const prevCourierIdRef = React.useRef(null);
 
-  // ── Fetch ─────────────────────────────────────────────────────────────────
+  // ── Fetch ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!activeCompanyId) return;
     Promise.all([
       shipmentsApi.getOrderForShipment(orderId),
       companiesApi.getCouriers(activeCompanyId),
     ])
-      .then(([ord, crs]) => { setOrder(ord); setCouriers(Array.isArray(crs) ? crs : []); })
+      .then(([ord, crs]) => {
+        setOrder(ord);
+        setCouriers(Array.isArray(crs) ? crs : []);
+
+        // Pre-select courier that was chosen at order creation time
+        if (ord.snapshotCourierId && Array.isArray(crs)) {
+          const preselected = crs.find(
+            (c) => (c.id ?? c.id_Courier) === ord.snapshotCourierId
+          );
+          if (preselected) setSelectedCourier(preselected);
+        }
+      })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, [orderId, activeCompanyId]);
 
-  // ── Derived flags ─────────────────────────────────────────────────────────
+  // ── Derived flags ──────────────────────────────────────────────────────────
   const needsLockerPicker = !!selectedCourier?.supportsLockers;
-  const needsHomeAddress = selectedCourier?.type?.endsWith("_HOME") &&
-    selectedCourier?.type !== "CUSTOM";
 
-  // ── Client address prefill ────────────────────────────────────────────────
-  const clientAddress = useMemo(() => {
+  // ── Initial values from order snapshot ────────────────────────────────────
+  const initialValues = useMemo(() => {
     if (!order) return {};
-    const cc = order.clientCompany ?? {};
-    return { street: cc.deliveryAddress || "", city: cc.city || "", country: cc.country || "" };
+
+    const isLocker = order.snapshotDeliveryMethod === "LOCKER";
+
+    return {
+      courierId: order.snapshotCourierId ?? null,
+      _needsLocker: false, // Will be updated via onValuesChange
+
+      deliveryCoords: isLocker && order.snapshotLockerId
+        ? {
+          lockerId: order.snapshotLockerId,
+          name: order.snapshotLockerName ?? "",
+          id: order.snapshotLockerId,
+          street: order.snapshotLockerAddress ?? "",
+          city: "",
+          lat: order.snapshotLat ?? 0,
+          lng: order.snapshotLng ?? 0,
+        }
+        : null,
+
+      street: (!isLocker ? order.snapshotDeliveryAddress : "") ?? "",
+      city: (!isLocker ? order.snapshotCity : "") ?? "",
+      country: (!isLocker ? order.snapshotCountry : "") ?? "",
+      postalCode: "",
+
+      shippingDate: new Date().toISOString().slice(0, 10),
+      estimatedDeliveryDate: "",
+      _clientName: "",
+      _clientPhone: "",
+      _clientEmail: "",
+      _products: [],
+      packages: [{ weight: "" }],
+    };
   }, [order]);
 
-  // ── onValuesChange ────────────────────────────────────────────────────────
-  // IMPORTANT: wrap all setState calls in setTimeout(fn, 0).
-  // onValuesChange is called from inside SmartForm's setField state-updater,
-  // so calling setState synchronously here triggers React's
-  // "Cannot update a component while rendering a different component" warning.
+  // ── onValuesChange ─────────────────────────────────────────────────────────
   const handleValuesChange = (vals) => {
     setTimeout(() => {
       const c = couriers.find((c) => (c.id ?? c.id_Courier) === vals.courierId);
       setSelectedCourier(c ?? null);
 
-      // When courier changes, clear deliveryCoords so stale locker/address
-      // data from the previous courier doesn't get submitted
       const courierChanged = prevCourierIdRef.current !== vals.courierId;
       prevCourierIdRef.current = vals.courierId;
 
       const patch = {};
+      
+      // Set the _needsLocker flag for validation
+      patch._needsLocker = !!c?.supportsLockers;
+      
       if (courierChanged) patch.deliveryCoords = null;
+      
       if (c?.deliveryTermDays && vals.shippingDate) {
         const d = new Date(vals.shippingDate);
         d.setDate(d.getDate() + c.deliveryTermDays);
@@ -76,7 +115,7 @@ export default function ShipmentFormPage() {
     }, 0);
   };
 
-  // ── Fields ────────────────────────────────────────────────────────────────
+  // ── Fields ─────────────────────────────────────────────────────────────────
   const fields = useMemo(() => {
     if (!order) return [];
     const client = order.client ?? {};
@@ -88,11 +127,10 @@ export default function ShipmentFormPage() {
         name: "courierId",
         label: null,
         type: "courier-cards",
+        required: true,
         colSpan: 2,
         couriers,
-        onSelect: (c) => {
-          setTimeout(() => setSelectedCourier(c), 0);
-        },
+        onSelect: (c) => { setTimeout(() => setSelectedCourier(c), 0); },
       },
 
       // 2. Delivery location
@@ -101,30 +139,46 @@ export default function ShipmentFormPage() {
         title: <span><FiMapPin size={18} /> Pristatymo vieta</span>,
         subtitle: needsLockerPicker
           ? "Pasirinkite paštomatą arba siuntų tašką"
-          : "Pristatymo vieta pagal kliento adresą",
+          : "Pristatymo adresas (paimtas iš užsakymo — redaguokite jei reikia keisti)",
       },
 
-      // Locker picker — parcel-machine couriers
+      // Locker picker
       ...(needsLockerPicker ? [{
         name: "deliveryCoords",
         label: null,
         type: "locker-picker",
+        required: true,
         colSpan: 2,
         courierType: selectedCourier?.type,
         companyId: activeCompanyId,
       }] : []),
 
-      // Address + map — home-delivery and custom couriers
+      // Address fields + map for home delivery / custom
       ...(!needsLockerPicker ? [
-        { name: "street", label: "Gatvė", placeholder: "pvz. Studentų g. 50", colSpan: 1, required: true },
-        {
-          name: "city", label: "Miestas", placeholder: "pvz. Kaunas", required: true,
-          validate: (v) => (!v?.trim() ? "Privalomas miestas" : undefined)
+        { 
+          name: "street", 
+          label: "Gatvė", 
+          placeholder: "pvz. Studentų g. 50", 
+          colSpan: 1, 
+          required: true 
         },
-        { name: "country", label: "Šalis", placeholder: "pvz. Lietuva", required: true },
         {
-          name: "postalCode", label: "Pašto kodas", placeholder: "pvz. LT-44001", required: true,
-          validate: (v) => (!v?.trim() ? "Privalomas pašto kodas" : undefined)
+          name: "city", 
+          label: "Miestas", 
+          placeholder: "pvz. Kaunas", 
+          required: true,
+        },
+        { 
+          name: "country", 
+          label: "Šalis", 
+          placeholder: "pvz. Lietuva", 
+          required: true 
+        },
+        {
+          name: "postalCode", 
+          label: "Pašto kodas", 
+          placeholder: "pvz. LT-44001", 
+          required: true,
         },
         {
           name: "deliveryCoords",
@@ -136,55 +190,65 @@ export default function ShipmentFormPage() {
       ] : []),
 
       // Dates
-      { name: "shippingDate", label: "Siuntimo data", type: "date", required: true },
-      { name: "estimatedDeliveryDate", label: "Numatoma pristatymo", type: "display", placeholder: "—" },
+      { 
+        name: "shippingDate", 
+        label: "Siuntimo data", 
+        type: "date", 
+        required: true 
+      },
+      { 
+        name: "estimatedDeliveryDate", 
+        label: "Numatoma pristatymo", 
+        type: "display", 
+        placeholder: "—" 
+      },
 
-      // 3. Recipient info (read-only)
+      // 3. Recipient info (read-only display)
       { type: "section", title: <span><FiUser size={18} /> Gavėjas</span> },
       {
-        name: "_clientName", label: "Vardas pavardė", type: "display", colSpan: 2,
-        render: () => `${client.name ?? ""} ${client.surname ?? ""}`.trim() || "—"
+        name: "_clientName", 
+        label: "Vardas pavardė", 
+        type: "display", 
+        colSpan: 2,
+        render: () => `${client.name ?? ""} ${client.surname ?? ""}`.trim() || "—",
       },
       {
-        name: "_clientPhone", label: "Telefonas", type: "display",
-        render: () => client.phoneNumber || "—"
+        name: "_clientPhone", 
+        label: "Telefonas", 
+        type: "display",
+        render: () => client.phoneNumber || "—",
       },
       {
-        name: "_clientEmail", label: "El. paštas", type: "display",
-        render: () => client.email || "—"
+        name: "_clientEmail", 
+        label: "El. paštas", 
+        type: "display",
+        render: () => client.email || "—",
       },
 
       // 4. Products + packages
-      { type: "section", title: <span><FiPackage size={18} /> Prekės ir pakuotės</span> },
-      {
-        name: "_products", label: null, type: "product-view", colSpan: 2,
-        getItems: () => order.items ?? []
+      { type: "section", title: <span><FiPackage size={18} /> Prekės</span> },
+      { 
+        name: "_products", 
+        label: null, 
+        type: "product-view", 
+        colSpan: 2, 
+        getItems: () => order.items ?? [] 
       },
       { type: "section", title: <span><FiPackage size={18} /> Pakuotės</span> },
-
-      { name: "packages", type: "packages", colSpan: 2 },
+      { 
+        name: "packages", 
+        type: "packages", 
+        colSpan: 2,
+        required: true,
+      },
+      
+      // Hidden field for validation
+      { name: "_needsLocker", type: "display", visible: () => false },
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order, couriers, needsLockerPicker, needsHomeAddress, selectedCourier, activeCompanyId]);
+  }, [order, couriers, needsLockerPicker, selectedCourier, activeCompanyId]);
 
-  // ── Initial values ────────────────────────────────────────────────────────
-  const initialValues = useMemo(() => ({
-    courierId: null,
-    deliveryCoords: null,
-    street: clientAddress.street || "",
-    city: clientAddress.city || "",
-    country: clientAddress.country || "",
-    postalCode: "",
-    shippingDate: new Date().toISOString().slice(0, 10),
-    estimatedDeliveryDate: "",
-    _clientName: "",
-    _clientPhone: "",
-    _clientEmail: "",
-    _products: [],
-    packages: [{ weight: "" }],
-  }), [clientAddress]);
-
-  // ── States ────────────────────────────────────────────────────────────────
+  // ── States ──────────────────────────────────────────────────────────────────
   if (loading) return (
     <FormPageLayout title="Registruoti siuntą" actions={<button className="od-back-btn" onClick={() => navigate(-1)}><FiArrowLeft size={16} /> Grįžti</button>}>
       <div className="shp-state"><div className="shp-spinner" /><span>Kraunama…</span></div>
@@ -192,7 +256,7 @@ export default function ShipmentFormPage() {
   );
 
   if (error || !order) return (
-    <FormPageLayout title="Registruoti siuntą" actions={<button className="od-back-btn" onClick={() => navigate(-1)}><FiArrowLeft size={16} /> Grįžti</button>} >
+    <FormPageLayout title="Registruoti siuntą" actions={<button className="od-back-btn" onClick={() => navigate(-1)}><FiArrowLeft size={16} /> Grįžti</button>}>
       <div className="shp-state shp-state--error">⚠️ {error ?? "Užsakymas nerastas."}</div>
     </FormPageLayout>
   );
@@ -203,34 +267,19 @@ export default function ShipmentFormPage() {
         shipmentId={createdShipment.shipmentId}
         trackingNumber={createdShipment.trackingNumber}
         packages={createdShipment.packages}
-        onClose={() => navigate(-1)}
+        onClose={() => navigate("/orders/orderlist")}
       />
     </FormPageLayout>
   );
 
-  // ── Submit ────────────────────────────────────────────────────────────────
+  // ── Submit ──────────────────────────────────────────────────────────────────
   const handleSubmit = async (values) => {
+    setSubmitError(null);
     const pkgs = Array.isArray(values.packages) ? values.packages : [{ weight: "" }];
 
-    // deliveryCoords shape depends on which picker was used:
-    //   map picker    → { lat, lng }  OR  { latitude, longitude }  OR  { position: { lat, lng } }
-    //   locker picker → { lockerId, lat, lng }
-    // Be defensive about all known shapes.
     const coords = values.deliveryCoords;
-    const deliveryLat =
-      coords?.lat ??
-      coords?.latitude ??
-      coords?.position?.lat ??
-      null;
-    const deliveryLng =
-      coords?.lng ??
-      coords?.longitude ??
-      coords?.position?.lng ??
-      null;
-
-    // Debug — remove once confirmed working
-    console.log("[ShipmentForm] deliveryCoords raw:", coords);
-    console.log("[ShipmentForm] resolved lat/lng:", deliveryLat, deliveryLng);
+    const deliveryLat = coords?.lat ?? coords?.latitude ?? coords?.position?.lat ?? null;
+    const deliveryLng = coords?.lng ?? coords?.longitude ?? coords?.position?.lng ?? null;
 
     const body = {
       orderId: Number(orderId),
@@ -244,6 +293,7 @@ export default function ShipmentFormPage() {
       recipientPostalCode: values.postalCode || null,
       recipientCity: values.city || null,
       recipientStreet: values.street || null,
+      recipientCountry: values.country || null,
       senderStreet: order?.shippingStreet || order?.shippingAddress || null,
       senderCity: order?.shippingCity || null,
       senderPostalCode: order?.shippingPostalCode || null,
@@ -251,15 +301,33 @@ export default function ShipmentFormPage() {
       packageWeights: pkgs.map((p) => p.weight ? Number(p.weight) : null),
     };
 
-    const res = await shipmentsApi.create(body);
-
-    if (!res.ok) { const msg = await res.text(); throw new Error(msg || `Klaida: ${res.status}`); }
-    setCreatedShipment(res);
+    try {
+      const res = await shipmentsApi.create(body);
+      setCreatedShipment(res);
+    } catch (err) {
+      setSubmitError(err.message ?? "Serverio klaida. Bandykite dar kartą.");
+      throw err;
+    }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <FormPageLayout title={`Registruoti siuntą — Užsakymas #${order.id_Orders ?? orderId}`} actions={<button className="od-back-btn" onClick={() => navigate(-1)}><FiArrowLeft size={16} /> Grįžti</button>}>
+    <FormPageLayout
+      title={`Registruoti siuntą — Užsakymas #${order.id_Orders ?? orderId}`}
+      actions={
+        <button className="od-back-btn" onClick={() => navigate(-1)}>
+          <FiArrowLeft size={16} /> Grįžti
+        </button>
+      }
+    >
+      {submitError && (
+        <div style={{
+          background: "#fef2f2", color: "#b91c1c", border: "1px solid #fca5a5",
+          borderRadius: 6, padding: "10px 14px", marginBottom: 16, fontSize: "0.875rem",
+        }}>
+          {submitError}
+        </div>
+      )}
       <SmartForm
         fields={fields}
         initialValues={initialValues}
@@ -269,6 +337,7 @@ export default function ShipmentFormPage() {
         onCancel={() => navigate(-1)}
         onSubmit={handleSubmit}
         onValuesChange={handleValuesChange}
+        validate={validateShipment}
       />
     </FormPageLayout>
   );

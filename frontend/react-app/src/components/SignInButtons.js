@@ -12,7 +12,7 @@ import {
   FiRefreshCw,
   FiInfo,
   FiCheckCircle,
-  FiAlertCircle,
+  FiShoppingCart,
   FiCheck,
   FiTrash2,
 } from "react-icons/fi";
@@ -155,9 +155,17 @@ export default function SignInButtons() {
 
   const handleNotifClick = (n) => {
     if (!n.isRead) markRead(n.id_Notification);
-    if (n.referenceType === "ORDER" && n.referenceId) navigate(`/orders/${n.referenceId}`);
-    if (n.referenceType === "SHIPMENT" && n.referenceId) navigate(`/shipments/${n.referenceId}`);
-    if (n.referenceType === "RETURN" && n.referenceId) navigate(`/returns/${n.referenceId}`);
+    if (n.referenceType === "ORDER" && n.referenceId) {
+      navigate(`/client/profile#orders?order=${n.referenceId}`);
+    }
+
+    if (n.referenceType === "RETURN") {
+      navigate(`/client/profile#orders?tab=returns`);
+    }
+
+    if (n.referenceType === "SHIPMENT" && n.referenceId) {
+      navigate(`/client/track/${n.referenceId}`);
+    }
     setNotifOpen(false);
   };
 
@@ -301,11 +309,33 @@ export default function SignInButtons() {
 
               <button
                 className="sb-dropdown-item"
-                onClick={() => { setOpen(false); navigate("/profile"); }}
+                onClick={() => { setOpen(false); navigate("/client/profile"); }}
+              >
+                <FiUser size={14} />
+                Profilio informacija
+              </button>
+              <button
+                className="sb-dropdown-item"
+                onClick={() => { setOpen(false); navigate("/client/profile#notifications"); }}
+              >
+                <FiBell size={14} />
+                Pranešimai
+              </button>
+              <button
+                className="sb-dropdown-item"
+                onClick={() => { setOpen(false); navigate("/client/profile#settings"); }}
               >
                 <FiSettings size={14} />
-                Profilis
+                Nustatymai
               </button>
+              <button
+                className="sb-dropdown-item"
+                onClick={() => { setOpen(false); navigate("/client/profile#orders"); }}
+              >
+                <FiShoppingCart size={14} />
+                Mano užsakymai
+              </button>
+              
 
               <div className="sb-dropdown-divider" />
 

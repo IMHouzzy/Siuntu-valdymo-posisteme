@@ -1,0 +1,72 @@
+services:
+
+  # ── MariaDB ───────────────────────────────────────────────────────────────────
+  db:
+    image: mariadb:10.11
+    container_name: siuntu_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: siuntu_valdymo_posistemis
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro   # optional: seed on first run
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── ASP.NET Core API ──────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./Bakalauras.API          # folder containing your .csproj
+      dockerfile: Dockerfile
+    container_name: siuntu_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5065
+      ConnectionStrings__DefaultConnection: >-
+        Server=db;Port=3306;Database=siuntu_valdymo_posistemis;
+        User=${DB_USER};Password=${DB_PASSWORD};
+      # Add any other env vars your app needs (JWT secret, SMTP, etc.)
+      Jwt__Secret: ${JWT_SECRET}
+    volumes:
+      - api_uploads:/app/wwwroot/uploads  # persist uploaded files (labels, return images)
+    networks:
+      - internal
+    expose:
+      - "5065"
+
+  # ── Nginx reverse proxy + static frontend ────────────────────────────────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: siuntu_nginx
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro        # SSL certs (e.g. from certbot)
+      - ./frontend/build:/var/www/frontend:ro    # run `npm run build` locally first
+    networks:
+      - internal
+
+volumes:
+  db_data:
+  api_uploads:
+
+networks:
+  internal:
+    driver: bridge

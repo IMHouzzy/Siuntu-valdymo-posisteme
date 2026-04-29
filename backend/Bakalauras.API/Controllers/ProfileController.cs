@@ -21,122 +21,109 @@ public class ProfileController : ControllerBase
     // ── GET own profile (base info + per-company client/employee data) ─────
 
     [HttpGet]
-    public async Task<IActionResult> GetProfile()
-    {
-        var userId    = User.GetUserId();
-        var companyId = User.GetCompanyId();
+public async Task<IActionResult> GetProfile()
+{
+    var userId = User.GetUserId();
 
-        var user = await _db.users.AsNoTracking().FirstOrDefaultAsync(u => u.id_Users == userId);
-        if (user == null) return Unauthorized();
+    var user = await _db.users
+        .AsNoTracking()
+        .FirstOrDefaultAsync(u => u.id_Users == userId);
 
-        // All company memberships for this user
-        var memberships = await _db.company_users
-            .AsNoTracking()
-            .Where(cu => cu.fk_Usersid_Users == userId)
-            .Select(cu => new
-            {
-                companyId   = cu.fk_Companyid_Company,
-                companyName = cu.fk_Companyid_CompanyNavigation.name,
-                cu.role,
-                cu.position,
-                cu.startDate,
-                cu.active,
+    if (user == null) return Unauthorized();
 
-                // Per-company client info (null if not a client in this company)
-                clientInfo = _db.client_companies
-                    .AsNoTracking()
-                    .Where(cc => cc.fk_Companyid_Company == cu.fk_Companyid_Company && cc.fk_Clientid_Users == userId)
-                    .Select(cc => new
-                    {
-                        cc.deliveryAddress,
-                        cc.city,
-                        cc.country,
-                        cc.vat,
-                        cc.bankCode,
-                        cc.externalClientId
-                    })
-                    .FirstOrDefault()
-            })
-            .ToListAsync();
-
-        return Ok(new
+    // take first global client info
+    var client = await _db.client_companies
+        .AsNoTracking()
+        .Where(x => x.fk_Clientid_Users == userId)
+        .Select(x => new
         {
-            id          = user.id_Users,
-            user.name,
-            user.surname,
-            user.email,
-            user.phoneNumber,
-            user.creationDate,
-            user.authProvider,
-            activeCompanyId = companyId,
-            memberships
-        });
-    }
+            x.deliveryAddress,
+            x.city,
+            x.country,
+            x.vat,
+            x.bankCode
+        })
+        .FirstOrDefaultAsync();
+
+    var memberships = await _db.company_users
+        .AsNoTracking()
+        .Where(cu => cu.fk_Usersid_Users == userId)
+        .Select(cu => new
+        {
+            companyId = cu.fk_Companyid_Company,
+            companyName = cu.fk_Companyid_CompanyNavigation.name,
+            cu.role,
+            cu.position,
+            cu.startDate,
+            cu.active
+        })
+        .ToListAsync();
+
+    return Ok(new
+    {
+        id = user.id_Users,
+        user.name,
+        user.surname,
+        user.email,
+        user.phoneNumber,
+        user.authProvider,
+
+        deliveryAddress = client?.deliveryAddress,
+        city = client?.city,
+        country = client?.country,
+        vat = client?.vat,
+        bankCode = client?.bankCode,
+
+        memberships
+    });
+}
 
     // ── UPDATE base info (name, surname, phone) ────────────────────────────
 
     [HttpPut("info")]
-    public async Task<IActionResult> UpdateInfo([FromBody] UpdateProfileInfoDto dto)
+public async Task<IActionResult> UpdateInfo([FromBody] UpdateProfileInfoDto dto)
+{
+    var userId = User.GetUserId();
+
+    var user = await _db.users.FirstOrDefaultAsync(u => u.id_Users == userId);
+    if (user == null) return Unauthorized();
+
+    user.name = dto.Name?.Trim() ?? user.name;
+    user.surname = dto.Surname?.Trim() ?? user.surname;
+    user.phoneNumber = dto.PhoneNumber?.Trim() ?? user.phoneNumber;
+
+    var clientRows = await _db.client_companies
+        .Where(x => x.fk_Clientid_Users == userId)
+        .ToListAsync();
+
+    if (!clientRows.Any())
     {
-        var userId = User.GetUserId();
-
-        var user = await _db.users.FirstOrDefaultAsync(u => u.id_Users == userId);
-        if (user == null) return Unauthorized();
-
-        // Only allow editing non-auth fields
-        user.name        = dto.Name?.Trim()        ?? user.name;
-        user.surname     = dto.Surname?.Trim()     ?? user.surname;
-        user.phoneNumber = dto.PhoneNumber?.Trim() ?? user.phoneNumber;
-
-        await _db.SaveChangesAsync();
-        return Ok();
+        _db.client_companies.Add(new client_company
+        {
+            fk_Clientid_Users = userId,
+            fk_Companyid_Company = 1, // fallback
+            deliveryAddress = dto.DeliveryAddress,
+            city = dto.City,
+            country = dto.Country,
+            vat = dto.Vat,
+            bankCode = dto.BankCode
+        });
+    }
+    else
+    {
+        foreach (var row in clientRows)
+        {
+            row.deliveryAddress = dto.DeliveryAddress;
+            row.city = dto.City;
+            row.country = dto.Country;
+            row.vat = dto.Vat;
+            row.bankCode = dto.BankCode;
+        }
     }
 
-    // ── UPDATE per-company client address ─────────────────────────────────
-    // Each user can have different client info (address, city, VAT…) per company.
-
-    [HttpPut("client/{companyId:int}")]
-    public async Task<IActionResult> UpdateClientInfo(int companyId, [FromBody] UpdateClientInfoDto dto)
-    {
-        var userId = User.GetUserId();
-
-        // Verify the user actually belongs to this company
-        var belongs = await _db.company_users.AnyAsync(cu =>
-            cu.fk_Companyid_Company == companyId && cu.fk_Usersid_Users == userId);
-
-        if (!belongs) return StatusCode(403, "You are not a member of this company.");
-
-        var cc = await _db.client_companies.FirstOrDefaultAsync(x =>
-            x.fk_Companyid_Company == companyId && x.fk_Clientid_Users == userId);
-
-        if (cc == null)
-        {
-            // Create a new client_company entry for this company
-            _db.client_companies.Add(new client_company
-            {
-                fk_Clientid_Users    = userId,
-                fk_Companyid_Company = companyId,
-                deliveryAddress      = dto.DeliveryAddress,
-                city                 = dto.City,
-                country              = dto.Country,
-                vat                  = dto.Vat,
-                bankCode             = dto.BankCode,
-                externalClientId     = null
-            });
-        }
-        else
-        {
-            // externalClientId is read-only — managed by sync worker only
-            cc.deliveryAddress = dto.DeliveryAddress;
-            cc.city            = dto.City;
-            cc.country         = dto.Country;
-            cc.vat             = dto.Vat;
-            cc.bankCode        = dto.BankCode;
-        }
-
-        await _db.SaveChangesAsync();
-        return Ok();
-    }
+    await _db.SaveChangesAsync();
+    return Ok();
+}
 
     // ── CHANGE PASSWORD ────────────────────────────────────────────────────
 

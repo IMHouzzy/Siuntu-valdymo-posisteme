@@ -23,7 +23,7 @@ public class PasswordResetController : ControllerBase
 
     public PasswordResetController(AppDbContext db, IEmailService email)
     {
-        _db    = db;
+        _db = db;
         _email = email;
     }
 
@@ -48,7 +48,7 @@ public class PasswordResetController : ControllerBase
                              .Replace("+", "-").Replace("/", "_").TrimEnd('=');
 
         // Store directly on the user row — no extra table
-        user.resetToken       = rawToken;
+        user.resetToken = rawToken;
         user.resetTokenExpiry = DateTime.UtcNow.AddHours(1);
 
         await _db.SaveChangesAsync();
@@ -57,9 +57,9 @@ public class PasswordResetController : ControllerBase
         var resetUrl = $"http://localhost:3000/reset-password?token={rawToken}";
 
         await _email.SendAsync(
-            to:      user.email,
+            to: user.email,
             subject: "Slaptažodžio atstatymas",
-            htmlBody:    $"Norėdami atstatyti slaptažodį, spauskite šią nuorodą:\n\n{resetUrl}\n\nNuoroda galioja 1 valandą."
+            htmlBody: $"Norėdami atstatyti slaptažodį, spauskite šią nuorodą:\n\n{resetUrl}\n\nNuoroda galioja 1 valandą."
         );
 
         return Ok();
@@ -106,8 +106,8 @@ public class PasswordResetController : ControllerBase
         if (user.resetTokenExpiry == null || user.resetTokenExpiry < DateTime.UtcNow)
             return StatusCode(410, "Nuoroda pasibaigė. Prašykite naujos.");
 
-        user.password         = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
-        user.resetToken       = null;   // wipe so token can't be reused
+        user.password = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+        user.resetToken = null;   // wipe so token can't be reused
         user.resetTokenExpiry = null;
 
         await _db.SaveChangesAsync();
@@ -117,7 +117,10 @@ public class PasswordResetController : ControllerBase
 
 namespace Bakalauras.API.Dtos
 {
-    public class ResetRequestDto { public string Email       { get; set; } = ""; }
-    public class ResetConfirmDto { public string Token       { get; set; } = "";
-                                   public string NewPassword { get; set; } = ""; }
+    public class ResetRequestDto { public string Email { get; set; } = ""; }
+    public class ResetConfirmDto
+    {
+        public string Token { get; set; } = "";
+        public string NewPassword { get; set; } = "";
+    }
 }

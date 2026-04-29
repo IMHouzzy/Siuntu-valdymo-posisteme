@@ -1,3 +1,5 @@
+// pages/Companies/CompanyEdit.jsx
+
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import SmartForm from "../../components/SmartForm";
@@ -5,6 +7,7 @@ import FormPageLayout from "../../components/FormPageLayout";
 import { useAuth } from "../../services/AuthContext";
 import { FiArrowLeft } from "react-icons/fi";
 import { companiesApi } from "../../services/api";
+import { validateCompany } from "./companyValidation";
 
 const COUNTRY_OPTIONS = [
   { value: "LT", label: "Lietuva (LT)" },
@@ -20,7 +23,6 @@ export default function CompanyEdit() {
   const isCreate = !companyId;
   const navigate = useNavigate();
 
-  // token removed — use user + cookie
   const { user, activeCompanyId, switchCompany, setCompanySwitchLocked } = useAuth();
   const isMaster = !!user?.isMasterAdmin;
 
@@ -37,7 +39,7 @@ export default function CompanyEdit() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId, isCreate]);
 
-  // Load data — no token guard needed, cookie is sent automatically
+  // Load data
   useEffect(() => {
     if (isCreate) {
       setInitialValues({
@@ -74,30 +76,105 @@ export default function CompanyEdit() {
 
   const fields = useMemo(() => [
     { type: "section", title: "Logotipas" },
-    { name: "image", label: null, type: "logo-uploader", colSpan: 2, companyId, onPendingFile: file => setPendingLogoFile(file) },
+    { 
+      name: "image", 
+      label: null, 
+      type: "logo-uploader", 
+      colSpan: 2, 
+      companyId, 
+      onPendingFile: file => setPendingLogoFile(file) 
+    },
 
     { type: "section", title: "Bendra informacija" },
-    { name: "name", label: "Pavadinimas", required: true, colSpan: 2 },
-    { name: "companyCode", label: "Įmonės kodas", required: true, disabled: () => !isMaster && !isCreate },
-    { name: "documentCode", label: "Dokumento kodas" },
-    { name: "active", label: "Aktyvi", type: "checkbox", disabled: () => !isMaster, help: "Ar įmonė aktyvi sistemos?" },
+    { 
+      name: "name", 
+      label: "Pavadinimas", 
+      required: true, 
+      colSpan: 2 
+    },
+    { 
+      name: "companyCode", 
+      label: "Įmonės kodas", 
+      required: true, 
+      disabled: () => !isMaster && !isCreate 
+    },
+    { 
+      name: "documentCode", 
+      label: "Dokumento kodas" 
+    },
+    { 
+      name: "active", 
+      label: "Aktyvi", 
+      type: "checkbox", 
+      disabled: () => !isMaster, 
+      help: "Ar įmonė aktyvi sistemos?" 
+    },
 
     { type: "section", title: "Kontaktai" },
-    { name: "email", label: "El. paštas", type: "email", colSpan: 2 },
-    { name: "phoneNumber", label: "Telefonas" },
-    { name: "address", label: "Juridinis adresas" },
+    { 
+      name: "email", 
+      label: "El. paštas", 
+      type: "email", 
+      colSpan: 2 
+    },
+    { 
+      name: "phoneNumber", 
+      label: "Telefonas" 
+    },
+    { 
+      name: "address", 
+      label: "Juridinis adresas" 
+    },
 
-    { type: "section", title: "Siuntimo adresas", subtitle: "Siuntėjo adresas spausdinamas ant etiketės" },
-    { name: "shippingStreet", label: "Gatvė", placeholder: "pvz. Studentų g. 50" },
-    { name: "shippingCity", label: "Miestas", placeholder: "pvz. Kaunas" },
-    { name: "shippingPostalCode", label: "Pašto kodas", placeholder: "pvz. 51368" },
-    { name: "shippingCountry", label: "Šalis", type: "select", options: COUNTRY_OPTIONS },
+    { 
+      type: "section", 
+      title: "Siuntimo adresas", 
+      subtitle: "Siuntėjo adresas spausdinamas ant etiketės" 
+    },
+    { 
+      name: "shippingStreet", 
+      label: "Gatvė", 
+      placeholder: "pvz. Studentų g. 50" 
+    },
+    { 
+      name: "shippingCity", 
+      label: "Miestas", 
+      placeholder: "pvz. Kaunas" 
+    },
+    { 
+      name: "shippingPostalCode", 
+      label: "Pašto kodas", 
+      placeholder: "pvz. 51368" 
+    },
+    { 
+      name: "shippingCountry", 
+      label: "Šalis", 
+      type: "select", 
+      options: COUNTRY_OPTIONS 
+    },
 
     { type: "section", title: "Grąžinimo adresas" },
-    { name: "returnStreet", label: "Gatvė", placeholder: "pvz. Laisvės al. 1" },
-    { name: "returnCity", label: "Miestas", placeholder: "pvz. Vilnius" },
-    { name: "returnPostalCode", label: "Pašto kodas", placeholder: "pvz. 01100" },
-    { name: "returnCountry", label: "Šalis", type: "select", options: COUNTRY_OPTIONS },
+    { 
+      name: "returnStreet", 
+      label: "Gatvė", 
+      placeholder: "pvz. Laisvės al. 1" 
+    },
+    { 
+      name: "returnCity", 
+      label: "Miestas", 
+      placeholder: "pvz. Vilnius" 
+    },
+    { 
+      name: "returnPostalCode", 
+      label: "Pašto kodas", 
+      placeholder: "pvz. 01100" 
+    },
+    { 
+      name: "returnCountry", 
+      label: "Šalis", 
+      type: "select", 
+      options: COUNTRY_OPTIONS 
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [isMaster, isCreate, companyId]);
 
@@ -150,6 +227,7 @@ export default function CompanyEdit() {
         cancelLabel="Atšaukti"
         onCancel={() => navigate("/companiesList")}
         onSubmit={handleSubmit}
+        validate={validateCompany}
         logoUploaderContext={{ isCreate, companyId }}
       />
     </FormPageLayout>

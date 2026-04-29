@@ -19,9 +19,19 @@ export default function ProductFormPage() {
       .then(([cats, grps]) => { setCategories(cats); setGroups(grps); })
       .catch(console.error);
   }, []);
-
   const fields = useMemo(() => [
-    { name: "name", label: "Pavadinimas", required: true, colSpan: 2 },
+    {
+      name: "name",
+      label: "Pavadinimas",
+      required: true,
+      colSpan: 2,
+      validate: (v) =>
+        !String(v ?? "").trim()
+          ? "Pavadinimas privalomas"
+          : String(v).trim().length < 2
+            ? "Mažiausiai 2 simboliai"
+            : null,
+    },
 
     {
       name: "categoryId",
@@ -29,23 +39,80 @@ export default function ProductFormPage() {
       type: "select",
       required: true,
       options: categories.map(c => ({ value: c.id_Category, label: c.name })),
+      validate: (v) => !v ? "Pasirinkite kategoriją" : null,
     },
+
     {
       name: "groupId",
       label: "Grupė",
       type: "select",
       required: true,
       options: groups.map(g => ({ value: g.id_ProductGroup, label: g.name })),
+      validate: (v) => !v ? "Pasirinkite grupę" : null,
     },
 
-    { name: "price", label: "Kaina", type: "number" },
-    { name: "unit", label: "Vienetai" },
-    { name: "description", label: "Aprašymas", type: "textarea", colSpan: 2 },
+    {
+      name: "price",
+      label: "Kaina",
+      type: "number",
+      required: true,
+      validate: (v) => {
+        const n = Number(v);
+        if (v === "" || v === null || v === undefined) return "Kaina privaloma";
+        if (!Number.isFinite(n)) return "Neteisinga kaina";
+        if (n <= 0) return "Kaina turi būti didesnė už 0";
+        return null;
+      },
+    },
 
-    { name: "vat", label: "VAT", type: "checkbox", help: "Taikyti VAT" },
-    { name: "canTheProductBeProductReturned", label: "Grąžinimas", type: "checkbox", help: "Galima grąžinti" },
-    { name: "countableItem", label: "Ar prekė skaičiuojama?", type: "checkbox", help: "Prekė skaičiuojama" },
-    { name: "images", label: "Nuotraukos", type: "images", colSpan: 2 },
+    {
+      name: "unit",
+      label: "Vienetai",
+      required: true,
+      validate: (v) =>
+        !String(v ?? "").trim() ? "Vienetai privalomi" : null,
+    },
+
+    {
+      name: "description",
+      label: "Aprašymas",
+      type: "textarea",
+      colSpan: 2,
+      validate: (v) =>
+        String(v ?? "").length > 1000
+          ? "Aprašymas per ilgas (max 1000 simbolių)"
+          : null,
+    },
+
+    {
+      name: "vat",
+      label: "VAT",
+      type: "checkbox",
+      help: "Taikyti VAT",
+    },
+
+    {
+      name: "canTheProductBeProductReturned",
+      label: "Grąžinimas",
+      type: "checkbox",
+      help: "Galima grąžinti",
+    },
+
+    {
+      name: "countableItem",
+      label: "Ar prekė skaičiuojama?",
+      type: "checkbox",
+      help: "Prekė skaičiuojama",
+    },
+
+    {
+      name: "images",
+      label: "Nuotraukos",
+      type: "images",
+      colSpan: 2,
+      validate: (v) =>
+        !v || v.length === 0 ? "Įkelkite bent vieną nuotrauką" : null,
+    },
   ], [categories, groups]);
 
   const initialValues = useMemo(() => ({
@@ -75,7 +142,7 @@ export default function ProductFormPage() {
           fd.append("name", values.name ?? "");
           fd.append("categoryId", String(values.categoryId ?? ""));
           fd.append("groupId", String(values.groupId ?? ""));
-          fd.append("price", String(values.price ?? ""));
+          fd.append("price", String(values.price ?? "").toString().replace(".", ","));
           fd.append("unit", values.unit ?? "vnt");
           fd.append("description", values.description ?? "");
           fd.append("vat", String(!!values.vat));

@@ -4,7 +4,7 @@ import { useState } from "react";
 import "../styles/ShipmentLabels.css";
 import { FiBox, FiCheck, FiArrowLeft, FiDownload, FiPrinter } from "react-icons/fi";
 import { shipmentLabelsApi } from "../services/api";
-const ASSET_BASE = process.env.REACT_APP_API_BASE_URL
+const ASSET_BASE = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065/";
 /**
  * @param {object}   props
  * @param {number}   props.shipmentId

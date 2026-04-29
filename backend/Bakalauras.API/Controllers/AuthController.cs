@@ -94,11 +94,11 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Login(LoginDto dto)
     {
         var user = await _db.users.FirstOrDefaultAsync(u => u.email == dto.Email);
-        if (user == null) return Unauthorized("Invalid credentials.");
+        if (user == null) return Unauthorized("Neteisingas el. paštas.");
 
         if (string.IsNullOrEmpty(user.password) ||
             !BCrypt.Net.BCrypt.Verify(dto.Password, user.password))
-            return Unauthorized("Invalid credentials.");
+            return Unauthorized("Neteisingas slaptažodis.");
 
         return await IssueTokenAsync(user);
     }

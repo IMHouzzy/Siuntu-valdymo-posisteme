@@ -135,8 +135,9 @@ export const returnsApi = {
 export const clientApi = {
     getOrders: () => get("/client/orders"),
     getOrderDetail: (orderId) => get(`/client/orders/${orderId}`),
-    updateContact: (orderId, dto) => put(`/client/orders/${orderId}/contact`, dto),
+    updateContact: (orderId, dto) => put(`/client/orders/${orderId}/delivery`, dto),
     getReturns: () => get("/client/returns"),
+    getCouriers: () => get("/client/couriers"),
 };
 
 // ── Tracking (client & staff) ─────────────────────────────────────────────────
@@ -216,3 +217,10 @@ export const lockerApi = {
     getLockers: (companyId, courierType) =>
         get(`/companies/${companyId}/courier-provider/${encodeURIComponent(courierType)}/lockers`),
 };
+
+export const syncApi = {
+    checkIntegration: (companyId) => get(`/sync/check-integration/${companyId}`),
+    startSync: (companyId) => post(`/sync/start/${companyId}`),
+    applyResolutions: (dto) => post("/sync/resolve", dto),
+};
+ 

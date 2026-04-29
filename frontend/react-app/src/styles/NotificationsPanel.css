@@ -1,0 +1,433 @@
+/* styles/NotificationsPanel.css
+   Full-page notifications panel — used in ProfilePage "Pranešimai" tab.
+   Uses the same CSS variables as the rest of the app.
+   Type accent colours mirror SignInButtons.css.
+*/
+
+/* ── Panel shell ─────────────────────────────────────────────────────────── */
+.np-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────── */
+.np-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding: var(--space-md) var(--space-lg);
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg);
+    flex-wrap: wrap;
+}
+
+.np-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.np-total-label {
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--color-text-primary);
+}
+
+.np-unread-pill {
+    background: var(--color-primary);
+    color: #fff;
+    font-size: 10px;
+    font-weight: var(--font-bold);
+    padding: 2px 8px;
+    border-radius: 20px;
+    letter-spacing: 0.3px;
+}
+
+.np-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.np-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
+    font-size: var(--text-xs);
+    font-weight: var(--font-medium);
+    cursor: pointer;
+    border: none;
+    transition: background var(--transition-fast), color var(--transition-fast);
+    white-space: nowrap;
+}
+
+.np-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.np-btn--ghost {
+    background: transparent;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+}
+
+.np-btn--ghost:hover:not(:disabled) {
+    background: var(--color-bg);
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.np-btn--load-more {
+    background: var(--color-bg);
+    color: var(--color-primary);
+    border: 1px solid var(--color-border);
+    width: 100%;
+    justify-content: center;
+    padding: 10px;
+    font-size: var(--text-sm);
+}
+
+.np-btn--load-more:hover:not(:disabled) {
+    background: #eff6ff;
+    border-color: var(--color-primary);
+}
+
+/* ── Filter tabs ─────────────────────────────────────────────────────────── */
+.np-filters {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: 10px var(--space-lg);
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg-card);
+    overflow-x: auto;
+    flex-shrink: 0;
+}
+
+.np-filter-icon {
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+    margin-right: var(--space-xs);
+}
+
+.np-filter-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: var(--text-xs);
+    font-weight: var(--font-medium);
+    cursor: pointer;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.np-filter-tab:hover {
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+}
+
+.np-filter-tab--active {
+    background: #eff6ff;
+    color: var(--color-primary);
+    border-color: #bfdbfe;
+    font-weight: var(--font-semibold);
+}
+
+.np-filter-badge {
+    background: var(--color-primary);
+    color: #fff;
+    font-size: 9px;
+    font-weight: var(--font-bold);
+    padding: 1px 5px;
+    border-radius: 20px;
+    line-height: 1.4;
+}
+
+/* ── List ────────────────────────────────────────────────────────────────── */
+.np-list {
+    flex: 1;
+    min-height: 200px;
+}
+
+/* ── Empty / loading state ───────────────────────────────────────────────── */
+.np-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: 56px var(--space-md);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+}
+
+.np-state--empty {
+    padding: 64px var(--space-md);
+}
+
+.np-empty-icon {
+    opacity: 0.25;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-xs);
+}
+
+.np-empty-title {
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--color-text-secondary);
+}
+
+.np-empty-sub {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+}
+
+/* ── Spinner ─────────────────────────────────────────────────────────────── */
+.np-spinner {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--color-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: np-spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+
+.np-spinner--sm {
+    width: 14px;
+    height: 14px;
+    border-width: 2px;
+}
+
+@keyframes np-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.np-spin {
+    animation: np-spin 0.7s linear infinite;
+}
+
+/* ── Individual notification item ────────────────────────────────────────── */
+.np-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-md);
+    padding: var(--space-md) var(--space-lg);
+    border-bottom: 1px solid var(--color-border);
+    cursor: pointer;
+    position: relative;
+    transition: background var(--transition-fast);
+    outline: none;
+}
+
+.np-item:last-child {
+    border-bottom: none;
+}
+
+.np-item:hover {
+    background: var(--color-bg);
+}
+
+.np-item:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+}
+
+/* Unread left accent stripe */
+.np-item--unread::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    border-radius: 0 2px 2px 0;
+    background: var(--color-primary);
+}
+
+/* Unread dot (top-right of icon) */
+.np-unread-dot {
+    position: absolute;
+    top: var(--space-md);
+    right: var(--space-lg);
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    border: 2px solid var(--color-bg-card);
+    pointer-events: none;
+}
+
+/* Hide dot when actions are visible so they don't overlap */
+.np-item:hover .np-unread-dot {
+    display: none;
+}
+
+/* ── Icon wrap (same colours as SignInButtons) ───────────────────────────── */
+.np-item-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+    /* Default: ORDER style */
+    background: #eff6ff;
+    color: var(--color-primary);
+}
+
+.np-item--shipment .np-item-icon {
+    background: #f0fdf4;
+    color: var(--color-accent);
+}
+
+.np-item--return .np-item-icon {
+    background: #fffbeb;
+    color: var(--color-warning);
+}
+
+.np-item--invoice .np-item-icon {
+    background: #f0fdf4;
+    color: var(--color-accent);
+}
+
+/* ── Item body ───────────────────────────────────────────────────────────── */
+.np-item-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.np-item-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: 3px;
+}
+
+.np-item-type {
+    font-size: 10px;
+    font-weight: var(--font-bold);
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+}
+
+/* Type-specific colour for the type label */
+.np-item--order .np-item-type {
+    color: var(--color-primary);
+}
+
+.np-item--shipment .np-item-type {
+    color: var(--color-accent);
+}
+
+.np-item--return .np-item-type {
+    color: var(--color-warning);
+}
+
+.np-item--invoice .np-item-type {
+    color: var(--color-accent);
+}
+
+.np-item-time {
+    font-size: 10px;
+    color: var(--color-text-muted);
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.np-item-theme {
+    margin: 0 0 3px;
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.np-item--unread .np-item-theme {
+    color: var(--color-primary);
+}
+
+.np-item-text {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+    /* Allow up to 3 lines before truncating */
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ── Action buttons ──────────────────────────────────────────────────────── */
+.np-item-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.np-item:hover .np-item-actions {
+    opacity: 1;
+}
+
+.np-action-btn {
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.np-action-btn--read {
+    background: #eff6ff;
+    color: var(--color-primary);
+}
+
+.np-action-btn--read:hover {
+    background: #dbeafe;
+}
+
+.np-action-btn--del {
+    background: #fef2f2;
+    color: var(--color-danger);
+}
+
+.np-action-btn--del:hover {
+    background: #fee2e2;
+}
+
+/* ── Load more ───────────────────────────────────────────────────────────── */
+.np-load-more-wrap {
+    padding: var(--space-md) var(--space-lg);
+    border-top: 1px solid var(--color-border);
+    background: var(--color-bg);
+}

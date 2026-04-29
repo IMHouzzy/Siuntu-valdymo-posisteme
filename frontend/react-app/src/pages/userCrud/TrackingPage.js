@@ -98,17 +98,21 @@ export default function TrackingPage() {
 
   useEffect(() => {
     setLoading(true);
+
     trackingApi.track(trackingNumber)
       .then(d => {
         if (d.type === "dpd") {
-          window.open(d.dpdUrl, "_blank", "noopener,noreferrer");
-          navigate(-1);
+          window.location.href = d.dpdUrl;
           return;
         }
+
         setData(d);
       })
-      .catch(e => setError(e.message?.includes("404") ? "notfound" : "error"))
+      .catch(e =>
+        setError(e.message?.includes("404") ? "notfound" : "error")
+      )
       .finally(() => setLoading(false));
+
   }, [trackingNumber]);
 
   // ── Loading ──────────────────────────────────────────────────────────────
@@ -128,10 +132,10 @@ export default function TrackingPage() {
         <FiAlertCircle size={32} />
         <span>
           {error === "notfound"
-            ? "Siunta su šiuo sekimo numeriu nerasta."
-            : "Įvyko klaida. Bandykite vėliau."}
+             ? "Siunta su šiuo sekimo numeriu nerasta."
+             : "Įvyko klaida. Bandykite vėliau."}
         </span>
-        <button className="tp-back-btn" onClick={() => navigate("/client")}>
+        <button className="tp-back-btn" onClick={() => navigate(-1)}>
           <FiArrowLeft size={15} /> Grįžti
         </button>
       </div>
@@ -147,7 +151,7 @@ export default function TrackingPage() {
 
       {/* ── Topbar ───────────────────────────────────────────────────────── */}
       <div className="tp-topbar">
-        <button className="tp-back-btn" onClick={() => navigate("/client")}>
+        <button className="tp-back-btn" onClick={() => navigate(-1)}>
           <FiArrowLeft size={15} /> Grįžti
         </button>
       </div>
@@ -156,7 +160,7 @@ export default function TrackingPage() {
       <div className="tp-header">
         <div className="tp-header-left">
           <div className="tp-label">Sekimo numeris</div>
-          <div className="tp-tracking-num">{trackingNumber}</div>
+          <div className="tp-tracking-num">{data?.trackingNumber}</div>
           {courierName && <div className="tp-courier">{courierName}</div>}
         </div>
         {latestStatus && (

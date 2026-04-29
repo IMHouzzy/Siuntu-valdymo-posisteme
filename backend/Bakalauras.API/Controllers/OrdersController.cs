@@ -4,13 +4,15 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Bakalauras.API.Dtos;
 using Bakalauras.API.Services;
+
 [ApiController]
 [Route("api/orders/")]
 [Authorize]
 public class OrderController : ControllerBase
 {
     private readonly AppDbContext _db;
-private readonly INotificationService _notif;
+    private readonly INotificationService _notif;
+
     public OrderController(AppDbContext db, INotificationService notif)
     {
         _db = db;
@@ -41,9 +43,15 @@ private readonly INotificationService _notif;
             .Where(o => o.fk_Companyid_Company == companyId)
             .Select(o => new
             {
-                o.id_Orders, o.OrdersDate, o.totalAmount, o.paymentMethod,
-                o.deliveryPrice, o.status, o.fk_Clientid_Users,
-                o.externalDocumentId, o.fk_Companyid_Company
+                o.id_Orders,
+                o.OrdersDate,
+                o.totalAmount,
+                o.paymentMethod,
+                o.deliveryPrice,
+                o.status,
+                o.fk_Clientid_Users,
+                o.externalDocumentId,
+                o.fk_Companyid_Company
             })
             .ToListAsync();
 
@@ -51,174 +59,288 @@ private readonly INotificationService _notif;
     }
 
     [HttpGet("allOrdersFullInfo")]
-public async Task<IActionResult> GetAllOrdersFullInfo()
-{
-    int companyId;
-    try { companyId = GetRequiredCompanyId(); }
-    catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+    public async Task<IActionResult> GetAllOrdersFullInfo()
+    {
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
 
-    var orders = await _db.orders
-        .AsNoTracking()
-        .Where(o => o.fk_Companyid_Company == companyId)
-        .Select(o => new
-        {
-            o.id_Orders, o.OrdersDate, o.totalAmount, o.paymentMethod,
-            o.deliveryPrice, o.status,
-            statusName        = o.statusNavigation.name,
-            o.externalDocumentId,
-            o.fk_Companyid_Company,
-
-            // ← add this one line
-            hasShipment = _db.shipments.Any(s => s.fk_Ordersid_Orders == o.id_Orders),
-
-            client = new
+        var orders = await _db.orders
+            .AsNoTracking()
+            .Where(o => o.fk_Companyid_Company == companyId)
+            .Select(o => new
             {
-                id_Users = o.fk_Clientid_Users,
-                name     = o.fk_Clientid_UsersNavigation.name,
-                surname  = o.fk_Clientid_UsersNavigation.surname,
-                email    = o.fk_Clientid_UsersNavigation.email,
-                companyData = _db.client_companies
-                    .AsNoTracking()
-                    .Where(cc =>
-                        cc.fk_Companyid_Company == companyId &&
-                        cc.fk_Clientid_Users    == o.fk_Clientid_Users)
-                    .Select(cc => new
-                    {
-                        cc.deliveryAddress, cc.city, cc.country,
-                        cc.vat, cc.bankCode, cc.externalClientId
-                    })
-                    .FirstOrDefault()
-            },
+                o.id_Orders,
+                o.OrdersDate,
+                o.totalAmount,
+                o.paymentMethod,
+                o.deliveryPrice,
+                o.status,
+                statusName = o.statusNavigation.name,
+                o.externalDocumentId,
+                o.fk_Companyid_Company,
 
-            products = o.ordersproducts.Select(op => new
-            {
-                op.quantity, op.unitPrice, op.vatValue,
-                productId    = op.fk_Productid_Product,
-                name         = op.fk_Productid_ProductNavigation.name,
-                price        = op.fk_Productid_ProductNavigation.price,
-                unit         = op.fk_Productid_ProductNavigation.unit,
-                externalCode = op.fk_Productid_ProductNavigation.externalCode,
-                imageUrl     = op.fk_Productid_ProductNavigation.product_images
-                                  .Select(pi => pi.url).FirstOrDefault()
-            }).ToList()
-        })
-        .OrderByDescending(x => x.id_Orders)
-        .ToListAsync();
+                hasShipment = _db.shipments.Any(s => s.fk_Ordersid_Orders == o.id_Orders),
 
-    return Ok(orders);
-}
-// ── READ (FULL DETAIL) ────────────────────────────────────────────────────────
-// GET /api/orders/order/{id}/full
+                // Delivery snapshot — what the client actually chose for this order
+                o.snapshotDeliveryMethod,
+                o.snapshotDeliveryAddress,
+                o.snapshotCity,
+                o.snapshotCountry,
+                o.snapshotPhone,
+                o.snapshotLockerId,
+                o.snapshotLockerName,
+                o.snapshotLockerAddress,
+                o.snapshotCourierId,
 
-[HttpGet("order/{id:int}/full")]
-public async Task<IActionResult> GetOrderFull(int id)
-{
-    int companyId;
-    try { companyId = GetRequiredCompanyId(); }
-    catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
-
-    var order = await _db.orders
-        .AsNoTracking()
-        .Where(o => o.id_Orders == id && o.fk_Companyid_Company == companyId)
-        .Select(o => new
-        {
-            o.id_Orders,
-            o.OrdersDate,
-            o.totalAmount,
-            o.paymentMethod,
-            o.deliveryPrice,
-            o.status,
-            statusName        = o.statusNavigation.name,
-            o.externalDocumentId,
-
-            client = new
-            {
-                id      = o.fk_Clientid_Users,
-                name    = o.fk_Clientid_UsersNavigation.name,
-                surname = o.fk_Clientid_UsersNavigation.surname,
-                email   = o.fk_Clientid_UsersNavigation.email,
-                phone   = o.fk_Clientid_UsersNavigation.phoneNumber,
-                companyData = _db.client_companies
-                    .AsNoTracking()
-                    .Where(cc =>
-                        cc.fk_Companyid_Company == companyId &&
-                        cc.fk_Clientid_Users    == o.fk_Clientid_Users)
-                    .Select(cc => new
-                    {
-                        cc.deliveryAddress, cc.city, cc.country,
-                        cc.vat, cc.bankCode, cc.externalClientId
-                    })
-                    .FirstOrDefault()
-            },
-
-            products = o.ordersproducts.Select(op => new
-            {
-                op.id_OrdersProduct,
-                op.quantity,
-                op.unitPrice,
-                op.vatValue,
-                product = new
+                client = new
                 {
-                    id           = op.fk_Productid_Product,
-                    name         = op.fk_Productid_ProductNavigation.name,
-                    unit         = op.fk_Productid_ProductNavigation.unit,
+                    id_Users = o.fk_Clientid_Users,
+                    name = o.fk_Clientid_UsersNavigation.name,
+                    surname = o.fk_Clientid_UsersNavigation.surname,
+                    email = o.fk_Clientid_UsersNavigation.email,
+                    // client_companies only used for billing/VAT — NOT for delivery address
+                    companyData = _db.client_companies
+                        .AsNoTracking()
+                        .Where(cc =>
+                            cc.fk_Companyid_Company == companyId &&
+                            cc.fk_Clientid_Users == o.fk_Clientid_Users)
+                        .Select(cc => new
+                        {
+                            cc.vat,
+                            cc.bankCode,
+                            cc.externalClientId
+                        })
+                        .FirstOrDefault()
+                },
+
+                products = o.ordersproducts.Select(op => new
+                {
+                    op.quantity,
+                    op.unitPrice,
+                    op.vatValue,
+                    productId = op.fk_Productid_Product,
+                    name = op.fk_Productid_ProductNavigation.name,
+                    price = op.fk_Productid_ProductNavigation.price,
+                    unit = op.fk_Productid_ProductNavigation.unit,
                     externalCode = op.fk_Productid_ProductNavigation.externalCode,
-                    imageUrl     = op.fk_Productid_ProductNavigation.product_images
-                                      .OrderBy(pi => pi.sortOrder)
-                                      .Select(pi => pi.url)
-                                      .FirstOrDefault()
-                }
-            }).ToList(),
+                    imageUrl = op.fk_Productid_ProductNavigation.product_images
+                                      .Select(pi => pi.url).FirstOrDefault()
+                }).ToList()
+            })
+            .OrderByDescending(x => x.id_Orders)
+            .ToListAsync();
 
-            shipment = _db.shipments
-                .AsNoTracking()
-                .Where(s => s.fk_Ordersid_Orders == o.id_Orders)
-                .Select(s => new
+        return Ok(orders);
+    }
+
+    // ── READ (FULL DETAIL) ────────────────────────────────────────────────────
+    // GET /api/orders/order/{id}/full
+
+    // OrdersController.cs - Updated GetOrderFull endpoint
+
+    [HttpGet("order/{id:int}/full")]
+    public async Task<IActionResult> GetOrderFull(int id)
+    {
+        int companyId;
+        try { companyId = GetRequiredCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
+        var order = await _db.orders
+            .AsNoTracking()
+            .Where(o => o.id_Orders == id && o.fk_Companyid_Company == companyId)
+            .Select(o => new
+            {
+                o.id_Orders,
+                o.OrdersDate,
+                o.totalAmount,
+                o.paymentMethod,
+                o.deliveryPrice,
+                o.status,
+                statusName = o.statusNavigation.name,
+                o.externalDocumentId,
+
+                // Full delivery snapshot for this specific order
+                o.snapshotDeliveryMethod,
+                o.snapshotDeliveryAddress,
+                o.snapshotCity,
+                o.snapshotCountry,
+                o.snapshotPhone,
+                o.snapshotCourierId,
+                o.snapshotLockerId,
+                o.snapshotLockerName,
+                o.snapshotLockerAddress,
+                o.snapshotLat,
+                o.snapshotLng,
+
+                client = new
                 {
-                    s.id_Shipment,
-                    s.trackingNumber,
-                    s.shippingDate,
-                    s.estimatedDeliveryDate,
-                    s.DeliveryLat,
-                    s.DeliveryLng,
-                    s.providerShipmentId,
-                    s.providerParcelNumber,
-                    s.providerLockerId,
-                    courierName  = s.fk_Courierid_CourierNavigation == null
-                                    ? null : s.fk_Courierid_CourierNavigation.name,
-                    courierType  = s.fk_Courierid_CourierNavigation == null
-                                    ? null : s.fk_Courierid_CourierNavigation.type,
-                    courierPrice = s.fk_Courierid_CourierNavigation == null
-                                    ? (double?)null : s.fk_Courierid_CourierNavigation.deliveryPrice,
-                    latestStatus = s.shipment_statuses
-                        .OrderByDescending(ss => ss.date)
-                        .Select(ss => new
+                    id = o.fk_Clientid_Users,
+                    name = o.fk_Clientid_UsersNavigation.name,
+                    surname = o.fk_Clientid_UsersNavigation.surname,
+                    email = o.fk_Clientid_UsersNavigation.email,
+                    phone = o.fk_Clientid_UsersNavigation.phoneNumber,
+                    // client_companies used for billing/VAT only — delivery is in snapshot fields
+                    companyData = _db.client_companies
+                        .AsNoTracking()
+                        .Where(cc =>
+                            cc.fk_Companyid_Company == companyId &&
+                            cc.fk_Clientid_Users == o.fk_Clientid_Users)
+                        .Select(cc => new
                         {
-                            ss.date,
-                            typeName = ss.fk_ShipmentStatusTypeid_ShipmentStatusTypeNavigation.name
+                            cc.vat,
+                            cc.bankCode,
+                            cc.externalClientId
                         })
-                        .FirstOrDefault(),
-                    packages = s.packages
-                        .OrderBy(p => p.id_Package)
-                        .Select(p => new
+                        .FirstOrDefault()
+                },
+
+                products = o.ordersproducts.Select(op => new
+                {
+                    op.id_OrdersProduct,
+                    op.quantity,
+                    op.unitPrice,
+                    op.vatValue,
+                    product = new
+                    {
+                        id = op.fk_Productid_Product,
+                        name = op.fk_Productid_ProductNavigation.name,
+                        unit = op.fk_Productid_ProductNavigation.unit,
+                        externalCode = op.fk_Productid_ProductNavigation.externalCode,
+                        imageUrl = op.fk_Productid_ProductNavigation.product_images
+                                          .OrderBy(pi => pi.sortOrder)
+                                          .Select(pi => pi.url)
+                                          .FirstOrDefault()
+                    }
+                }).ToList(),
+
+                shipment = _db.shipments
+                    .AsNoTracking()
+                    .Where(s => s.fk_Ordersid_Orders == o.id_Orders)
+                    .Select(s => new
+                    {
+                        s.id_Shipment,
+                        s.trackingNumber,
+                        s.shippingDate,
+                        s.estimatedDeliveryDate,
+                        s.DeliveryLat,
+                        s.DeliveryLng,
+                        s.providerShipmentId,
+                        s.providerParcelNumber,
+                        s.providerLockerId,
+                        courierName = s.fk_Courierid_CourierNavigation == null
+                                        ? null : s.fk_Courierid_CourierNavigation.name,
+                        courierType = s.fk_Courierid_CourierNavigation == null
+                                        ? null : s.fk_Courierid_CourierNavigation.type,
+                        courierPrice = s.fk_Courierid_CourierNavigation == null
+                                        ? (double?)null : s.fk_Courierid_CourierNavigation.deliveryPrice,
+                        latestStatus = s.shipment_statuses
+                            .OrderByDescending(ss => ss.date)
+                            .Select(ss => new
+                            {
+                                ss.date,
+                                typeName = ss.fk_ShipmentStatusTypeid_ShipmentStatusTypeNavigation.name
+                            })
+                            .FirstOrDefault(),
+                        packages = s.packages
+                            .OrderBy(p => p.id_Package)
+                            .Select(p => new
+                            {
+                                p.id_Package,
+                                p.labelFile,
+                                p.weight,
+                                p.trackingNumber,
+                                p.creationDate
+                            })
+                            .ToList()
+                    })
+                    .FirstOrDefault(),
+
+                // Returns for this order
+                returns = _db.product_returns
+                    .AsNoTracking()
+                    .Where(r => r.fk_ordersid_orders == o.id_Orders)
+                    .OrderByDescending(r => r.date)
+                    .Select(r => new
+                    {
+                        r.id_Returns,
+                        r.date,
+                        statusId = r.fk_ReturnStatusTypeid_ReturnStatusType,
+                        statusName = r.fk_ReturnStatusTypeid_ReturnStatusTypeNavigation.name,
+                        r.returnMethod,
+                        r.clientNote,
+                        r.employeeNote,
+                        r.returnStreet,
+                        r.returnCity,
+                        r.returnPostalCode,
+                        r.returnCountry,
+                        r.returnLockerId,
+                        r.returnLockerName,
+                        r.returnLockerAddress,
+                        r.returnLat,
+                        r.returnLng,
+                        courierName = r.fk_Courierid_CourierNavigation == null
+                                        ? null : r.fk_Courierid_CourierNavigation.name,
+
+                        // Return items with product details
+                        items = r.return_items.Select(ri => new
                         {
-                            p.id_Package,
-                            p.labelFile,
-                            p.weight,
-                            p.trackingNumber,
-                            p.creationDate
-                        })
-                        .ToList()
-                })
-                .FirstOrDefault()
-        })
-        .FirstOrDefaultAsync();
+                            ri.id_ReturnItem,
+                            ri.quantity,
+                            ri.reason,
+                            ri.reasonId,
+                            reasonName = ri.reasonNavigation == null ? null : ri.reasonNavigation.name,
+                            ri.evaluationComment,
+                            ri.evaluation,
+                            ri.evaluationDate,
+                            ri.returnSubTotal,
+                            ri.imageUrls,
 
-    if (order == null)
-        return NotFound("Order not found or does not belong to your company.");
+                            // Get the product info from the OrdersProduct
+                            product = _db.ordersproducts
+                                .Where(op => op.id_OrdersProduct == ri.fk_OrdersProductid_OrdersProduct)
+                                .Select(op => new
+                                {
+                                    op.id_OrdersProduct,
+                                    name = op.fk_Productid_ProductNavigation.name,
+                                    unit = op.fk_Productid_ProductNavigation.unit,
+                                    imageUrl = op.fk_Productid_ProductNavigation.product_images
+                                        .OrderBy(pi => pi.sortOrder)
+                                        .Select(pi => pi.url)
+                                        .FirstOrDefault()
+                                })
+                                .FirstOrDefault()
+                        }).ToList(),
 
-    return Ok(order);
-}
+                        // Return shipment with packages/labels
+                        returnShipment = _db.shipments
+                            .AsNoTracking()
+                            .Where(s => s.fk_Returnsid_Returns == r.id_Returns)
+                            .Select(s => new
+                            {
+                                s.id_Shipment,
+                                s.trackingNumber,
+                                packages = s.packages
+                                    .OrderBy(p => p.id_Package)
+                                    .Select(p => new
+                                    {
+                                        p.id_Package,
+                                        p.labelFile,
+                                        p.trackingNumber
+                                    })
+                                    .ToList()
+                            })
+                            .FirstOrDefault()
+                    })
+                    .ToList()
+            })
+            .FirstOrDefaultAsync();
+
+        if (order == null)
+            return NotFound("Order not found or does not belong to your company.");
+
+        return Ok(order);
+    }
 
     // ── LOOKUPS ───────────────────────────────────────────────────────────────
 
@@ -233,7 +355,7 @@ public async Task<IActionResult> GetOrderFull(int id)
         return Ok(statuses);
     }
 
-    // Returns client_company data for a given user within the active company
+    // Returns client_company data (billing/VAT only) for a given user within the active company
     [HttpGet("clientInfo/{userId:int}")]
     public async Task<IActionResult> GetClientInfo(int userId)
     {
@@ -245,11 +367,13 @@ public async Task<IActionResult> GetOrderFull(int id)
             .AsNoTracking()
             .FirstOrDefaultAsync(x =>
                 x.fk_Companyid_Company == companyId &&
-                x.fk_Clientid_Users    == userId);
+                x.fk_Clientid_Users == userId);
 
         if (cc == null)
             return StatusCode(403, "Client is not in your company.");
 
+        // Also return the current profile delivery address so staff can
+        // pre-fill the order form — but this is just a suggestion, not locked in.
         return Ok(new
         {
             cc.deliveryAddress,
@@ -294,16 +418,17 @@ public async Task<IActionResult> GetOrderFull(int id)
 
         // Client must have a client_company row for this company
         var cc = await _db.client_companies
+            .AsNoTracking()
             .FirstOrDefaultAsync(x =>
                 x.fk_Companyid_Company == companyId &&
-                x.fk_Clientid_Users    == dto.ClientUserId);
+                x.fk_Clientid_Users == dto.ClientUserId);
 
         if (cc == null)
             return StatusCode(403, "Client is not in your company.");
 
         // All products must belong to this company
         var productIds = dto.Items.Select(i => i.ProductId).Distinct().ToList();
-        var okCount    = await _db.products.AsNoTracking()
+        var okCount = await _db.products.AsNoTracking()
             .CountAsync(p => productIds.Contains(p.id_Product) && p.fk_Companyid_Company == companyId);
 
         if (okCount != productIds.Count)
@@ -312,35 +437,56 @@ public async Task<IActionResult> GetOrderFull(int id)
         await using var tx = await _db.Database.BeginTransactionAsync();
         try
         {
-            // Update client_company info if provided
-            if (dto.ClientInfo != null)
-            {
-                cc.deliveryAddress = dto.ClientInfo.DeliveryAddress;
-                cc.city            = dto.ClientInfo.City;
-                cc.country         = dto.ClientInfo.Country;
-                cc.vat             = dto.ClientInfo.Vat;
-                cc.bankCode        = dto.ClientInfo.BankCode;
-                await _db.SaveChangesAsync();
-            }
+            // Snapshot the client's current profile address at order creation time.
+            // After this point the order's delivery address is independent of client_companies.
+            // If dto.DeliveryMethod/LockerId etc. are provided they take priority (locker order).
+            var snapshotAddress = dto.DeliveryMethod?.ToUpperInvariant() == "LOCKER"
+                ? null   // locker orders don't need a home address
+                : (dto.ClientInfo?.DeliveryAddress ?? cc.deliveryAddress);
+
+            var snapshotCity = dto.DeliveryMethod?.ToUpperInvariant() == "LOCKER"
+                ? null
+                : (dto.ClientInfo?.City ?? cc.city);
+
+            var snapshotCountry = dto.DeliveryMethod?.ToUpperInvariant() == "LOCKER"
+                ? null
+                : (dto.ClientInfo?.Country ?? cc.country);
+
+            var clientPhone = await _db.users.AsNoTracking()
+                .Where(u => u.id_Users == dto.ClientUserId)
+                .Select(u => u.phoneNumber)
+                .FirstOrDefaultAsync();
 
             var order = new order
             {
                 fk_Companyid_Company = companyId,
-                OrdersDate           = dto.OrdersDate,
-                totalAmount          = dto.TotalAmount,
-                paymentMethod        = dto.PaymentMethod,
-                deliveryPrice        = dto.DeliveryPrice,
-                status               = dto.Status,
-                fk_Clientid_Users    = dto.ClientUserId,
-                externalDocumentId   = dto.ExternalDocumentId,
-                snapshotDeliveryAddress = dto.ClientInfo?.DeliveryAddress,
-                snapshotCity            = dto.ClientInfo?.City,
-                snapshotCountry         = dto.ClientInfo?.Country,
-                snapshotPhone           = _db.users.AsNoTracking()
-                                            .Where(u => u.id_Users == dto.ClientUserId)
-                                            .Select(u => u.phoneNumber)
-                                            .FirstOrDefault()
+                OrdersDate = dto.OrdersDate,
+                totalAmount = dto.TotalAmount,
+                paymentMethod = dto.PaymentMethod,
+                deliveryPrice = dto.DeliveryPrice,
+                status = dto.Status,
+                fk_Clientid_Users = dto.ClientUserId,
+                externalDocumentId = dto.ExternalDocumentId,
+
+                // Address snapshot — independent of client_companies from this point on.
+                // Never updated unless client explicitly changes THIS order's delivery.
+                snapshotDeliveryAddress = snapshotAddress,
+                snapshotCity = snapshotCity,
+                snapshotCountry = snapshotCountry,
+                snapshotPhone = clientPhone,
+
+                // Delivery method snapshot
+                snapshotCourierId = dto.CourierId,
+                snapshotDeliveryMethod = dto.DeliveryMethod?.ToUpperInvariant() ?? "HOME",
+                snapshotLockerId = dto.LockerId,
+                snapshotLockerName = dto.LockerName,
+                snapshotLockerAddress = dto.LockerAddress,
+                snapshotLat = dto.DeliveryLat,
+                snapshotLng = dto.DeliveryLng,
             };
+
+            // NOTE: We intentionally do NOT write back to client_companies here.
+            // The client's profile address is managed via ProfileController only.
 
             _db.orders.Add(order);
             await _db.SaveChangesAsync();
@@ -349,11 +495,11 @@ public async Task<IActionResult> GetOrderFull(int id)
             {
                 _db.ordersproducts.Add(new ordersproduct
                 {
-                    fk_Ordersid_Orders   = order.id_Orders,
+                    fk_Ordersid_Orders = order.id_Orders,
                     fk_Productid_Product = it.ProductId,
-                    quantity             = it.Quantity,
-                    unitPrice            = it.UnitPrice,
-                    vatValue             = it.VatValue
+                    quantity = it.Quantity,
+                    unitPrice = it.UnitPrice,
+                    vatValue = it.VatValue
                 });
             }
 
@@ -389,21 +535,35 @@ public async Task<IActionResult> GetOrderFull(int id)
             .Select(x => new
             {
                 productId = x.fk_Productid_Product,
-                x.quantity, x.unitPrice, x.vatValue
+                x.quantity,
+                x.unitPrice,
+                x.vatValue
             })
             .ToListAsync();
 
         return Ok(new
         {
-            id                 = order.id_Orders,
-            ordersDate         = order.OrdersDate,
-            totalAmount        = order.totalAmount,
-            paymentMethod      = order.paymentMethod,
-            deliveryPrice      = order.deliveryPrice,
-            status             = order.status,
-            clientUserId       = order.fk_Clientid_Users,
+            id = order.id_Orders,
+            ordersDate = order.OrdersDate,
+            totalAmount = order.totalAmount,
+            paymentMethod = order.paymentMethod,
+            deliveryPrice = order.deliveryPrice,
+            status = order.status,
+            clientUserId = order.fk_Clientid_Users,
             externalDocumentId = order.externalDocumentId,
-            companyId          = order.fk_Companyid_Company,
+            companyId = order.fk_Companyid_Company,
+            // Delivery snapshot
+            snapshotDeliveryMethod = order.snapshotDeliveryMethod,
+            snapshotDeliveryAddress = order.snapshotDeliveryAddress,
+            snapshotCity = order.snapshotCity,
+            snapshotCountry = order.snapshotCountry,
+            snapshotPhone = order.snapshotPhone,
+            snapshotCourierId = order.snapshotCourierId,
+            snapshotLockerId = order.snapshotLockerId,
+            snapshotLockerName = order.snapshotLockerName,
+            snapshotLockerAddress = order.snapshotLockerAddress,
+            snapshotLat = order.snapshotLat,
+            snapshotLng = order.snapshotLng,
             items
         });
     }
@@ -424,15 +584,16 @@ public async Task<IActionResult> GetOrderFull(int id)
             return StatusCode(403, "Order is not in your company.");
 
         var cc = await _db.client_companies
+            .AsNoTracking()
             .FirstOrDefaultAsync(x =>
                 x.fk_Companyid_Company == companyId &&
-                x.fk_Clientid_Users    == dto.ClientUserId);
+                x.fk_Clientid_Users == dto.ClientUserId);
 
         if (cc == null)
             return StatusCode(403, "Client is not in your company.");
 
         var productIds = dto.Items.Select(i => i.ProductId).Distinct().ToList();
-        var okCount    = await _db.products.AsNoTracking()
+        var okCount = await _db.products.AsNoTracking()
             .CountAsync(p => productIds.Contains(p.id_Product) && p.fk_Companyid_Company == companyId);
 
         if (okCount != productIds.Count)
@@ -441,22 +602,50 @@ public async Task<IActionResult> GetOrderFull(int id)
         await using var tx = await _db.Database.BeginTransactionAsync();
         try
         {
-            order.OrdersDate         = dto.OrdersDate;
-            order.totalAmount        = dto.TotalAmount;
-            order.paymentMethod      = dto.PaymentMethod;
-            order.deliveryPrice      = dto.DeliveryPrice;
-            order.status             = dto.Status;
-            order.fk_Clientid_Users  = dto.ClientUserId;
-            order.externalDocumentId = dto.ExternalDocumentId;
-
-            // Update client_company info if provided
-            if (dto.ClientInfo != null)
+            order.OrdersDate = dto.OrdersDate;
+            order.totalAmount = dto.TotalAmount;
+            order.paymentMethod = dto.PaymentMethod;
+            order.deliveryPrice = dto.DeliveryPrice;
+            order.status = dto.Status;
+            order.fk_Clientid_Users = dto.ClientUserId;
+            if (dto.ExternalDocumentId.HasValue)
             {
-                cc.deliveryAddress = dto.ClientInfo.DeliveryAddress;
-                cc.city            = dto.ClientInfo.City;
-                cc.country         = dto.ClientInfo.Country;
-                cc.vat             = dto.ClientInfo.Vat;
-                cc.bankCode        = dto.ClientInfo.BankCode;
+                order.externalDocumentId = dto.ExternalDocumentId;
+            }
+
+            // Update THIS ORDER's delivery snapshot only — never client_companies.
+            // Staff editing an order changes where THIS shipment goes,
+            // not the client's permanent profile address.
+            var method = dto.DeliveryMethod?.ToUpperInvariant() ?? order.snapshotDeliveryMethod ?? "HOME";
+
+            if (method == "LOCKER")
+            {
+                order.snapshotDeliveryMethod = "LOCKER";
+                order.snapshotCourierId = dto.CourierId ?? order.snapshotCourierId;
+                order.snapshotLockerId = dto.LockerId;
+                order.snapshotLockerName = dto.LockerName;
+                order.snapshotLockerAddress = dto.LockerAddress;
+                order.snapshotLat = dto.DeliveryLat;
+                order.snapshotLng = dto.DeliveryLng;
+                // Clear home address — irrelevant for locker delivery
+                order.snapshotDeliveryAddress = null;
+                order.snapshotCity = null;
+                order.snapshotCountry = null;
+            }
+            else
+            {
+                order.snapshotDeliveryMethod = "HOME";
+                order.snapshotCourierId = dto.CourierId ?? order.snapshotCourierId;
+                // Staff can override via ClientInfo, otherwise keep existing snapshot
+                order.snapshotDeliveryAddress = dto.ClientInfo?.DeliveryAddress ?? order.snapshotDeliveryAddress;
+                order.snapshotCity = dto.ClientInfo?.City ?? order.snapshotCity;
+                order.snapshotCountry = dto.ClientInfo?.Country ?? order.snapshotCountry;
+                // Clear locker info — irrelevant for home delivery
+                order.snapshotLockerId = null;
+                order.snapshotLockerName = null;
+                order.snapshotLockerAddress = null;
+                order.snapshotLat = null;
+                order.snapshotLng = null;
             }
 
             // Replace order lines
@@ -470,11 +659,11 @@ public async Task<IActionResult> GetOrderFull(int id)
             {
                 _db.ordersproducts.Add(new ordersproduct
                 {
-                    fk_Ordersid_Orders   = id,
+                    fk_Ordersid_Orders = id,
                     fk_Productid_Product = it.ProductId,
-                    quantity             = it.Quantity,
-                    unitPrice            = it.UnitPrice,
-                    vatValue             = it.VatValue
+                    quantity = it.Quantity,
+                    unitPrice = it.UnitPrice,
+                    vatValue = it.VatValue
                 });
             }
 
@@ -525,6 +714,4 @@ public async Task<IActionResult> GetOrderFull(int id)
             return StatusCode(500, ex.InnerException?.Message ?? ex.Message);
         }
     }
-
-
 }

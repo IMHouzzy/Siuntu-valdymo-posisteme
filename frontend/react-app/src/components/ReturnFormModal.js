@@ -7,7 +7,9 @@ import {
 } from "react-icons/fi";
 import "../styles/ReturnFormModal.css";
 import { lockerApi, companiesApi, clientReturnsApi } from "../services/api";
-const ASSET_BASE = process.env.REACT_APP_API_BASE_URL
+import '../styles/validation-styles.css';
+// Fallback so ASSET_BASE is never undefined
+const ASSET_BASE = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065";
 
 const RETURN_REASONS = [
   { id: 1, label: "Pažeistas" },
@@ -18,8 +20,7 @@ const RETURN_REASONS = [
   { id: 6, label: "Neveikia" },
 ];
 
-
-// ── Leaflet helper (same as SmartForm) ───────────────────────────────────────
+// ── Leaflet helper ────────────────────────────────────────────────────────────
 let _L = null;
 async function getLeaflet() {
   if (_L) return _L;
@@ -53,7 +54,7 @@ async function geocodeAddress(address) {
   } catch { return null; }
 }
 
-// ── Simple address map (read-only, shows pin) ────────────────────────────────
+// ── Address map (read-only) ───────────────────────────────────────────────────
 function AddressMapWidget({ address }) {
   const mapElRef = useRef(null);
   const mapRef = useRef(null);
@@ -106,7 +107,7 @@ function AddressMapWidget({ address }) {
   );
 }
 
-// ── Locker map (shows selected locker pin) ────────────────────────────────────
+// ── Locker map ────────────────────────────────────────────────────────────────
 function LockerMapWidget({ locker }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -142,7 +143,7 @@ function LockerMapWidget({ locker }) {
   return <div ref={containerRef} className="rfm-map rfm-map--locker" />;
 }
 
-// ── Overlay root for portal ───────────────────────────────────────────────────
+// ── Overlay root ──────────────────────────────────────────────────────────────
 function getOverlayRoot() {
   let el = document.getElementById("rfm-overlay-root");
   if (!el) {
@@ -181,7 +182,6 @@ function LockerPortalPanel({ triggerRef, children, onClose }) {
   }, [onClose, triggerRef]);
 
   if (!rect) return null;
-
   return createPortal(
     <div id="rfm-locker-portal" className="rfm-locker-panel" style={{
       position: "absolute",
@@ -196,32 +196,32 @@ function LockerPortalPanel({ triggerRef, children, onClose }) {
   );
 }
 
-// ── Locker picker widget ──────────────────────────────────────────────────────
-function LockerPickerWidget({ companyId, courierType, value, onChange }) {
+// ── Locker picker ─────────────────────────────────────────────────────────────
+function LockerPickerWidget({ companyId, courierType, value, onChange, error }) {
   const [lockers, setLockers] = useState([]);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [apiError, setApiError] = useState(null);
   const triggerRef = useRef(null);
 
   const selected = useMemo(() => {
     if (!value) return null;
-    return lockers.find((l) => String(l.id) === String(value.lockerId)) || value;
+    return lockers.find(l => String(l.id) === String(value.lockerId)) || value;
   }, [lockers, value]);
 
   useEffect(() => {
     if (!companyId || !courierType) return;
-    setLoading(true); setError(null);
+    setLoading(true); setApiError(null);
     lockerApi.getLockers(companyId, courierType)
       .then(setLockers)
-      .catch(e => setError(e.message))
+      .catch(e => setApiError(e.message))
       .finally(() => setLoading(false));
   }, [companyId, courierType]);
 
-  const filtered = lockers.filter((l) => {
+  const filtered = lockers.filter(l => {
     const term = search.toLowerCase();
-    return !term || [l.name, l.street, l.city, l.postalCode].some((v) => v?.toLowerCase().includes(term));
+    return !term || [l.name, l.street, l.city, l.postalCode].some(v => v?.toLowerCase().includes(term));
   });
 
   const select = (locker) => {
@@ -230,13 +230,13 @@ function LockerPickerWidget({ companyId, courierType, value, onChange }) {
   };
 
   if (loading) return <div className="rfm-locker-state"><div className="rfm-map-spinner" /><span>Kraunami paštomatai…</span></div>;
-  if (error) return <div className="rfm-locker-state rfm-locker-state--error">⚠ {error}</div>;
+  if (apiError) return <div className="rfm-locker-state rfm-locker-state--error">⚠ {apiError}</div>;
 
   return (
     <div className="rfm-locker-wrap">
       <button ref={triggerRef} type="button"
-        className={`rfm-locker-trigger${open ? " is-open" : ""}${selected ? " has-value" : ""}`}
-        onClick={() => { setOpen((o) => !o); if (!open) setSearch(""); }}>
+        className={`rfm-locker-trigger${open ? " is-open" : ""}${selected ? " has-value" : ""}${error ? " rfm-locker-trigger--error" : ""}`}
+        onClick={() => { setOpen(o => !o); if (!open) setSearch(""); }}>
         {selected ? (
           <span className="rfm-locker-trigger-value">
             <span className="rfm-locker-trigger-name">{selected.name}</span>
@@ -246,25 +246,32 @@ function LockerPickerWidget({ companyId, courierType, value, onChange }) {
         <span className="rfm-locker-chevron">{open ? "▲" : "▼"}</span>
       </button>
 
+      {error && <div className="rfm-field-error"><FiAlertCircle size={11} /> {error}</div>}
+
       {open && (
         <LockerPortalPanel triggerRef={triggerRef} onClose={() => setOpen(false)}>
           <div className="rfm-locker-search-wrap">
-            <input autoFocus className="rfm-locker-search" placeholder="Ieškoti pagal miestą ar adresą…"
-              value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input autoFocus className="rfm-locker-search"
+              placeholder="Ieškoti pagal miestą ar adresą…"
+              value={search} onChange={e => setSearch(e.target.value)} />
             {search && <button className="rfm-locker-clear" type="button" onClick={() => setSearch("")}>✕</button>}
           </div>
           <div className="rfm-locker-options">
             {filtered.length === 0
               ? <div className="rfm-locker-empty">Nerasta paštomatų</div>
-              : filtered.map((l) => (
+              : filtered.map(l => (
                 <div key={l.id}
                   className={`rfm-locker-option${selected?.id === l.id ? " is-selected" : ""}`}
-                  onMouseDown={(e) => { e.preventDefault(); select(l); }}>
+                  onMouseDown={e => { e.preventDefault(); select(l); }}>
                   <div className="rfm-locker-option-row">
                     <span className="rfm-locker-option-name">{l.name}</span>
-                    <span className="rfm-locker-option-badge">{l.lockerType === "PickupStation" ? "Paštomatas" : "Siuntų taškas"}</span>
+                    <span className="rfm-locker-option-badge">
+                      {l.lockerType === "PickupStation" ? "Paštomatas" : "Siuntų taškas"}
+                    </span>
                   </div>
-                  <div className="rfm-locker-option-addr">{[l.street, l.city, l.postalCode].filter(Boolean).join(", ")}</div>
+                  <div className="rfm-locker-option-addr">
+                    {[l.street, l.city, l.postalCode].filter(Boolean).join(", ")}
+                  </div>
                 </div>
               ))}
           </div>
@@ -285,7 +292,7 @@ function LockerPickerWidget({ companyId, courierType, value, onChange }) {
   );
 }
 
-// ── Step indicator ────────────────────────────────────────────────────────────
+// ── Step bar ──────────────────────────────────────────────────────────────────
 function StepBar({ step }) {
   const steps = ["Prekės", "Grąžinimo būdas", "Patvirtinimas"];
   return (
@@ -301,8 +308,8 @@ function StepBar({ step }) {
   );
 }
 
-// ── Step 1: Item selection + image upload per item ────────────────────────────
-function StepItems({ order, selections, setSelections }) {
+// ── Step 1: Item selection ────────────────────────────────────────────────────
+function StepItems({ order, selections, setSelections, errors, setErrors }) {
   const returnableProducts = order.products.filter(op => op.product.canReturn);
 
   if (returnableProducts.length === 0) {
@@ -317,7 +324,11 @@ function StepItems({ order, selections, setSelections }) {
   const toggle = (opId) => {
     setSelections(prev => {
       const existing = prev.find(s => s.OrdersProductId === opId);
-      if (existing) return prev.filter(s => s.OrdersProductId !== opId);
+      if (existing) {
+        // Clear errors for this item when deselecting
+        setErrors(e => ({ ...e, [`reason_${opId}`]: null }));
+        return prev.filter(s => s.OrdersProductId !== opId);
+      }
       const op = order.products.find(p => p.id_OrdersProduct === opId);
       return [...prev, { OrdersProductId: opId, Quantity: 1, ReasonId: null, maxQty: op.quantity, images: [] }];
     });
@@ -326,8 +337,7 @@ function StepItems({ order, selections, setSelections }) {
   const setQty = (opId, delta) => {
     setSelections(prev => prev.map(s => {
       if (s.OrdersProductId !== opId) return s;
-      const newQty = Math.min(s.maxQty, Math.max(1, s.Quantity + delta));
-      return { ...s, Quantity: newQty };
+      return { ...s, Quantity: Math.min(s.maxQty, Math.max(1, s.Quantity + delta)) };
     }));
   };
 
@@ -335,15 +345,17 @@ function StepItems({ order, selections, setSelections }) {
     setSelections(prev => prev.map(s =>
       s.OrdersProductId === opId ? { ...s, ReasonId: Number(reasonId) } : s
     ));
+    // Clear error when reason is selected
+    if (reasonId) {
+      setErrors(e => ({ ...e, [`reason_${opId}`]: null }));
+    }
   };
 
   const addImages = (opId, files) => {
     setSelections(prev => prev.map(s => {
       if (s.OrdersProductId !== opId) return s;
       const newImgs = Array.from(files).map(f => ({
-        file: f,
-        preview: URL.createObjectURL(f),
-        key: `${Date.now()}-${f.name}`,
+        file: f, preview: URL.createObjectURL(f), key: `${Date.now()}-${f.name}`,
       }));
       return { ...s, images: [...(s.images || []), ...newImgs] };
     }));
@@ -362,9 +374,9 @@ function StepItems({ order, selections, setSelections }) {
       {returnableProducts.map(op => {
         const sel = selections.find(s => s.OrdersProductId === op.id_OrdersProduct);
         const checked = !!sel;
+        const reasonError = errors?.[`reason_${op.id_OrdersProduct}`];
         return (
           <div key={op.id_OrdersProduct} className={`rfm-item${checked ? " rfm-item--selected" : ""}`}>
-            {/* Header row — clickable to toggle */}
             <div className="rfm-item-header" onClick={() => toggle(op.id_OrdersProduct)}>
               <div className="rfm-item-check">{checked ? <FiCheck size={12} /> : null}</div>
               {op.product.imageUrl
@@ -379,51 +391,40 @@ function StepItems({ order, selections, setSelections }) {
               </div>
             </div>
 
-            {/* Controls when selected */}
             {checked && (
               <div className="rfm-item-controls" onClick={e => e.stopPropagation()}>
-                {/* Qty + reason */}
                 <div className="rfm-item-ctrl-row">
                   <div className="rfm-qty-ctrl">
                     <button className="rfm-qty-btn" onClick={() => setQty(op.id_OrdersProduct, -1)}><FiMinus size={11} /></button>
                     <span className="rfm-qty-val">{sel.Quantity}</span>
                     <button className="rfm-qty-btn" onClick={() => setQty(op.id_OrdersProduct, 1)}><FiPlus size={11} /></button>
                   </div>
-                  <select
-                    className="rfm-reason-sel"
-                    value={sel.ReasonId || ""}
-                    onChange={e => setReason(op.id_OrdersProduct, e.target.value)}
-                  >
-                    <option value="">Priežastis...</option>
-                    {RETURN_REASONS.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-                  </select>
+                  <div className="rfm-reason-wrap">
+                    <select 
+                      className={`rfm-reason-sel${reasonError ? " rfm-reason-sel--error" : ""}`} 
+                      value={sel.ReasonId || ""}
+                      onChange={e => setReason(op.id_OrdersProduct, e.target.value)}>
+                      <option value="">Priežastis...</option>
+                      {RETURN_REASONS.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+                    </select>
+                    {reasonError && <div className="rfm-field-error"><FiAlertCircle size={11} /> {reasonError}</div>}
+                  </div>
                 </div>
 
-                {/* Image upload */}
                 <div className="rfm-img-upload-section">
-                  <div className="rfm-img-upload-label">
-                    <FiImage size={13} /> Prekės nuotraukos (darbuotojui peržiūrėti)
-                  </div>
+                  <div className="rfm-img-upload-label"><FiImage size={13} /> Prekės nuotraukos</div>
                   <label className="rfm-img-upload-btn">
                     <FiUpload size={13} /> Įkelti nuotraukas
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      style={{ display: "none" }}
-                      onChange={e => addImages(op.id_OrdersProduct, e.target.files)}
-                    />
+                    <input type="file" multiple accept="image/*" style={{ display: "none" }}
+                      onChange={e => addImages(op.id_OrdersProduct, e.target.files)} />
                   </label>
                   {sel.images?.length > 0 && (
                     <div className="rfm-img-preview-grid">
                       {sel.images.map(img => (
                         <div key={img.key} className="rfm-img-preview-item">
                           <img src={img.preview} alt="preview" className="rfm-img-preview-thumb" />
-                          <button
-                            type="button"
-                            className="rfm-img-preview-remove"
-                            onClick={() => removeImage(op.id_OrdersProduct, img.key)}
-                          >
+                          <button type="button" className="rfm-img-preview-remove"
+                            onClick={() => removeImage(op.id_OrdersProduct, img.key)}>
                             <FiTrash2 size={11} />
                           </button>
                         </div>
@@ -440,7 +441,7 @@ function StepItems({ order, selections, setSelections }) {
   );
 }
 
-// ── Step 2: courier selection + locker/address + note ─────────────────────────
+// ── Step 2: Courier + address ─────────────────────────────────────────────────
 function StepMethod({
   couriers, loadingCouriers,
   selectedCourier, setSelectedCourier,
@@ -448,18 +449,28 @@ function StepMethod({
   address, setAddress,
   note, setNote,
   companyId,
+  errors, setErrors,
 }) {
   const needsLocker = selectedCourier?.supportsLockers;
   const isCustom = !selectedCourier || selectedCourier.type === "CUSTOM";
+  const prevRef = useRef(null);
 
-  // When courier changes, clear locker selection
-  const prevCourierRef = useRef(null);
   useEffect(() => {
-    if (prevCourierRef.current !== selectedCourier?.id) {
+    if (prevRef.current !== selectedCourier?.id) {
       setLockerValue(null);
-      prevCourierRef.current = selectedCourier?.id;
+      // Clear locker error when courier changes
+      setErrors(e => ({ ...e, locker: null }));
+      prevRef.current = selectedCourier?.id;
     }
-  }, [selectedCourier, setLockerValue]);
+  }, [selectedCourier, setLockerValue, setErrors]);
+
+  const updateAddress = (field, value) => {
+    setAddress(a => ({ ...a, [field]: value }));
+    // Clear error for this field when user types
+    if (errors?.[field]) {
+      setErrors(e => ({ ...e, [field]: null }));
+    }
+  };
 
   const addressStr = [address.street, address.city, address.country].filter(Boolean).join(", ");
 
@@ -476,20 +487,15 @@ function StepMethod({
             const active = selectedCourier && (selectedCourier.id ?? selectedCourier.id_Courier) === id;
             const Icon = c.supportsLockers ? FiPackage : FiTruck;
             return (
-              <button
-                key={id}
-                type="button"
+              <button key={id} type="button"
                 className={`rfm-method-card${active ? " rfm-method-card--active" : ""}`}
-                onClick={() => setSelectedCourier(c)}
-              >
+                onClick={() => setSelectedCourier(c)}>
                 <div className="rfm-method-icon"><Icon size={18} /></div>
                 <div className="rfm-method-info">
                   <div className="rfm-method-name">{c.name}</div>
                   <div className="rfm-method-desc">
-                    {c.supportsLockers
-                      ? "Pristatykite į paštomatą"
-                      : c.type === "CUSTOM"
-                        ? "Kurjeris atvyks pas jus"
+                    {c.supportsLockers ? "Pristatykite į paštomatą"
+                      : c.type === "CUSTOM" ? "Kurjeris atvyks pas jus"
                         : "Pristatymas į namus"}
                     {c.deliveryPrice != null && ` · €${Number(c.deliveryPrice).toFixed(2)}`}
                   </div>
@@ -501,20 +507,23 @@ function StepMethod({
         </div>
       )}
 
-      {/* Locker picker for parcel-machine couriers */}
       {selectedCourier && needsLocker && (
         <div className="rfm-delivery-section">
           <p className="rfm-hint rfm-hint--sm"><FiMapPin size={12} /> Pasirinkite paštomatą:</p>
-          <LockerPickerWidget
-            companyId={companyId}
+          <LockerPickerWidget 
+            companyId={companyId} 
             courierType={selectedCourier.type}
-            value={lockerValue}
-            onChange={setLockerValue}
+            value={lockerValue} 
+            onChange={(val) => {
+              setLockerValue(val);
+              // Clear error when locker is selected
+              setErrors(e => ({ ...e, locker: null }));
+            }}
+            error={errors?.locker}
           />
         </div>
       )}
 
-      {/* Address fields + map for home-delivery and custom couriers */}
       {selectedCourier && !needsLocker && (
         <div className="rfm-delivery-section">
           <p className="rfm-hint rfm-hint--sm">
@@ -523,39 +532,52 @@ function StepMethod({
           </p>
           <div className="rfm-addr-grid">
             <div className="rfm-form-field">
-              <label>Gatvė</label>
-              <input value={address.street} onChange={e => setAddress(a => ({ ...a, street: e.target.value }))} placeholder="Gatvė, namas" />
+              <label>Adresas *</label>
+              <input 
+                className={errors?.street ? "rfm-input--error" : ""}
+                value={address.street} 
+                placeholder="Gatvė, namas"
+                onChange={e => updateAddress("street", e.target.value)} 
+              />
+              {errors?.street && <div className="rfm-field-error"><FiAlertCircle size={11} /> {errors.street}</div>}
             </div>
             <div className="rfm-form-field">
-              <label>Miestas</label>
-              <input value={address.city} onChange={e => setAddress(a => ({ ...a, city: e.target.value }))} placeholder="Miestas" />
+              <label>Miestas *</label>
+              <input 
+                className={errors?.city ? "rfm-input--error" : ""}
+                value={address.city} 
+                placeholder="Miestas"
+                onChange={e => updateAddress("city", e.target.value)} 
+              />
+              {errors?.city && <div className="rfm-field-error"><FiAlertCircle size={11} /> {errors.city}</div>}
             </div>
             <div className="rfm-form-field">
               <label>Pašto kodas</label>
-              <input value={address.postalCode} onChange={e => setAddress(a => ({ ...a, postalCode: e.target.value }))} placeholder="LT-00000" />
+              <input 
+                value={address.postalCode} 
+                placeholder="LT-00000"
+                onChange={e => updateAddress("postalCode", e.target.value)} 
+              />
             </div>
             <div className="rfm-form-field">
               <label>Šalis</label>
-              <input value={address.country} onChange={e => setAddress(a => ({ ...a, country: e.target.value }))} placeholder="Lietuva" />
+              <input 
+                value={address.country} 
+                placeholder="Lietuva"
+                onChange={e => updateAddress("country", e.target.value)} 
+              />
             </div>
           </div>
-
-          {/* Map showing the address */}
           {addressStr && <AddressMapWidget address={addressStr} />}
         </div>
       )}
 
-      {/* Note */}
       {selectedCourier && (
         <div className="rfm-form-field rfm-mt">
           <label>Jūsų pastaba (neprivaloma)</label>
-          <textarea
-            className="rfm-textarea"
-            value={note}
+          <textarea className="rfm-textarea" rows={3} value={note}
             onChange={e => setNote(e.target.value)}
-            placeholder="Aprašykite grąžinimo priežastį, pakuotės būklę..."
-            rows={3}
-          />
+            placeholder="Aprašykite grąžinimo priežastį, pakuotės būklę..." />
         </div>
       )}
     </div>
@@ -567,7 +589,6 @@ function StepConfirm({ order, selections, selectedCourier, lockerValue, address,
   const addrStr = lockerValue
     ? `${lockerValue.name} — ${[lockerValue.street, lockerValue.city].filter(Boolean).join(", ")}`
     : [address.street, address.city, address.postalCode, address.country].filter(Boolean).join(", ");
-
   const totalImages = selections.reduce((s, sel) => s + (sel.images?.length || 0), 0);
 
   return (
@@ -585,9 +606,7 @@ function StepConfirm({ order, selections, selectedCourier, lockerValue, address,
               <span>{op?.product.name}</span>
               <span>{s.Quantity} vnt.</span>
               {reason && <span className="rfm-confirm-reason">{reason.label}</span>}
-              {s.images?.length > 0 && (
-                <span className="rfm-confirm-imgs">📷 {s.images.length} nuotr.</span>
-              )}
+              {s.images?.length > 0 && <span className="rfm-confirm-imgs">📷 {s.images.length} nuotr.</span>}
             </div>
           );
         })}
@@ -607,7 +626,9 @@ function StepConfirm({ order, selections, selectedCourier, lockerValue, address,
 
       {addrStr && (
         <div className="rfm-confirm-section">
-          <div className="rfm-confirm-label"><FiMapPin size={11} /> {lockerValue ? "Paštomatas" : "Grąžinimo adresas"}</div>
+          <div className="rfm-confirm-label">
+            <FiMapPin size={11} /> {lockerValue ? "Paštomatas" : "Grąžinimo adresas"}
+          </div>
           <div className="rfm-confirm-value">{addrStr}</div>
         </div>
       )}
@@ -622,23 +643,18 @@ function StepConfirm({ order, selections, selectedCourier, lockerValue, address,
       <div className="rfm-confirm-notice">
         <FiAlertCircle size={13} />
         Grąžinimas bus peržiūrėtas darbuotojo. Etiketės bus sugeneruotos tik po patvirtinimo.
-        Jei grąžinimas bus atmestas — jis bus atšauktas.
       </div>
     </div>
   );
 }
 
-// ── Main Modal ────────────────────────────────────────────────────────────────
+// ── Main modal ────────────────────────────────────────────────────────────────
 export default function ReturnFormModal({ order, onClose, onCreated }) {
   const [step, setStep] = useState(0);
   const [selections, setSelections] = useState([]);
-
-  // Courier state
   const [couriers, setCouriers] = useState([]);
   const [loadingCouriers, setLoadingCouriers] = useState(true);
   const [selectedCourier, setSelectedCourier] = useState(null);
-
-  // Delivery state
   const [lockerValue, setLockerValue] = useState(null);
   const [address, setAddress] = useState({
     street: order.snapshotDeliveryAddress || "",
@@ -647,14 +663,11 @@ export default function ReturnFormModal({ order, onClose, onCreated }) {
     country: order.snapshotCountry || "Lietuva",
   });
   const [note, setNote] = useState("");
-
-  // Submit state
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [done, setDone] = useState(false);
+  const [errors, setErrors] = useState({});
 
-  // ── Load company couriers (same endpoint as shipment form) ─────────────────
-  // We get companyId from the order itself
   const companyId = order.companyId ?? order.fk_Companyid_Company;
 
   useEffect(() => {
@@ -670,25 +683,86 @@ export default function ReturnFormModal({ order, onClose, onCreated }) {
       .finally(() => setLoadingCouriers(false));
   }, [companyId]);
 
-  // ── Validation ─────────────────────────────────────────────────────────────
+  const validateStep = (stepNum) => {
+    const newErrors = {};
+    
+    if (stepNum === 0) {
+      // Validate item selections - each must have a reason
+      if (selections.length === 0) {
+        return { isValid: false, errors: newErrors };
+      }
+      
+      selections.forEach(sel => {
+        if (!sel.ReasonId) {
+          newErrors[`reason_${sel.OrdersProductId}`] = "Pasirinkite grąžinimo priežastį";
+        }
+      });
+    }
+    
+    if (stepNum === 1) {
+      if (!selectedCourier) {
+        return { isValid: false, errors: newErrors };
+      }
+      
+      if (selectedCourier.supportsLockers) {
+        // Validate locker selection
+        if (!lockerValue) {
+          newErrors.locker = "Pasirinkite paštomatą";
+        }
+      } else {
+        // Validate address fields
+        if (!address.street?.trim()) {
+          newErrors.street = "Įveskite gatvės pavadinimą";
+        }
+        if (!address.city?.trim()) {
+          newErrors.city = "Įveskite miestą";
+        }
+      }
+    }
+    
+    const isValid = Object.keys(newErrors).length === 0;
+    return { isValid, errors: newErrors };
+  };
+
   const canNext = () => {
     if (step === 0) return selections.length > 0;
     if (step === 1) {
       if (!selectedCourier) return false;
       if (selectedCourier.supportsLockers) return !!lockerValue;
-      // For home/custom: require at least street + city
       return !!(address.street?.trim() && address.city?.trim());
     }
     return true;
   };
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
-  // Upload images to a temp endpoint, then create the return
+  const handleNext = () => {
+    const validation = validateStep(step);
+    
+    if (!validation.isValid) {
+      setErrors(validation.errors);
+      return;
+    }
+    
+    setErrors({});
+    setStep(s => s + 1);
+  };
+
   const submit = async () => {
+    // Final validation before submit
+    const step0Valid = validateStep(0);
+    const step1Valid = validateStep(1);
+    
+    if (!step0Valid.isValid || !step1Valid.isValid) {
+      setErrors({ ...step0Valid.errors, ...step1Valid.errors });
+      setSubmitError("Užpildykite visus privalomus laukus");
+      return;
+    }
+    
     setSubmitting(true);
     setSubmitError("");
+    setErrors({});
+    
     try {
-      // 1. Upload images for each item that has them
+      // Upload images per item
       const itemsWithImageUrls = await Promise.all(
         selections.map(async s => {
           let imageUrls = [];
@@ -698,9 +772,7 @@ export default function ReturnFormModal({ order, onClose, onCreated }) {
             try {
               const data = await clientReturnsApi.uploadImages(form);
               imageUrls = data.urls ?? [];
-            } catch {
-              // Continue without images on upload failure
-            }
+            } catch { /* non-critical — continue without images */ }
           }
           return {
             OrdersProductId: s.OrdersProductId,
@@ -711,22 +783,18 @@ export default function ReturnFormModal({ order, onClose, onCreated }) {
         })
       );
 
-      // 2. Determine return method string from selected courier
       let returnMethod = "CUSTOM";
       if (selectedCourier) {
         const t = selectedCourier.type ?? "";
         if (t.startsWith("DPD")) returnMethod = "DPD";
         else if (t.startsWith("LP_EXPRESS")) returnMethod = "LP_EXPRESS";
         else if (t.startsWith("OMNIVA")) returnMethod = "OMNIVA";
-        else returnMethod = "CUSTOM";
       }
 
-      // 3. Build body
-      const body = {
+      await clientReturnsApi.create(order.id_Orders, {
         Items: itemsWithImageUrls,
         ReturnMethod: returnMethod,
         CourierId: selectedCourier ? (selectedCourier.id ?? selectedCourier.id_Courier) : null,
-        LockerId: lockerValue?.lockerId ?? null,
         ClientNote: note || null,
         ReturnStreet: lockerValue ? null : (address.street || null),
         ReturnCity: lockerValue ? lockerValue.city : (address.city || null),
@@ -739,20 +807,17 @@ export default function ReturnFormModal({ order, onClose, onCreated }) {
           : null,
         ReturnLat: lockerValue?.lat ?? null,
         ReturnLng: lockerValue?.lng ?? null,
-      };
+      });
 
-      const r = await clientReturnsApi.create(order.id_Orders, body);
-
-     setDone(true);
-        onCreated?.();
-    } catch {
-      setSubmitError("Serverio klaida.");
+      setDone(true);
+      onCreated?.();
+    } catch (err) {
+      setSubmitError(err.message ?? "Serverio klaida. Bandykite dar kartą.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  // ── Success screen ─────────────────────────────────────────────────────────
   if (done) {
     return (
       <div className="rfm-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -770,23 +835,37 @@ export default function ReturnFormModal({ order, onClose, onCreated }) {
     );
   }
 
-  return (
-    <div className="rfm-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+  return createPortal(
+    <div
+      className="rfm-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="rfm-modal">
-        {/* Header */}
         <div className="rfm-header">
-          <span className="rfm-title"><FiRotateCcw size={15} /> Pateikti grąžinimą</span>
-          <button className="rfm-close" onClick={onClose}><FiX size={16} /></button>
+          <span className="rfm-title">
+            <FiRotateCcw size={15} /> Pateikti grąžinimą
+          </span>
+
+          <button className="rfm-close" onClick={onClose}>
+            <FiX size={16} />
+          </button>
         </div>
 
-        {/* Step bar */}
-        <div className="rfm-stepbar-wrap"><StepBar step={step} /></div>
+        <div className="rfm-stepbar-wrap">
+          <StepBar step={step} />
+        </div>
 
-        {/* Body */}
         <div className="rfm-body">
           {step === 0 && (
-            <StepItems order={order} selections={selections} setSelections={setSelections} />
+            <StepItems
+              order={order}
+              selections={selections}
+              setSelections={setSelections}
+              errors={errors}
+              setErrors={setErrors}
+            />
           )}
+
           {step === 1 && (
             <StepMethod
               couriers={couriers}
@@ -800,8 +879,11 @@ export default function ReturnFormModal({ order, onClose, onCreated }) {
               note={note}
               setNote={setNote}
               companyId={companyId}
+              errors={errors}
+              setErrors={setErrors}
             />
           )}
+
           {step === 2 && (
             <StepConfirm
               order={order}
@@ -814,30 +896,53 @@ export default function ReturnFormModal({ order, onClose, onCreated }) {
           )}
         </div>
 
-        {/* Error */}
         {submitError && (
-          <div className="rfm-submit-error"><FiAlertCircle size={13} /> {submitError}</div>
+          <div className="rfm-submit-error">
+            <FiAlertCircle size={13} /> {submitError}
+          </div>
         )}
 
-        {/* Footer */}
         <div className="rfm-footer">
           {step > 0 && (
-            <button className="rfm-btn rfm-btn--ghost" onClick={() => setStep(s => s - 1)} disabled={submitting}>
+            <button
+              className="rfm-btn rfm-btn--ghost"
+              onClick={() => {
+                setStep((s) => s - 1);
+                setErrors({});
+              }}
+            >
               <FiChevronLeft size={13} /> Atgal
             </button>
           )}
+
           <div style={{ flex: 1 }} />
+
           {step < 2 ? (
-            <button className="rfm-btn rfm-btn--primary" onClick={() => setStep(s => s + 1)} disabled={!canNext()}>
+            <button
+              className="rfm-btn rfm-btn--primary"
+              onClick={handleNext}
+              disabled={!canNext()}
+            >
               Toliau <FiChevronRight size={13} />
             </button>
           ) : (
-            <button className="rfm-btn rfm-btn--primary" onClick={submit} disabled={submitting}>
-              {submitting ? <span className="rfm-spinner" /> : <><FiCheck size={13} /> Pateikti grąžinimą</>}
+            <button
+              className="rfm-btn rfm-btn--primary"
+              onClick={submit}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <span className="rfm-spinner" />
+              ) : (
+                <>
+                  <FiCheck size={13} /> Pateikti grąžinimą
+                </>
+              )}
             </button>
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

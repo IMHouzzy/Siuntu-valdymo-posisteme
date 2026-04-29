@@ -33,7 +33,6 @@ import UserEdit from "./pages/userCrud/UserEdit";
 
 // client UI
 import UserHome from "./pages/userCrud/UserHome";
-import ClientOrdersPage from "./pages/userCrud/ClientOrdersPage";
 import TrackingPage from "./pages/userCrud/TrackingPage";
 
 // courier UI
@@ -53,6 +52,8 @@ import ShipmentsPage from "./pages/shipmentPages/ShipmentsPage";
 
 import ReturnsList from "./pages/Returns/ReturnsList";
 
+import ButentSync from "./pages/admin/ButentSync";
+
 export default function App() {
   return (
     <Routes>
@@ -63,7 +64,6 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/change-password" element={<ChangePassword />} />
-        <Route path="/profile" element={<Profile />} />
       </Route>
 
       {/* STAFF (MASTER/ADMIN/STAFF) */}
@@ -91,6 +91,7 @@ export default function App() {
         <Route path="usersList" element={<UsersPage />} />
         <Route path="userAdd" element={<UserAdd />} />
         <Route path="userEdit/:id" element={<UserEdit />} />
+        <Route path="/admin/company/:companyId/butent-sync" element={<ButentSync />} />
 
         <Route path="/orders/:orderId/shipment/new" element={<ShipmentRegistration />} />
         <Route path="/shipmentsList" element={<ShipmentsPage />} />
@@ -100,7 +101,7 @@ export default function App() {
         <Route path="companyEdit/:id" element={<CompanyEdit />} />
         <Route path="companyMembers/:id" element={<CompanyMembers />} />
         <Route path="/companyIntegrations/:companyId" element={<CompanyIntegrations />} />
-        
+
         <Route path="returnsList" element={<ReturnsList />} />
 
       </Route>
@@ -117,8 +118,8 @@ export default function App() {
         }
       >
         <Route index element={<UserHome />} />
-        <Route path="orders" element={<ClientOrdersPage />} />
         <Route path="track/:trackingNumber" element={<TrackingPage />} />
+        <Route path="profile" element={<Profile />} />
       </Route>
 
       {/* COURIER */}

@@ -2,7 +2,6 @@ namespace Bakalauras.API.Dtos
 {
     public class CreateUserDto
     {
-        // Base user
         public string Name { get; set; } = "";
         public string Surname { get; set; } = "";
         public string Email { get; set; } = "";
@@ -20,16 +19,13 @@ namespace Bakalauras.API.Dtos
 
         // Employee fields (only used when IsEmployee = true)
         /// <summary>
-        /// Maps to company_users.position. Use "ADMIN" or "OWNER" to grant admin rights.
-        /// Any other value (e.g. "STAFF", "Warehouse manager") gets role = STAFF.
+        /// Maps to company_users.position.
+        /// Use "ADMIN", "OWNER", or "COURIER" to grant those roles;
+        /// anything else (e.g. "Warehouse manager") gets role = STAFF.
         /// </summary>
         public string? Position { get; set; }
         public DateTime? StartDate { get; set; }
-
-        /// <summary>
-        /// Nullable so the caller can omit it (defaults to true on the server).
-        /// Pass false to create an inactive employee.
-        /// </summary>
-        public bool? Active { get; set; }
+        /// <summary>Defaults to true. Pass false to create an inactive employee.</summary>
+        public bool Active { get; set; } = true;  // not nullable — avoids null-check in controller
     }
 }

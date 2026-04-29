@@ -4,26 +4,63 @@ import { useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../../services/AuthContext";
 import Logo from "../../images/Full_track_sync_logo2.png";
+import { authValidation } from "./authValidation";
 
 function Login() {
     const location = useLocation();
     const navigate = useNavigate();
     const { login, googleLogin } = useAuth();
 
-    const [email, setEmail]       = useState("");
+    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [error, setError]       = useState("");
-    const [loading, setLoading]   = useState(false);
+    
+    const [errors, setErrors] = useState({});
+    const [touched, setTouched] = useState({});
+    const [serverError, setServerError] = useState("");
+    const [loading, setLoading] = useState(false);
+
+    // Real-time validation
+    const validateField = (fieldName, value) => {
+        const formData = {
+            email,
+            password,
+            [fieldName]: value,
+        };
+        
+        const allErrors = authValidation.validateLoginForm(formData);
+        
+        setErrors(prev => ({
+            ...prev,
+            [fieldName]: allErrors[fieldName] || null,
+        }));
+    };
+
+    const handleBlur = (fieldName) => {
+        setTouched(prev => ({ ...prev, [fieldName]: true }));
+    };
 
     const handleLogin = async (e) => {
         e.preventDefault();
-        setError("");
+        setServerError("");
+
+        // Mark all fields as touched
+        setTouched({ email: true, password: true });
+
+        // Validate all fields
+        const validationErrors = authValidation.validateLoginForm({ email, password });
+        setErrors(validationErrors);
+
+        // Stop if there are validation errors
+        if (Object.keys(validationErrors).length > 0) {
+            return;
+        }
+
         setLoading(true);
         try {
             await login(email, password);
-            navigate("/");
+            navigate("/client");
         } catch (err) {
-            setError(err.message || "Prisijungimas nepavyko.");
+            setServerError(err.message || "Prisijungimas nepavyko.");
         } finally {
             setLoading(false);
         }
@@ -32,9 +69,9 @@ function Login() {
     const handleGoogleLogin = async (credentialResponse) => {
         try {
             await googleLogin(credentialResponse.credential);
-            navigate("/");
+            navigate("/client");
         } catch (err) {
-            setError(err.message || "Google prisijungimas nepavyko.");
+            setServerError(err.message || "Google prisijungimas nepavyko.");
         }
     };
 
@@ -61,30 +98,50 @@ function Login() {
                             type="email"
                             placeholder="El. paštas"
                             value={email}
-                            onChange={e => setEmail(e.target.value)}
-                            required
+                            onChange={e => {
+                                setEmail(e.target.value);
+                                if (touched.email) validateField("email", e.target.value);
+                            }}
+                            onBlur={() => handleBlur("email")}
+                            className={touched.email && errors.email ? "error" : ""}
                         />
+                        {touched.email && errors.email && (
+                            <span className="error-text">{errors.email}</span>
+                        )}
                     </div>
+
                     <div className="form-group">
                         <input
                             type="password"
                             placeholder="Slaptažodis"
                             value={password}
-                            onChange={e => setPassword(e.target.value)}
-                            required
+                            onChange={e => {
+                                setPassword(e.target.value);
+                                if (touched.password) validateField("password", e.target.value);
+                            }}
+                            onBlur={() => handleBlur("password")}
+                            className={touched.password && errors.password ? "error" : ""}
                         />
+                        {touched.password && errors.password && (
+                            <span className="error-text">{errors.password}</span>
+                        )}
                     </div>
+
                     <div className="forgot-password">
                         <Link to="/forgot-password">Pamiršote slaptažodį?</Link>
                     </div>
 
-                    {error && (
+                    {serverError && (
                         <p style={{ color: "var(--color-danger)", fontSize: "0.8rem", margin: "4px 0" }}>
-                            {error}
+                            {serverError}
                         </p>
                     )}
 
-                    <button type="submit" className="login-button" disabled={loading}>
+                    <button
+                        type="submit"
+                        className="login-button"
+                        disabled={loading || Object.keys(errors).some(key => errors[key])}
+                    >
                         {loading ? "Jungiamasi…" : "Prisijungti"}
                     </button>
                 </form>
@@ -95,7 +152,7 @@ function Login() {
                     </div>
                     <GoogleLogin
                         onSuccess={handleGoogleLogin}
-                        onError={() => setError("Google prisijungimas nepavyko.")}
+                        onError={() => setServerError("Google prisijungimas nepavyko.")}
                     />
                 </div>
             </div>

@@ -194,3 +194,13 @@ C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siunt�
 C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\obj\Debug\net8.0\Bakalauras.API.pdb
 C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\obj\Debug\net8.0\Bakalauras.API.genruntimeconfig.cache
 C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\obj\Debug\net8.0\ref\Bakalauras.API.dll
+C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\bin\Debug\net8.0\SkiaSharp.dll
+C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\bin\Debug\net8.0\zxing.dll
+C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\bin\Debug\net8.0\ZXing.SkiaSharp.dll
+C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\bin\Debug\net8.0\runtimes\osx\native\libSkiaSharp.dylib
+C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\bin\Debug\net8.0\runtimes\win-arm64\native\libSkiaSharp.dll
+C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\bin\Debug\net8.0\runtimes\win-arm64\native\libSkiaSharp.pdb
+C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\bin\Debug\net8.0\runtimes\win-x64\native\libSkiaSharp.dll
+C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\bin\Debug\net8.0\runtimes\win-x64\native\libSkiaSharp.pdb
+C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\bin\Debug\net8.0\runtimes\win-x86\native\libSkiaSharp.dll
+C:\Users\Ignas\Desktop\KTU\VIII semestras\Bakalauro baigiamasis projektas\Siuntų valdymo posistemė\backend\Bakalauras.API\bin\Debug\net8.0\runtimes\win-x86\native\libSkiaSharp.pdb

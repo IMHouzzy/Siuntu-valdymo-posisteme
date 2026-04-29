@@ -16,6 +16,7 @@ public class NotificationService : INotificationService
     private readonly IEmailService _email;
     private readonly IInvoiceService _invoiceService;
     private readonly IWebHostEnvironment _env;           // ← ADD
+        private readonly IConfiguration _cfg;    
     private readonly ILogger<NotificationService> _log;
 
     public NotificationService(
@@ -23,12 +24,14 @@ public class NotificationService : INotificationService
         IEmailService email,
         IInvoiceService invoiceService,
         IWebHostEnvironment env,                         // ← ADD
+        IConfiguration cfg,                                 // ← ADD
         ILogger<NotificationService> log)
     {
         _db = db;
         _email = email;
         _invoiceService = invoiceService;
         _env = env;                                      // ← ADD
+        _cfg = cfg;                                       // ← ADD
         _log = log;
     }
 
@@ -56,6 +59,11 @@ public class NotificationService : INotificationService
 
         switch (newStatusId)
         {
+            case 1:
+                theme = "Patvirtinkite pristatymo duomenis";
+                content = $"Jūsų užsakymas #{orderId} gautas! Prašome patvirtinti pristatymo adresą ir pasirinkti pristatymo būdą paspaudę mygtuką žemiau.";
+                sendEmail = true;
+                break;
             case 4:
                 theme = "Užsakymas vykdomas";
                 content = $"Jūsų užsakymas #{orderId} pradėtas vykdyti.";
@@ -116,7 +124,18 @@ public class NotificationService : INotificationService
         {
             try
             {
-                var body = BuildEmailBody(order.clientName, theme, content);
+                string? ctaUrl = null;
+                string? ctaLabel = null;
+
+                if (newStatusId == 1)
+                {
+                    // Read from config or hardcode your frontend URL
+                    var frontendBase = _cfg["FrontendBaseUrl"] ?? "http://localhost:3000";
+                    ctaUrl = $"{frontendBase}/client/profile#orders?order={orderId}";
+                    ctaLabel = "Pasirinkti pristatymą";
+                }
+
+                var body = BuildEmailBody(order.clientName, theme, content, ctaUrl, ctaLabel);
 
                 if (invoicePath != null)
                 {
@@ -363,69 +382,68 @@ public class NotificationService : INotificationService
         }
     }
 
-    private static string BuildEmailBody(string name, string subject, string message) =>
+    private static string BuildEmailBody(
+        string name,
+        string subject,
+        string message,
+        string? ctaUrl = null,
+        string? ctaLabel = null) =>
     $"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <meta charset="UTF-8" />
-    </head>
-    <body style="margin:0;padding:0;background-color:#f5f7fb;font-family:Arial, sans-serif;">
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+</head>
+<body style="margin:0;padding:0;background-color:#f5f7fb;font-family:Arial, sans-serif;">
 
-    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f7fb;padding:24px 0;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f7fb;padding:24px 0;">
+    <tr>
+    <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0"
+            style="max-width:600px;background:#ffffff;border-radius:12px;
+                    box-shadow:0 4px 8px rgba(0,0,0,0.08);overflow:hidden;">
         <tr>
-        <td align="center">
-
-            <!-- CARD -->
-            <table width="100%" cellpadding="0" cellspacing="0"
-                style="max-width:600px;background:#ffffff;border-radius:12px;
-                        box-shadow:0 4px 8px rgba(0,0,0,0.08);overflow:hidden;">
-
-            <!-- HEADER -->
-            <tr>
-                <td style="background:#1d4ed8;padding:20px 24px;color:white;">
-                <h1 style="margin:0;font-size:20px;font-weight:600;">
-                    {subject}
-                </h1>
-                </td>
-            </tr>
-
-            <!-- BODY -->
-            <tr>
-                <td style="padding:24px;color:#0b1220;font-size:14px;line-height:1.6;">
-
-                <p style="margin:0 0 12px 0;">
-                    Sveiki, <strong>{name}</strong>,
-                </p>
-
-                <p style="margin:0 0 16px 0;color:#3f4d63;">
-                    {message}
-                </p>
-
-
-                </td>
-            </tr>
-
-            <!-- DIVIDER -->
-            <tr>
-                <td style="border-top:1px solid #e5e7eb;"></td>
-            </tr>
-
-            <!-- FOOTER -->
-            <tr>
-                <td style="padding:16px 24px;font-size:12px;color:#8b98ad;text-align:center;">
-                Šis el. laiškas siųstas automatiškai.<br/>
-                Prašome į jį neatsakyti.
-                </td>
-            </tr>
-
-            </table>
-
-        </td>
+            <td style="background:#1d4ed8;padding:20px 24px;color:white;">
+            <h1 style="margin:0;font-size:20px;font-weight:600;">
+                {subject}
+            </h1>
+            </td>
         </tr>
-    </table>
+        <tr>
+            <td style="padding:24px;color:#0b1220;font-size:14px;line-height:1.6;">
+            <p style="margin:0 0 12px 0;">
+                Sveiki, <strong>{name}</strong>,
+            </p>
+            <p style="margin:0 0 16px 0;color:#3f4d63;">
+                {message}
+            </p>
+            {(ctaUrl != null ? $"""
+            <p style="margin:24px 0 0 0;text-align:center;">
+                <a href="{ctaUrl}"
+                   style="display:inline-block;background:#1d4ed8;color:#ffffff;
+                          text-decoration:none;padding:12px 28px;border-radius:8px;
+                          font-size:14px;font-weight:600;">
+                    {ctaLabel ?? "Atidaryti"}
+                </a>
+            </p>
+            """ : "")}
+            </td>
+        </tr>
+        <tr>
+            <td style="border-top:1px solid #e5e7eb;"></td>
+        </tr>
+        <tr>
+            <td style="padding:16px 24px;font-size:12px;color:#8b98ad;text-align:center;">
+            Šis el. laiškas siųstas automatiškai.<br/>
+            Prašome į jį neatsakyti.
+            </td>
+        </tr>
+        </table>
+    </td>
+    </tr>
+</table>
 
-    </body>
-    </html>
-    """;
+</body>
+</html>
+""";
 }

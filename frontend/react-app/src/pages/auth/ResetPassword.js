@@ -3,15 +3,18 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { resetApi } from "../../services/api";
 import "../../styles/Auth.css";
 import Logo from "../../images/Full_track_sync_logo2.png";
+import { authValidation } from "./authValidation";
 
 function ResetPassword() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const token = searchParams.get("token") || "";
 
-    const [status, setStatus]   = useState("validating"); // validating | valid | invalid | expired | done
-    const [form, setForm]       = useState({ newPassword: "", repeat: "" });
-    const [error, setError]     = useState("");
+    const [status, setStatus] = useState("validating");
+    const [form, setForm] = useState({ newPassword: "", repeat: "" });
+    const [errors, setErrors] = useState({});
+    const [touched, setTouched] = useState({});
+    const [serverError, setServerError] = useState("");
     const [loading, setLoading] = useState(false);
 
     // Validate token on mount
@@ -21,26 +24,63 @@ function ResetPassword() {
         resetApi.validate(token)
             .then(() => setStatus("valid"))
             .catch(err => {
-                // api.js throws with the server's text as the message
                 setStatus(err.message?.includes("410") || err.message?.includes("pasibaigė")
                     ? "expired"
                     : "invalid");
             });
     }, [token]);
 
+    // Real-time validation
+    const validateField = (fieldName, value) => {
+        const formData = {
+            ...form,
+            [fieldName]: value,
+        };
+        
+        const allErrors = authValidation.validateResetPasswordForm(formData);
+        
+        setErrors(prev => ({
+            ...prev,
+            [fieldName]: allErrors[fieldName] || null,
+        }));
+    };
+
+    const handleBlur = (fieldName) => {
+        setTouched(prev => ({ ...prev, [fieldName]: true }));
+    };
+
+    const handleChange = (fieldName, value) => {
+        setForm(prev => ({ ...prev, [fieldName]: value }));
+        if (touched[fieldName]) validateField(fieldName, value);
+        
+        // Revalidate repeat when newPassword changes
+        if (fieldName === "newPassword" && touched.repeat) {
+            validateField("repeat", form.repeat);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError("");
+        setServerError("");
 
-        if (form.newPassword.length < 8) { setError("Slaptažodis turi būti bent 8 simbolių."); return; }
-        if (form.newPassword !== form.repeat) { setError("Slaptažodžiai nesutampa."); return; }
+        // Mark all fields as touched
+        setTouched({ newPassword: true, repeat: true });
+
+        // Validate all fields
+        const validationErrors = authValidation.validateResetPasswordForm(form);
+        setErrors(validationErrors);
+
+        // Stop if there are validation errors
+        if (Object.keys(validationErrors).length > 0) {
+            return;
+        }
 
         setLoading(true);
         try {
             await resetApi.confirm(token, form.newPassword);
             setStatus("done");
         } catch (err) {
-            setError(err.message || "Klaida keičiant slaptažodį.");
+            setServerError(err.message || "Klaida keičiant slaptažodį.");
         } finally {
             setLoading(false);
         }
@@ -97,21 +137,45 @@ function ResetPassword() {
                             type="password"
                             placeholder="Naujas slaptažodis"
                             value={form.newPassword}
-                            onChange={e => setForm(f => ({ ...f, newPassword: e.target.value }))}
-                            required
+                            onChange={e => handleChange("newPassword", e.target.value)}
+                            onBlur={() => handleBlur("newPassword")}
+                            className={touched.newPassword && errors.newPassword ? "error" : ""}
                         />
+                        {touched.newPassword && errors.newPassword && (
+                            <span className="error-text">{errors.newPassword}</span>
+                        )}
+                        {!errors.newPassword && touched.newPassword && form.newPassword && (
+                            <span className="help-text" style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>
+                                Min. 8 simboliai, 1 didžioji, 1 mažoji raidė, 1 skaičius
+                            </span>
+                        )}
                     </div>
+
                     <div className="form-group">
                         <input
                             type="password"
                             placeholder="Pakartokite slaptažodį"
                             value={form.repeat}
-                            onChange={e => setForm(f => ({ ...f, repeat: e.target.value }))}
-                            required
+                            onChange={e => handleChange("repeat", e.target.value)}
+                            onBlur={() => handleBlur("repeat")}
+                            className={touched.repeat && errors.repeat ? "error" : ""}
                         />
+                        {touched.repeat && errors.repeat && (
+                            <span className="error-text">{errors.repeat}</span>
+                        )}
                     </div>
-                    {error && <p style={{ color: "var(--color-danger)", fontSize: "0.8rem", margin: "4px 0" }}>{error}</p>}
-                    <button type="submit" className="login-button" disabled={loading}>
+
+                    {serverError && (
+                        <p style={{ color: "var(--color-danger)", fontSize: "0.8rem", margin: "4px 0" }}>
+                            {serverError}
+                        </p>
+                    )}
+
+                    <button
+                        type="submit"
+                        className="login-button"
+                        disabled={loading || Object.keys(errors).some(key => errors[key])}
+                    >
                         {loading ? "Keičiama…" : "Pakeisti slaptažodį"}
                     </button>
                 </form>

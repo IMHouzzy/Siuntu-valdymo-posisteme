@@ -6,11 +6,11 @@
 //   4. ListReturns — scoped to active company only
 
 using Bakalauras.API.Models;
-using Bakalauras.API.Dtos;
+using Bakalauras.API.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-
+using Bakalauras.API.Services;
 [ApiController]
 [Route("api/client")]
 [Authorize]
@@ -18,11 +18,13 @@ public class ClientOrdersController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IWebHostEnvironment _env;
+    private readonly INotificationService _notif;
 
-    public ClientOrdersController(AppDbContext db, IWebHostEnvironment env)
+    public ClientOrdersController(AppDbContext db, IWebHostEnvironment env, INotificationService notif)
     {
         _db = db;
         _env = env;
+        _notif = notif;
     }
 
     private int GetUserId() => User.GetUserId();
@@ -63,14 +65,14 @@ public class ClientOrdersController : ControllerBase
                 o.paymentMethod,
                 o.deliveryPrice,
                 o.status,
-                statusName              = o.statusNavigation.name,
+                statusName = o.statusNavigation.name,
                 o.externalDocumentId,
                 o.snapshotDeliveryAddress,
                 o.snapshotCity,
                 o.snapshotCountry,
                 o.snapshotPhone,
                 hasShipment = _db.shipments.Any(s => s.fk_Ordersid_Orders == o.id_Orders),
-                hasLabels   = _db.packages.Any(p =>
+                hasLabels = _db.packages.Any(p =>
                     p.labelFile != null &&
                     _db.shipments.Any(s =>
                         s.id_Shipment == p.fk_Shipmentid_Shipment &&
@@ -113,6 +115,15 @@ public class ClientOrdersController : ControllerBase
                 o.snapshotCity,
                 o.snapshotCountry,
                 o.snapshotPhone,
+                o.snapshotDeliveryMethod,
+                o.snapshotCourierId,
+                o.snapshotLockerId,
+                o.snapshotLockerName,
+                o.snapshotLockerAddress,
+                o.snapshotLat,
+                o.snapshotLng,
+                // canChange: true only before labels exist
+
                 // Expose companyId so frontend can use it to load couriers
                 companyId = o.fk_Companyid_Company,
             })
@@ -131,12 +142,12 @@ public class ClientOrdersController : ControllerBase
                 op.vatValue,
                 product = new
                 {
-                    id           = op.fk_Productid_Product,
-                    name         = op.fk_Productid_ProductNavigation.name,
-                    unit         = op.fk_Productid_ProductNavigation.unit,
+                    id = op.fk_Productid_Product,
+                    name = op.fk_Productid_ProductNavigation.name,
+                    unit = op.fk_Productid_ProductNavigation.unit,
                     externalCode = op.fk_Productid_ProductNavigation.externalCode,
-                    canReturn    = op.fk_Productid_ProductNavigation.canTheProductBeProductReturned,
-                    imageUrl     = op.fk_Productid_ProductNavigation.product_images
+                    canReturn = op.fk_Productid_ProductNavigation.canTheProductBeProductReturned,
+                    imageUrl = op.fk_Productid_ProductNavigation.product_images
                                     .OrderBy(pi => pi.sortOrder)
                                     .Select(pi => pi.url)
                                     .FirstOrDefault()
@@ -215,7 +226,11 @@ public class ClientOrdersController : ControllerBase
             order.snapshotCity,
             order.snapshotCountry,
             order.snapshotPhone,
-            // Expose companyId so frontend can load couriers for the return form
+            order.snapshotDeliveryMethod,   // ✅ add this
+            order.snapshotCourierId,        // ✅ add this
+            order.snapshotLockerId,         // ✅ add this
+            order.snapshotLockerName,       // ✅ add this
+            order.snapshotLockerAddress,    // ✅ add this
             companyId = order.companyId,
             hasLabels,
             canReturn,
@@ -225,9 +240,9 @@ public class ClientOrdersController : ControllerBase
         });
     }
 
-    // ── PUT /api/client/orders/{id}/contact ────────────────────────────────────
-    [HttpPut("orders/{id:int}/contact")]
-    public async Task<IActionResult> UpdateContact(int id, [FromBody] ClientContactUpdateDto dto)
+    // ── PUT /api/client/orders/{id}/delivery ────────────────────────────────────
+    [HttpPut("orders/{id:int}/delivery")]
+    public async Task<IActionResult> UpdateDelivery(int id, [FromBody] ClientDeliveryUpdateDto dto)
     {
         int companyId;
         try { companyId = GetCompanyId(); }
@@ -235,9 +250,12 @@ public class ClientOrdersController : ControllerBase
         var userId = GetUserId();
 
         var order = await _db.orders.FirstOrDefaultAsync(o =>
-            o.id_Orders == id && o.fk_Companyid_Company == companyId && o.fk_Clientid_Users == userId);
+            o.id_Orders == id &&
+            o.fk_Companyid_Company == companyId &&
+            o.fk_Clientid_Users == userId);
         if (order == null) return NotFound("Order not found.");
 
+        // Block changes once labels are generated
         var hasLabels = await _db.packages.AnyAsync(p =>
             p.labelFile != null &&
             _db.shipments.Any(s =>
@@ -246,24 +264,45 @@ public class ClientOrdersController : ControllerBase
         if (hasLabels)
             return Conflict("Cannot edit — shipping labels have already been generated.");
 
-        order.snapshotDeliveryAddress = dto.DeliveryAddress?.Trim();
-        order.snapshotCity            = dto.City?.Trim();
-        order.snapshotCountry         = dto.Country?.Trim();
-        order.snapshotPhone           = dto.Phone?.Trim();
+        var method = (dto.DeliveryMethod ?? order.snapshotDeliveryMethod ?? "HOME")
+                        .Trim().ToUpperInvariant();
 
-        var cc = await _db.client_companies.FirstOrDefaultAsync(x =>
-            x.fk_Companyid_Company == companyId && x.fk_Clientid_Users == userId);
-        if (cc != null)
+        if (method == "LOCKER")
         {
-            cc.deliveryAddress = dto.DeliveryAddress?.Trim();
-            cc.city            = dto.City?.Trim();
-            cc.country         = dto.Country?.Trim();
+            // Switching to locker — store locker info, clear home address
+            order.snapshotDeliveryMethod = "LOCKER";
+            order.snapshotCourierId = dto.CourierId ?? order.snapshotCourierId;
+            order.snapshotLockerId = dto.LockerId;
+            order.snapshotLockerName = dto.LockerName;
+            order.snapshotLockerAddress = dto.LockerAddress;
+            order.snapshotLat = dto.DeliveryLat;
+            order.snapshotLng = dto.DeliveryLng;
+            // Phone still useful for courier
+            order.snapshotPhone = dto.Phone?.Trim() ?? order.snapshotPhone;
+        }
+        else
+        {
+            // HOME delivery — update address snapshot only on THIS order
+            // Never touches client_companies — that's the profile address
+            order.snapshotDeliveryMethod = "HOME";
+            order.snapshotDeliveryAddress = dto.DeliveryAddress?.Trim();
+            order.snapshotCity = dto.City?.Trim();
+            order.snapshotCountry = dto.Country?.Trim();
+            order.snapshotPhone = dto.Phone?.Trim();
+            order.snapshotCourierId = dto.CourierId ?? order.snapshotCourierId;
+            // Clear locker info
+            order.snapshotLockerId = null;
+            order.snapshotLockerName = null;
+            order.snapshotLockerAddress = null;
+            order.snapshotLat = null;
+            order.snapshotLng = null;
         }
 
-        var user = await _db.users.FirstOrDefaultAsync(u => u.id_Users == userId);
-        if (user != null && !string.IsNullOrWhiteSpace(dto.Phone))
-            user.phoneNumber = dto.Phone.Trim();
-
+        if (order.status == 1)
+        {
+            order.status = 4; // Vykdomas
+        }
+await _notif.NotifyOrderStatusAsync(order.id_Orders, 4, companyId);
         await _db.SaveChangesAsync();
         return Ok();
     }
@@ -291,7 +330,7 @@ public class ClientOrdersController : ControllerBase
                 r.returnMethod,
                 r.clientNote,
                 r.employeeNote,
-                orderId   = r.fk_ordersid_orders,
+                orderId = r.fk_ordersid_orders,
                 itemCount = r.return_items.Count,
                 // Show return shipment labels if they exist
                 returnShipment = _db.shipments.AsNoTracking()
@@ -354,9 +393,9 @@ public class ClientOrdersController : ControllerBase
                              ? ri.reasonNavigation.name : ri.reason,
                     product = new
                     {
-                        id       = ri.fk_OrdersProductid_OrdersProductNavigation.fk_Productid_Product,
-                        name     = ri.fk_OrdersProductid_OrdersProductNavigation.fk_Productid_ProductNavigation.name,
-                        unit     = ri.fk_OrdersProductid_OrdersProductNavigation.fk_Productid_ProductNavigation.unit,
+                        id = ri.fk_OrdersProductid_OrdersProductNavigation.fk_Productid_Product,
+                        name = ri.fk_OrdersProductid_OrdersProductNavigation.fk_Productid_ProductNavigation.name,
+                        unit = ri.fk_OrdersProductid_OrdersProductNavigation.fk_Productid_ProductNavigation.unit,
                         imageUrl = ri.fk_OrdersProductid_OrdersProductNavigation.fk_Productid_ProductNavigation.product_images
                                       .OrderBy(pi => pi.sortOrder)
                                       .Select(pi => pi.url)
@@ -448,7 +487,7 @@ public class ClientOrdersController : ControllerBase
             return BadRequest("Invalid returnMethod. Allowed: CUSTOM, DPD, LP_EXPRESS, OMNIVA.");
 
         // Validate items belong to this order
-        var opIds    = dto.Items.Select(i => i.OrdersProductId).ToList();
+        var opIds = dto.Items.Select(i => i.OrdersProductId).ToList();
         var validOps = await _db.ordersproducts.AsNoTracking()
             .Where(op => opIds.Contains(op.id_OrdersProduct) && op.fk_Ordersid_Orders == id)
             .ToListAsync();
@@ -460,26 +499,26 @@ public class ClientOrdersController : ControllerBase
         {
             var ret = new product_return
             {
-                date                                   = DateTime.UtcNow,
+                date = DateTime.UtcNow,
                 fk_ReturnStatusTypeid_ReturnStatusType = 1, // "Sukurtas" / pending
-                fk_Clientid_Users                      = userId,
-                fk_Adminid_Users                       = null,
-                fk_Companyid_Company                   = companyId,
-                fk_ordersid_orders                     = id,
-                returnMethod                           = method,
-                clientNote                             = dto.ClientNote?.Trim(),
-                returnStreet                           = dto.ReturnStreet?.Trim(),
-                returnCity                             = dto.ReturnCity?.Trim(),
-                returnPostalCode                       = dto.ReturnPostalCode?.Trim(),
-                returnCountry                          = string.IsNullOrWhiteSpace(dto.ReturnCountry)
+                fk_Clientid_Users = userId,
+                fk_Adminid_Users = null,
+                fk_Companyid_Company = companyId,
+                fk_ordersid_orders = id,
+                returnMethod = method,
+                clientNote = dto.ClientNote?.Trim(),
+                returnStreet = dto.ReturnStreet?.Trim(),
+                returnCity = dto.ReturnCity?.Trim(),
+                returnPostalCode = dto.ReturnPostalCode?.Trim(),
+                returnCountry = string.IsNullOrWhiteSpace(dto.ReturnCountry)
                                                            ? "LT" : dto.ReturnCountry.Trim().ToUpper(),
                 // Store courier + locker info for when employee generates labels
-                fk_Courierid_Courier                   = dto.CourierId,
-                returnLockerId                         = dto.ReturnLockerId,
-                returnLockerName                       = dto.ReturnLockerName,
-                returnLockerAddress                    = dto.ReturnLockerAddress,
-                returnLat                              = dto.ReturnLat,
-                returnLng                              = dto.ReturnLng,
+                fk_Courierid_Courier = dto.CourierId,
+                returnLockerId = dto.ReturnLockerId,
+                returnLockerName = dto.ReturnLockerName,
+                returnLockerAddress = dto.ReturnLockerAddress,
+                returnLat = dto.ReturnLat,
+                returnLng = dto.ReturnLng,
             };
 
             _db.product_returns.Add(ret);
@@ -514,12 +553,12 @@ public class ClientOrdersController : ControllerBase
 
                 _db.return_items.Add(new return_item
                 {
-                    fk_Returnsid_Returns             = ret.id_Returns,
+                    fk_Returnsid_Returns = ret.id_Returns,
                     fk_OrdersProductid_OrdersProduct = item.OrdersProductId,
-                    quantity                         = item.Quantity,
-                    reason                           = null,
-                    reasonId                         = item.ReasonId,
-                    returnSubTotal                   = op.unitPrice * item.Quantity,
+                    quantity = item.Quantity,
+                    reason = null,
+                    reasonId = item.ReasonId,
+                    returnSubTotal = op.unitPrice * item.Quantity,
                     // Store image URLs as JSON array string
                     imageUrls = finalImageUrls.Count > 0
                         ? System.Text.Json.JsonSerializer.Serialize(finalImageUrls) : null,
@@ -535,5 +574,49 @@ public class ClientOrdersController : ControllerBase
             await tx.RollbackAsync();
             return StatusCode(500, ex.InnerException?.Message ?? ex.Message);
         }
+
     }
+
+    [HttpGet("couriers")]
+    public async Task<IActionResult> GetClientCouriers()
+    {
+        int companyId;
+        try { companyId = GetCompanyId(); }
+        catch (UnauthorizedAccessException ex) { return Unauthorized(ex.Message); }
+
+        // Get enabled integration keys for this company
+        var integrations = await _db.company_integrations
+            .AsNoTracking()
+            .Where(i => i.fk_Companyid_Company == companyId && i.enabled == true)
+            .Select(i => i.encryptedSecrets)
+            .ToListAsync();
+
+        var couriers = await _db.couriers
+            .AsNoTracking()
+            .Where(c =>
+                (c.fk_Companyid_Company == companyId) ||
+                (c.fk_Companyid_Company == null && (
+                    c.type == "CUSTOM" ||
+                    integrations.Contains(
+                        c.type == "DPD_PARCEL" || c.type == "DPD_HOME" ? "DPD" :
+                        c.type == "LP_EXPRESS_PARCEL" || c.type == "LP_EXPRESS_HOME" ? "LP_EXPRESS" :
+                        c.type == "OMNIVA_PARCEL" ? "OMNIVA" : ""
+                    )
+                ))
+            )
+            .OrderBy(c => c.name)
+            .Select(c => new
+            {
+                c.id_Courier,
+                c.name,
+                c.type,
+                c.deliveryPrice,
+                c.deliveryTermDays,
+                supportsLockers = c.type.EndsWith("_PARCEL"),
+            })
+            .ToListAsync();
+
+        return Ok(couriers);
+    }
+
 }

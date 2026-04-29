@@ -11,7 +11,7 @@ namespace Bakalauras.API.Dtos
         public bool countableItem { get; set; }
         public int categoryId { get; set; }
         public int groupId { get; set; }
-        public List<Microsoft.AspNetCore.Http.IFormFile>? images { get; set; }
+        public List<IFormFile>? images { get; set; }
         public string? keepImageIdsJson { get; set; }
         public string? imageOrderJson { get; set; }
         public int? primaryImageId { get; set; }
@@ -19,8 +19,12 @@ namespace Bakalauras.API.Dtos
 
     public class ImageOrderItem
     {
-        public string? type { get; set; } // "existing" | "new"
-        public int? id { get; set; } // for existing
-        public string? tempKey { get; set; } // for new (ignored server-side)
+        /// <summary>"existing" or "new"</summary>
+        public string? type { get; set; }
+        /// <summary>For existing images — the id_ProductImage value.</summary>
+        public int? id { get; set; }
+        /// <summary>For new images — ignored server-side, used by frontend only.</summary>
+        public string? tempKey { get; set; }
     }
+
 }

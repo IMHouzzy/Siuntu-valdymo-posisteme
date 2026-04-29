@@ -11,11 +11,12 @@ import { ordersApi } from "../../services/api";
 import NoImage from "../../images/no-camera.png";
 
 const API = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065";
+
 function OrdersList() {
     const navigate = useNavigate();
-    const [orders, setOrders] = useState([]);
+    const [orders, setOrders]           = useState([]);
     const [selectedOrder, setSelectedOrder] = useState(null);
-    const [q, setQ] = useState("");
+    const [q, setQ]         = useState("");
     const [status, setStatus] = useState("all");
     const { activeCompanyId } = useAuth();
 
@@ -26,7 +27,6 @@ function OrdersList() {
         ordersApi.getAll().then(setOrders).catch(console.error);
     }, [activeCompanyId]);
 
-    // REPLACE deleteOrder:
     const deleteOrder = async (p) => {
         if (!window.confirm(`Ištrinti užsakymą #${p.id_Orders}?`)) return;
         try {
@@ -58,12 +58,22 @@ function OrdersList() {
         );
         const s = q.trim().toLowerCase();
         if (!s) return byStatus;
-        return byStatus.filter((p) =>
-            [p.externalCode, p.id_Orders, p.creationDate, p.client?.email,
-            p.client?.name, p.client?.surname, p.client?.city, p.client?.country,
-            p.client?.deliveryAddress, p.products?.map(x => x.name).join(" "),
-            p.statusName, p.totalAmount]
-                .some(v => String(v ?? "").toLowerCase().includes(s))
+        return byStatus.filter((o) =>
+            [
+                o.id_Orders,
+                o.externalDocumentId,
+                o.client?.email,
+                o.client?.name,
+                o.client?.surname,
+                // Search delivery snapshot fields — not client.companyData address
+                o.snapshotDeliveryAddress,
+                o.snapshotCity,
+                o.snapshotCountry,
+                o.snapshotLockerName,
+                o.products?.map(x => x.name).join(" "),
+                o.statusName,
+                o.totalAmount,
+            ].some(v => String(v ?? "").toLowerCase().includes(s))
         );
     }, [orders, q, status]);
 
@@ -153,10 +163,10 @@ function OrdersList() {
         },
     ], [orders]);
 
-    // ── Drawer hero — totals strip ─────────────────────────────────────
+    // ── Drawer hero ───────────────────────────────────────────────────────────
     const orderHero = useMemo(() => {
         if (!selectedOrder) return null;
-        const o = selectedOrder;
+        const o   = selectedOrder;
         const vat = sumVatTotal(o);
 
         return (
@@ -164,59 +174,45 @@ function OrdersList() {
                 <div className="order-hero-header">
                     <div>
                         <div className="order-hero-title">Užsakymas #{o.id_Orders}</div>
-                        <div className="rd-subtitle"><span>Doc: {o.externalDocumentId || "—"}</span> </div>
+                        <div className="rd-subtitle"><span>Doc: {o.externalDocumentId || "—"}</span></div>
                     </div>
                     <div className="order-hero-actions">
                         <button className="rd-action-btn" title="Peržiūrėti"
                             onClick={() => navigate(`/orders/${o.id_Orders}/detail`)}>
                             <FiExternalLink size={18} />
                         </button>
-                        <button className="rd-action-btn" title="Redaguoti" onClick={() => navigate(`/orderEdit/${o.id_Orders}`)}>
+                        <button className="rd-action-btn" title="Redaguoti"
+                            onClick={() => navigate(`/orderEdit/${o.id_Orders}`)}>
                             <FiEdit size={18} />
                         </button>
                         {!o.hasShipment && (
-                            <button
-                                className="rd-action-btn"
-                                title="Registruoti siuntą"
+                            <button className="rd-action-btn" title="Registruoti siuntą"
                                 onClick={() => navigate(`/orders/${o.id_Orders}/shipment/new`)}>
                                 <FiTruck size={18} />
                             </button>
                         )}
-                        <button className="rd-action-btn danger" title="Ištrinti" onClick={() => deleteOrder(o)}>
+                        <button className="rd-action-btn danger" title="Ištrinti"
+                            onClick={() => deleteOrder(o)}>
                             <FiTrash2 size={18} />
                         </button>
                     </div>
                 </div>
 
-
-
-                {/* stats */}
                 <div className="order-stats-strip">
                     <div className="order-hero-stat">
                         <div className="order-hero-stat-label">Suma</div>
-                        <div className="order-hero-stat-value">
-                            {Number(o.totalAmount ?? 0).toFixed(2)} €
-                        </div>
+                        <div className="order-hero-stat-value">{Number(o.totalAmount ?? 0).toFixed(2)} €</div>
                     </div>
-
                     <div className="order-hero-divider" />
-
                     <div className="order-hero-stat">
                         <div className="order-hero-stat-label">PVM</div>
-                        <div className="order-hero-stat-value">
-                            {vat.toFixed(2)} €
-                        </div>
+                        <div className="order-hero-stat-value">{vat.toFixed(2)} €</div>
                     </div>
-
                     <div className="order-hero-divider" />
-
                     <div className="order-hero-stat">
                         <div className="order-hero-stat-label">Prekės</div>
-                        <div className="order-hero-stat-value">
-                            {o.products?.length ?? 0}
-                        </div>
+                        <div className="order-hero-stat-value">{o.products?.length ?? 0}</div>
                     </div>
-
                     <div className="order-hero-divider" />
                     <div className="order-hero-stat">
                         <div className="order-hero-stat-label">Būsena</div>
@@ -225,33 +221,49 @@ function OrdersList() {
                         </div>
                     </div>
                 </div>
-
             </div>
         );
     }, [selectedOrder]);
 
+    // ── Drawer sections ───────────────────────────────────────────────────────
     const drawerSections = useMemo(() => {
         if (!selectedOrder) return [];
         const o = selectedOrder;
 
         const orderRows = [
-            { label: "Užsakymo ID", value: o.id_Orders },
-            { label: "Dokumento ID", value: o.externalDocumentId || "—" },
-            { label: "Data", value: o.ordersDate ? new Date(o.ordersDate).toLocaleDateString("lt-LT") : "—" },
+            { label: "Užsakymo ID",      value: o.id_Orders },
+            { label: "Dokumento ID",     value: o.externalDocumentId || "—" },
+            { label: "Data",             value: o.ordersDate ? new Date(o.ordersDate).toLocaleDateString("lt-LT") : "—" },
             { label: "Apmokėjimo būdas", value: o.paymentMethod || "—" },
             { label: "Pristatymo kaina", value: o.deliveryPrice != null ? `${Number(o.deliveryPrice).toFixed(2)} €` : "—" },
         ];
 
-        const clientRows = o.client ? [
-            { label: "Vardas", value: `${o.client.name || ""} ${o.client.surname || ""}`.trim() || "—" },
+        // Delivery address from the ORDER snapshot — these are order-specific and
+        // may differ from the client's current profile address.
+        const isLocker = o.snapshotDeliveryMethod === "LOCKER";
+        const deliveryRows = o.client ? [
+            { label: "Vardas",    value: `${o.client.name || ""} ${o.client.surname || ""}`.trim() || "—" },
             { label: "El. paštas", value: o.client.email || "—" },
-            { label: "Adresas", value: o.client.companyData?.deliveryAddress || "—" },
-            { label: "Miestas", value: o.client.companyData?.city || "—" },
-            { label: "Šalis", value: o.client.companyData?.country || "—" },
-            { label: "PVM kodas", value: o.client.companyData?.vat || "—" },
+            // Delivery method label
+            { label: "Pristatymas", value: isLocker ? "Paštomatas" : "Kurjeriu / namo" },
+            ...(isLocker
+                ? [
+                    { label: "Paštomatas", value: o.snapshotLockerName || "—" },
+                    { label: "Adresas",    value: o.snapshotLockerAddress || "—" },
+                ]
+                : [
+                    { label: "Gatvė",   value: o.snapshotDeliveryAddress || "—" },
+                    { label: "Miestas", value: o.snapshotCity || "—" },
+                    { label: "Šalis",   value: o.snapshotCountry || "—" },
+                ]
+            ),
+            // Billing data — still from companyData
+            ...(o.client.companyData?.vat
+                ? [{ label: "PVM kodas", value: o.client.companyData.vat }]
+                : []
+            ),
         ] : [];
 
-        // Custom product rows — rendered using special class in CSS
         const productSection = {
             title: "Užsakytos prekės",
             rows: (o.products || []).length === 0 ? [] : [
@@ -268,10 +280,8 @@ function OrdersList() {
                                             <img src={NoImage} alt="No image" />
                                         )}
                                     </div>
-
                                     <span className="rd-product-name">{p.name || "Prekė"}</span>
                                     <span className="rd-product-qty">x{p.quantity || 0}</span>
-
                                     <span className="rd-product-price">
                                         {p.unitPrice != null ? `${Number(p.unitPrice).toFixed(2)} €` : "—"}
                                     </span>
@@ -286,7 +296,7 @@ function OrdersList() {
 
         return [
             { title: "Užsakymo informacija", rows: orderRows },
-            { title: "Kliento informacija", rows: clientRows, emptyText: "Nėra kliento duomenų." },
+            { title: "Kliento informacija",  rows: deliveryRows, emptyText: "Nėra kliento duomenų." },
             productSection,
         ];
     }, [selectedOrder]);

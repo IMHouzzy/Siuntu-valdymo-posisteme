@@ -1,5 +1,6 @@
 namespace Bakalauras.API.Dtos
 {
+
     public class OrderItemDto
     {
         public int ProductId { get; set; }
@@ -9,9 +10,10 @@ namespace Bakalauras.API.Dtos
     }
 
     /// <summary>
-    /// Write-only client info supplied inline when creating / editing an order.
-    /// This updates client_company for the active company.
-    /// ExternalClientId is intentionally absent — it is managed by the sync worker.
+    /// Optional delivery address override supplied when creating or editing an order.
+    /// Used ONLY to populate the order's snapshot fields — never writes to client_companies.
+    /// For billing fields (Vat, BankCode) staff can still pass them; they update client_companies
+    /// via a separate explicit call if needed.
     /// </summary>
     public class ClientInfoDto
     {
@@ -45,9 +47,23 @@ namespace Bakalauras.API.Dtos
         public int Status { get; set; }
         public int ClientUserId { get; set; }
         public int? ExternalDocumentId { get; set; }
+
+        // Delivery method snapshot fields
+        public int? CourierId { get; set; }
+        /// <summary>"HOME" or "LOCKER". Defaults to "HOME" if omitted.</summary>
+        public string? DeliveryMethod { get; set; }
+        public string? LockerId { get; set; }
+        public string? LockerName { get; set; }
+        public string? LockerAddress { get; set; }
+        public double? DeliveryLat { get; set; }
+        public double? DeliveryLng { get; set; }
+
         public List<OrderItemDto> Items { get; set; } = new();
 
-        /// <summary>Optional: update client address data at the same time as the order.</summary>
+        /// <summary>
+        /// Optional inline delivery address override for this specific order.
+        /// Populates the order's snapshot fields only — does NOT update client_companies.
+        /// </summary>
         public ClientInfoDto? ClientInfo { get; set; }
     }
 }

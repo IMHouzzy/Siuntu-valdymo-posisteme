@@ -10,6 +10,7 @@ import {
   FiLock,
   FiPackage,
   FiRotateCcw,
+  FiRefreshCw,
 } from "react-icons/fi";
 import { LuLayoutDashboard } from "react-icons/lu";
 import "../styles/SidebarLeft.css";
@@ -82,8 +83,17 @@ export default function SidebarLeft({ collapsed, onToggle }) {
           { label: "Kurti naudotoją", to: "/userAdd" },
         ],
       },
-    ];
 
+    ];
+    if (activeCompany?.id_Company) {
+      base.push({
+        type: "link",
+        id: "Būtent sinchronizacija",
+        label: "Būtent sinchronizacija",
+        icon: <FiRefreshCw />,
+        to: `/admin/company/${activeCompany.id_Company}/butent-sync`,
+      });
+    }
     if (canSeeCompaniesGroup) {
       base.push({
         type: "group",
@@ -96,7 +106,7 @@ export default function SidebarLeft({ collapsed, onToggle }) {
         ],
       });
     }
-    
+
 
     return base;
   }, [canSeeCompaniesGroup, canCreateCompany]);
@@ -117,7 +127,7 @@ export default function SidebarLeft({ collapsed, onToggle }) {
       companies.length > 1 &&
       !companySwitchLocked
     );
-  }, [ isMaster, companies, companySwitchLocked]);
+  }, [isMaster, companies, companySwitchLocked]);
 
   useEffect(() => {
     if (collapsed || !canSwitchCompany) setCompanyOpen(false);

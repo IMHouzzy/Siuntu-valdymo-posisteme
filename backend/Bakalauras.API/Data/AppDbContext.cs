@@ -351,6 +351,8 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => new { e.fk_Companyid_Company, e.externalDocumentId }, "UX_orders_company_externalDocumentId").IsUnique();
 
+            entity.HasIndex(e => e.snapshotCourierId, "fk_orders_courier");
+
             entity.Property(e => e.id_Orders).HasColumnType("int(11)");
             entity.Property(e => e.OrdersDate)
                 .HasDefaultValueSql("current_timestamp()")
@@ -361,7 +363,14 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.paymentMethod).HasMaxLength(255);
             entity.Property(e => e.snapshotCity).HasMaxLength(100);
             entity.Property(e => e.snapshotCountry).HasMaxLength(100);
+            entity.Property(e => e.snapshotCourierId).HasColumnType("int(11)");
             entity.Property(e => e.snapshotDeliveryAddress).HasMaxLength(255);
+            entity.Property(e => e.snapshotDeliveryMethod)
+                .HasMaxLength(20)
+                .HasComment("HOME or LOCKER");
+            entity.Property(e => e.snapshotLockerAddress).HasMaxLength(255);
+            entity.Property(e => e.snapshotLockerId).HasMaxLength(100);
+            entity.Property(e => e.snapshotLockerName).HasMaxLength(255);
             entity.Property(e => e.snapshotPhone).HasMaxLength(50);
             entity.Property(e => e.status).HasColumnType("int(11)");
 
@@ -374,6 +383,11 @@ public partial class AppDbContext : DbContext
                 .HasForeignKey(d => d.fk_Companyid_Company)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_orders_company");
+
+            entity.HasOne(d => d.snapshotCourier).WithMany(p => p.orders)
+                .HasForeignKey(d => d.snapshotCourierId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_orders_courier");
 
             entity.HasOne(d => d.statusNavigation).WithMany(p => p.orders)
                 .HasForeignKey(d => d.status)

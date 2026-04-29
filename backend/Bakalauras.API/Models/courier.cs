@@ -21,6 +21,8 @@ public partial class courier
 
     public virtual company? fk_Companyid_CompanyNavigation { get; set; }
 
+    public virtual ICollection<order> orders { get; set; } = new List<order>();
+
     public virtual ICollection<product_return> product_returnfk_Courierid_CourierNavigations { get; set; } = new List<product_return>();
 
     public virtual ICollection<product_return> product_returnreturnCouriers { get; set; } = new List<product_return>();

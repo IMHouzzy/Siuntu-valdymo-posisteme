@@ -1,3 +1,8 @@
+// pages/Returns/ReturnsList.jsx — fixed EvaluationForm submit
+// The only change: EvaluationForm.handleSubmit was calling r.ok / r.text()
+// on the already-parsed response returned by req() in api.js.
+// req() throws on error, so we just catch instead.
+
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import DataTable from "../../components/DataTable";
@@ -8,7 +13,7 @@ import "../../styles/UserPage.css";
 import "../../styles/ReturnsList.css";
 import {
     FiRotateCcw, FiExternalLink, FiPackage, FiUser,
-    FiMapPin, FiCheck, FiX, FiImage, FiBox, FiAlertCircle,
+    FiCheck, FiX, FiImage, FiAlertCircle,
     FiCalendar, FiMessageSquare, FiChevronDown, FiChevronUp,
 } from "react-icons/fi";
 import { useAuth } from "../../services/AuthContext";
@@ -17,23 +22,22 @@ import { returnsApi } from "../../services/api";
 
 const API = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065";
 
-
 // ── Status config ─────────────────────────────────────────────────────────────
 const RETURN_STATUS = {
-    1: { label: "Sukurtas", color: "var(--color-secondary)" },
-    2: { label: "Vertinamas", color: "var(--color-warning)" },
-    3: { label: "Gauta", color: "var(--color-warning)" },
-    4: { label: "Užbaigta", color: "var(--color-accent)" },
-    5: { label: "Patvirtinta", color: "var(--color-accent)" },
-    6: { label: "Atmesta", color: "var(--color-danger)" },
-    7: { label: "Etiketės paruoštos", color: "var(--color-primary)" },
+    1: { label: "Sukurtas",           color: "var(--color-secondary)" },
+    2: { label: "Vertinamas",         color: "var(--color-warning)"   },
+    3: { label: "Gauta",              color: "var(--color-warning)"   },
+    4: { label: "Užbaigta",           color: "var(--color-accent)"    },
+    5: { label: "Patvirtinta",        color: "var(--color-accent)"    },
+    6: { label: "Atmesta",            color: "var(--color-danger)"    },
+    7: { label: "Etiketės paruoštos", color: "var(--color-primary)"   },
 };
 
 const METHOD_LABELS = {
-    CUSTOM: "Įmonės kurjeris",
-    DPD: "DPD",
+    CUSTOM:     "Įmonės kurjeris",
+    DPD:        "DPD",
     LP_EXPRESS: "LP Express",
-    OMNIVA: "Omniva",
+    OMNIVA:     "Omniva",
 };
 
 function fmtDate(d) {
@@ -41,11 +45,9 @@ function fmtDate(d) {
     const dt = new Date(d);
     return isNaN(dt) ? "—" : dt.toLocaleDateString("lt-LT");
 }
-function fmtEur(v) {
-    return `€${Number(v ?? 0).toFixed(2)}`;
-}
+function fmtEur(v) { return `€${Number(v ?? 0).toFixed(2)}`; }
 
-// ── Item image gallery (used inside evaluation form) ──────────────────────────
+// ── Item image gallery ────────────────────────────────────────────────────────
 function ItemImages({ imageUrls, expanded, onToggle }) {
     let urls = [];
     if (typeof imageUrls === "string") {
@@ -86,7 +88,7 @@ function ItemImages({ imageUrls, expanded, onToggle }) {
 // ── Drawer hero ───────────────────────────────────────────────────────────────
 function ReturnHero({ ret, onNavigate }) {
     if (!ret) return null;
-    const cfg = RETURN_STATUS[ret.displayStatusId ?? ret.fk_ReturnStatusTypeid_ReturnStatusType] ?? { label: "—", color: "var(--color-text-muted)" };
+    const cfg   = RETURN_STATUS[ret.displayStatusId ?? ret.fk_ReturnStatusTypeid_ReturnStatusType] ?? { label: "—", color: "var(--color-text-muted)" };
     const total = (ret.items ?? []).reduce((s, i) => s + Number(i.returnSubTotal ?? 0), 0);
 
     return (
@@ -97,7 +99,9 @@ function ReturnHero({ ret, onNavigate }) {
                     <div className="rd-subtitle">
                         <span>Užsakymas #{ret.orderId ?? "—"}</span>
                         {ret.returnMethod && (
-                            <span className="rl-method-tag">{METHOD_LABELS[ret.returnMethod] ?? ret.returnMethod}</span>
+                            <span className="rl-method-tag">
+                                {METHOD_LABELS[ret.returnMethod] ?? ret.returnMethod}
+                            </span>
                         )}
                     </div>
                 </div>
@@ -143,14 +147,12 @@ function ReturnHero({ ret, onNavigate }) {
 }
 
 // ── Evaluation form ───────────────────────────────────────────────────────────
-// No manual status picker — status is auto-derived by the backend.
 function EvaluationForm({ ret, onDone }) {
-    // Per-item state: { [returnItemId]: { eval: true|false|null, comment: "" } }
     const [itemState, setItemState] = useState(() => {
         const init = {};
         (ret.items ?? []).forEach(item => {
             init[item.id_ReturnItem] = {
-                eval: item.evaluation != null ? !!item.evaluation : null,
+                eval:    item.evaluation != null ? !!item.evaluation : null,
                 comment: item.evaluationComment ?? "",
             };
         });
@@ -161,27 +163,22 @@ function EvaluationForm({ ret, onDone }) {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
 
-    const setItemEval = (itemId, val) =>
-        setItemState(prev => ({ ...prev, [itemId]: { ...prev[itemId], eval: val } }));
-    const setItemComment = (itemId, val) =>
-        setItemState(prev => ({ ...prev, [itemId]: { ...prev[itemId], comment: val } }));
-    const toggleImages = (itemId) =>
-        setExpandedImages(prev => ({ ...prev, [itemId]: !prev[itemId] }));
+    const setItemEval    = (id, val) => setItemState(prev => ({ ...prev, [id]: { ...prev[id], eval: val } }));
+    const setItemComment = (id, val) => setItemState(prev => ({ ...prev, [id]: { ...prev[id], comment: val } }));
+    const toggleImages   = (id) => setExpandedImages(prev => ({ ...prev, [id]: !prev[id] }));
 
-    // All items must have an evaluation before submit is enabled
     const allEvaluated = (ret.items ?? []).every(
-        item => itemState[item.id_ReturnItem]?.eval !== null && itemState[item.id_ReturnItem]?.eval !== undefined
+        item => itemState[item.id_ReturnItem]?.eval !== null &&
+                itemState[item.id_ReturnItem]?.eval !== undefined
     );
 
-    // Preview of what the auto-derived status will be
     const previewStatus = useMemo(() => {
         const items = ret.items ?? [];
-        if (!items.length) return null;
+        if (!items.length || !allEvaluated) return null;
         const allDeclined = items.every(i => itemState[i.id_ReturnItem]?.eval === false);
         const anyApproved = items.some(i => itemState[i.id_ReturnItem]?.eval === true);
-        if (!allEvaluated) return null;
         if (allDeclined) return { id: 6, ...RETURN_STATUS[6] };
-        if (anyApproved) return { id: 7, ...RETURN_STATUS[7] }; // optimistic — may be 5 if labels fail
+        if (anyApproved) return { id: 7, ...RETURN_STATUS[7] };
         return null;
     }, [itemState, ret.items, allEvaluated]);
 
@@ -189,27 +186,20 @@ function EvaluationForm({ ret, onDone }) {
         setSubmitting(true);
         setError("");
         try {
-            const itemEvals = (ret.items ?? []).map(item => ({
-                ReturnItemId: item.id_ReturnItem,
-                Evaluation: itemState[item.id_ReturnItem]?.eval ?? false,
-                EvaluationComment: itemState[item.id_ReturnItem]?.comment?.trim() || null,
-            }));
-
             const body = {
                 EmployeeNote: employeeNote.trim() || null,
-                Items: itemEvals,
+                Items: (ret.items ?? []).map(item => ({
+                    ReturnItemId:      item.id_ReturnItem,
+                    Evaluation:        itemState[item.id_ReturnItem]?.eval ?? false,
+                    EvaluationComment: itemState[item.id_ReturnItem]?.comment?.trim() || null,
+                })),
             };
 
-            const r = await returnsApi.evaluate(ret.id_Returns, body);
-
-            if (!r.ok) {
-                const txt = await r.text();
-                setError(txt || "Klaida išsaugant vertinimą.");
-                return;
-            }
+            // req() in api.js throws on error — result is already parsed data
+            await returnsApi.evaluate(ret.id_Returns, body);
             onDone?.();
-        } catch {
-            setError("Serverio klaida.");
+        } catch (e) {
+            setError(e.message || "Serverio klaida.");
         } finally {
             setSubmitting(false);
         }
@@ -221,18 +211,16 @@ function EvaluationForm({ ret, onDone }) {
                 <div className="rl-eval-error"><FiAlertCircle size={13} /> {error}</div>
             )}
 
-            {/* Per-item evaluation */}
             <div className="rl-eval-items">
                 {(ret.items ?? []).map((item, idx) => {
-                    const st = itemState[item.id_ReturnItem] ?? {};
-                    const name = item.product?.name ?? `Prekė ${idx + 1}`;
-                    const imgExpanded = !!expandedImages[item.id_ReturnItem];
+                    const st      = itemState[item.id_ReturnItem] ?? {};
+                    const name    = item.product?.name ?? `Prekė ${idx + 1}`;
+                    const imgExp  = !!expandedImages[item.id_ReturnItem];
 
                     return (
                         <div key={item.id_ReturnItem}
                             className={`rl-eval-item${st.eval === true ? " rl-eval-item--approved" : st.eval === false ? " rl-eval-item--declined" : ""}`}>
 
-                            {/* Product row */}
                             <div className="rl-eval-item-header">
                                 <div className={`rl-eval-item-img ${!item.product?.imageUrl ? "rl-eval-item-img--ph" : ""}`}>
                                     {item.product?.imageUrl
@@ -247,34 +235,27 @@ function EvaluationForm({ ret, onDone }) {
                                         {" · "}{fmtEur(item.returnSubTotal)}
                                         {item.reason && <span className="rl-eval-reason-tag">{item.reason}</span>}
                                     </div>
-                                    {/* Client images toggle */}
                                     <ItemImages
                                         imageUrls={item.imageUrls}
-                                        expanded={imgExpanded}
+                                        expanded={imgExp}
                                         onToggle={() => toggleImages(item.id_ReturnItem)}
                                     />
                                 </div>
                             </div>
 
-                            {/* Approve / Decline buttons */}
                             <div className="rl-eval-btns">
-                                <button
-                                    type="button"
+                                <button type="button"
                                     className={`rl-eval-btn rl-eval-btn--approve${st.eval === true ? " is-active" : ""}`}
-                                    onClick={() => setItemEval(item.id_ReturnItem, true)}
-                                >
+                                    onClick={() => setItemEval(item.id_ReturnItem, true)}>
                                     <FiCheck size={13} /> Priimti
                                 </button>
-                                <button
-                                    type="button"
+                                <button type="button"
                                     className={`rl-eval-btn rl-eval-btn--decline${st.eval === false ? " is-active" : ""}`}
-                                    onClick={() => setItemEval(item.id_ReturnItem, false)}
-                                >
+                                    onClick={() => setItemEval(item.id_ReturnItem, false)}>
                                     <FiX size={13} /> Atmesti
                                 </button>
                             </div>
 
-                            {/* Comment */}
                             <textarea
                                 className="rl-eval-comment"
                                 rows={2}
@@ -287,7 +268,6 @@ function EvaluationForm({ ret, onDone }) {
                 })}
             </div>
 
-            {/* General employee note */}
             <div className="rl-eval-note-wrap">
                 <label className="rl-eval-note-label">
                     <FiMessageSquare size={13} /> Bendras darbuotojo komentaras
@@ -301,7 +281,6 @@ function EvaluationForm({ ret, onDone }) {
                 />
             </div>
 
-            {/* Status preview */}
             {previewStatus && (
                 <div className="rl-eval-status-preview">
                     <span>Po pateikimo statusas bus:</span>
@@ -316,22 +295,13 @@ function EvaluationForm({ ret, onDone }) {
                 </div>
             )}
 
-            {/* Actions */}
             <div className="rl-eval-actions">
-                <button
-                    className="rl-eval-open-btn rl-eval-open-btn--cancel"
-                    type="button"
-                    onClick={() => onDone?.()}
-                    disabled={submitting}
-                >
+                <button className="rl-eval-open-btn rl-eval-open-btn--cancel" type="button"
+                    onClick={() => onDone?.()} disabled={submitting}>
                     <FiX size={14} /> Atšaukti
                 </button>
-                <button
-                    className="rl-eval-open-btn"
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={!allEvaluated || submitting}
-                >
+                <button className="rl-eval-open-btn" type="button"
+                    onClick={handleSubmit} disabled={!allEvaluated || submitting}>
                     {submitting
                         ? <span className="rl-spinner" />
                         : <><FiCheck size={14} /> Pateikti vertinimą</>
@@ -347,38 +317,32 @@ export default function ReturnsList() {
     const navigate = useNavigate();
     const { activeCompanyId } = useAuth();
 
-    const [returns, setReturns] = useState([]);
+    const [returns, setReturns]           = useState([]);
     const [selectedReturn, setSelectedReturn] = useState(null);
-    const [detailData, setDetailData] = useState(null);
+    const [detailData, setDetailData]     = useState(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
     const [showEvalForm, setShowEvalForm] = useState(false);
-    const [q, setQ] = useState("");
+    const [q, setQ]         = useState("");
     const [status, setStatus] = useState("all");
 
-    // ── Load list ─────────────────────────────────────────────────────────────
     const loadList = useCallback(() => {
         returnsApi.getAll().then(setReturns).catch(console.error);
     }, [activeCompanyId]);
 
     useEffect(() => {
-        setReturns([]);
-        setSelectedReturn(null);
-        setDetailData(null);
+        setReturns([]); setSelectedReturn(null); setDetailData(null);
         loadList();
     }, [loadList]);
 
-    // ── Load detail when row clicked ──────────────────────────────────────────
     useEffect(() => {
         if (!selectedReturn) { setDetailData(null); return; }
-        setLoadingDetail(true);
-        setShowEvalForm(false);
+        setLoadingDetail(true); setShowEvalForm(false);
         returnsApi.getOne(selectedReturn.id_Returns)
             .then(setDetailData)
             .catch(console.error)
             .finally(() => setLoadingDetail(false));
     }, [selectedReturn]);
 
-    // ── Open eval form → immediately call /evaluate/open ─────────────────────
     const openEvalForm = useCallback(async () => {
         if (!detailData) return;
         setShowEvalForm(true);
@@ -390,7 +354,6 @@ export default function ReturnsList() {
         } catch { /* non-critical */ }
     }, [detailData, loadList]);
 
-    // ── Status filter pills ───────────────────────────────────────────────────
     const statusFilters = useMemo(() => {
         const map = new Map();
         for (const r of returns) {
@@ -404,7 +367,6 @@ export default function ReturnsList() {
         return items;
     }, [returns]);
 
-    // ── Filter ────────────────────────────────────────────────────────────────
     const filtered = useMemo(() => {
         const byStatus = returns.filter(r =>
             status === "all" ? true : (r.statusName || "Nežinoma") === status
@@ -413,17 +375,14 @@ export default function ReturnsList() {
         if (!s) return byStatus;
         return byStatus.filter(r =>
             [r.id_Returns, r.orderId, r.clientName, r.clientEmail,
-            r.returnMethod, r.statusName, r.clientNote]
+             r.returnMethod, r.statusName, r.clientNote]
                 .some(v => String(v ?? "").toLowerCase().includes(s))
         );
     }, [returns, q, status]);
 
-    // ── Columns ───────────────────────────────────────────────────────────────
     const columns = useMemo(() => [
         {
-            key: "id",
-            header: "Grąžinimas",
-            sortable: true,
+            key: "id", header: "Grąžinimas", sortable: true,
             accessor: r => r.id_Returns,
             cell: (_v, r) => (
                 <div className="dt-cell-stack">
@@ -433,16 +392,12 @@ export default function ReturnsList() {
             ),
         },
         {
-            key: "date",
-            header: "Data",
-            sortable: true,
+            key: "date", header: "Data", sortable: true,
             accessor: r => r.date ? new Date(r.date) : null,
             cell: v => v ? v.toLocaleDateString("lt-LT") : "—",
         },
         {
-            key: "client",
-            header: "Klientas",
-            sortable: true,
+            key: "client", header: "Klientas", sortable: true,
             accessor: r => r.clientName ?? "",
             cell: (_v, r) => (
                 <div className="dt-cell-stack">
@@ -452,9 +407,7 @@ export default function ReturnsList() {
             ),
         },
         {
-            key: "method",
-            header: "Būdas",
-            sortable: true,
+            key: "method", header: "Būdas", sortable: true,
             accessor: r => r.returnMethod ?? "",
             cell: (_v, r) => (
                 <span className="rl-method-tag">
@@ -463,62 +416,52 @@ export default function ReturnsList() {
             ),
         },
         {
-            key: "items",
-            header: "Prekės",
-            sortable: true,
-            align: "right",
+            key: "items", header: "Prekės", sortable: true, align: "right",
             accessor: r => r.itemCount ?? 0,
             cell: v => v,
         },
         {
-            key: "total",
-            header: "Suma",
-            sortable: true,
-            align: "right",
+            key: "total", header: "Suma", sortable: true, align: "right",
             accessor: r => Number(r.totalAmount ?? 0),
             cell: (_v, r) => fmtEur(r.totalAmount),
         },
         {
-            key: "status",
-            header: "Būsena",
-            sortable: true,
+            key: "status", header: "Būsena", sortable: true,
             accessor: r => r.statusName ?? "",
             cell: (_v, r) => <StatusBadge status={r.statusName} />,
         },
     ], []);
 
-    // ── Drawer detail sections ────────────────────────────────────────────────
     const drawerSections = useMemo(() => {
         if (!detailData) return [];
         const d = detailData;
 
         const infoRows = [
-            { label: "Grąžinimo ID", value: d.id_Returns },
-            { label: "Užsakymas", value: d.orderId ? `#${d.orderId}` : "—" },
-            { label: "Data", value: fmtDate(d.date) },
+            { label: "Grąžinimo ID",    value: d.id_Returns },
+            { label: "Užsakymas",       value: d.orderId ? `#${d.orderId}` : "—" },
+            { label: "Data",            value: fmtDate(d.date) },
             { label: "Grąžinimo būdas", value: METHOD_LABELS[d.returnMethod] ?? d.returnMethod ?? "—" },
             ...(d.returnLockerId == null ? [{
                 label: "Adresas",
                 value: [d.returnStreet, d.returnCity, d.returnPostalCode, d.returnCountry]
                     .filter(Boolean).join(", ") || "—",
             }] : [
-                { label: "Paštomato ID", value: d.returnLockerId },
-                { label: "Paštomato pavadinimas", value: d.returnLockerName ?? "—" },
-                { label: "Paštomato adresas", value: d.returnLockerAddress ?? "—" },
+                { label: "Paštomato ID",        value: d.returnLockerId },
+                { label: "Paštomato pavadinimas", value: d.returnLockerName    ?? "—" },
+                { label: "Paštomato adresas",    value: d.returnLockerAddress  ?? "—" },
             ]),
         ];
 
         const clientRows = [
-            { label: "Vardas", value: d.clientName ?? "—" },
+            { label: "Vardas",    value: d.clientName  ?? "—" },
             { label: "El. paštas", value: d.clientEmail ?? "—" },
-            { label: "Telefonas", value: d.clientPhone ?? "—" },
+            { label: "Telefonas", value: d.clientPhone  ?? "—" },
         ];
 
         const noteRows = [];
-        if (d.clientNote) noteRows.push({ label: "Kliento pastaba", value: d.clientNote });
-        if (d.employeeNote) noteRows.push({ label: "Darbuotojo komentaras", value: d.employeeNote });
+        if (d.clientNote)   noteRows.push({ label: "Kliento pastaba",        value: d.clientNote });
+        if (d.employeeNote) noteRows.push({ label: "Darbuotojo komentaras",  value: d.employeeNote });
 
-        // Items — show product + client images
         const itemsSection = {
             title: "Grąžinamos prekės",
             rows: (d.items ?? []).length === 0 ? [] : [{
@@ -527,7 +470,7 @@ export default function ReturnsList() {
                     <div>
                         {(d.items ?? []).map((item, idx) => {
                             const evalCfg = item.evaluation === true
-                                ? { icon: FiCheck, color: "var(--color-accent)", label: "Priimta" }
+                                ? { icon: FiCheck, color: "var(--color-accent)",  label: "Priimta" }
                                 : item.evaluation === false
                                     ? { icon: FiX, color: "var(--color-danger)", label: "Atmesta" }
                                     : null;
@@ -547,7 +490,6 @@ export default function ReturnsList() {
                                             : <img src={NoImage} alt="No image" />
                                         }
                                     </div>
-
                                     <div className="rl-item-info">
                                         <div className="rl-item-name">{item.product?.name ?? "—"}</div>
                                         <div className="rl-item-meta">
@@ -556,9 +498,10 @@ export default function ReturnsList() {
                                             {item.reason && <span>· {item.reason}</span>}
                                         </div>
                                         {item.evaluationComment && (
-                                            <div className="rl-item-comment"><FiMessageSquare size={12} /> {item.evaluationComment}</div>
+                                            <div className="rl-item-comment">
+                                                <FiMessageSquare size={12} /> {item.evaluationComment}
+                                            </div>
                                         )}
-                                        {/* Client-uploaded images in detail view */}
                                         {imageUrls.length > 0 && (
                                             <div className="rl-img-grid rl-img-grid--detail">
                                                 {imageUrls.map((u, i) => {
@@ -572,7 +515,6 @@ export default function ReturnsList() {
                                             </div>
                                         )}
                                     </div>
-
                                     {evalCfg && (
                                         <div className="rl-eval-badge" style={{ "--ec": evalCfg.color }}>
                                             <evalCfg.icon size={11} /> {evalCfg.label}
@@ -589,19 +531,16 @@ export default function ReturnsList() {
 
         const sections = [
             { title: "Grąžinimo informacija", rows: infoRows },
-            { title: "Klientas", rows: clientRows },
+            { title: "Klientas",              rows: clientRows },
             itemsSection,
         ];
         if (noteRows.length) sections.push({ title: "Pastabos", rows: noteRows });
         return sections;
     }, [detailData]);
 
-    // ── Hero with eval button ─────────────────────────────────────────────────
     const heroWithEvalBtn = useMemo(() => {
         if (!detailData) return null;
-        // Don't show "Vertinti" button if already fully evaluated
         const alreadyDone = detailData.evaluationSubmitted;
-
         return (
             <div>
                 <ReturnHero ret={detailData} onNavigate={navigate} />
@@ -612,10 +551,8 @@ export default function ReturnsList() {
                                 <FiRotateCcw size={14} /> Vertinti grąžinimą
                             </button>
                         ) : (
-                            <button
-                                className="rl-eval-open-btn rl-eval-open-btn--cancel"
-                                onClick={() => setShowEvalForm(false)}
-                            >
+                            <button className="rl-eval-open-btn rl-eval-open-btn--cancel"
+                                onClick={() => setShowEvalForm(false)}>
                                 <FiX size={14} /> Uždaryti vertinimą
                             </button>
                         )}
@@ -625,7 +562,6 @@ export default function ReturnsList() {
         );
     }, [detailData, showEvalForm, navigate, openEvalForm]);
 
-    // ── Active drawer sections ────────────────────────────────────────────────
     const activeSections = useMemo(() => {
         if (showEvalForm && detailData) {
             return [{
@@ -637,7 +573,6 @@ export default function ReturnsList() {
                             ret={detailData}
                             onDone={() => {
                                 setShowEvalForm(false);
-                                // Reload detail + list
                                 setSelectedReturn(prev => ({ ...prev }));
                                 loadList();
                             }}
@@ -660,7 +595,6 @@ export default function ReturnsList() {
                 onFilterChange={setStatus}
                 connectBottom
             />
-
             <DataTable
                 columns={columns}
                 rows={filtered}
@@ -670,7 +604,6 @@ export default function ReturnsList() {
                 emptyText="Nėra grąžinimų"
                 initialSort={{ key: "date", dir: "desc" }}
             />
-
             <RightDrawer
                 variant="order"
                 open={!!selectedReturn}

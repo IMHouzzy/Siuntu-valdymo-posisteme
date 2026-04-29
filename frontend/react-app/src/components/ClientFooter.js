@@ -28,7 +28,7 @@ export default function ClientFooter({
           <Link to="/client" className="cf-link">
             <FiSearch size={13} /> Sekti siuntą
           </Link>
-          <Link to="/client/orders" className="cf-link">
+          <Link to="/profile#orders" className="cf-link">
             <FiShoppingBag size={13} /> Mano užsakymai
           </Link>
         </div>

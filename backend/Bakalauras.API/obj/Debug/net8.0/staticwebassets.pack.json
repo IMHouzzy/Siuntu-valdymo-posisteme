@@ -1,6 +1,30 @@
 {
   "Files": [
     {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\invoices\\1\\invoice_1.pdf",
+      "PackagePath": "staticwebassets\\invoices\\1\\invoice_1.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\invoices\\50\\invoice_50.pdf",
+      "PackagePath": "staticwebassets\\invoices\\50\\invoice_50.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\invoices\\51\\invoice_51.pdf",
+      "PackagePath": "staticwebassets\\invoices\\51\\invoice_51.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\invoices\\53\\invoice_53.pdf",
+      "PackagePath": "staticwebassets\\invoices\\53\\invoice_53.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\invoices\\62\\invoice_62.pdf",
+      "PackagePath": "staticwebassets\\invoices\\62\\invoice_62.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\invoices\\63\\invoice_63.pdf",
+      "PackagePath": "staticwebassets\\invoices\\63\\invoice_63.pdf"
+    },
+    {
       "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\invoices\\69\\invoice_69.pdf",
       "PackagePath": "staticwebassets\\invoices\\69\\invoice_69.pdf"
     },
@@ -19,6 +43,70 @@
     {
       "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\invoices\\73\\invoice_73.pdf",
       "PackagePath": "staticwebassets\\invoices\\73\\invoice_73.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\invoices\\75\\invoice_75.pdf",
+      "PackagePath": "staticwebassets\\invoices\\75\\invoice_75.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\invoices\\77\\invoice_77.pdf",
+      "PackagePath": "staticwebassets\\invoices\\77\\invoice_77.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\invoices\\78\\invoice_78.pdf",
+      "PackagePath": "staticwebassets\\invoices\\78\\invoice_78.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\invoices\\79\\invoice_79.pdf",
+      "PackagePath": "staticwebassets\\invoices\\79\\invoice_79.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\invoices\\80\\invoice_80.pdf",
+      "PackagePath": "staticwebassets\\invoices\\80\\invoice_80.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\invoices\\81\\invoice_81.pdf",
+      "PackagePath": "staticwebassets\\invoices\\81\\invoice_81.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\invoices\\82\\invoice_82.pdf",
+      "PackagePath": "staticwebassets\\invoices\\82\\invoice_82.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\invoices\\83\\invoice_83.pdf",
+      "PackagePath": "staticwebassets\\invoices\\83\\invoice_83.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\invoices\\85\\invoice_85.pdf",
+      "PackagePath": "staticwebassets\\invoices\\85\\invoice_85.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\invoices\\88\\invoice_88.pdf",
+      "PackagePath": "staticwebassets\\invoices\\88\\invoice_88.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\labels\\100\\label_1.pdf",
+      "PackagePath": "staticwebassets\\labels\\100\\label_1.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\labels\\100\\label_2.pdf",
+      "PackagePath": "staticwebassets\\labels\\100\\label_2.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\labels\\101\\label_1.pdf",
+      "PackagePath": "staticwebassets\\labels\\101\\label_1.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\labels\\101\\label_2.pdf",
+      "PackagePath": "staticwebassets\\labels\\101\\label_2.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\labels\\102\\label_1.pdf",
+      "PackagePath": "staticwebassets\\labels\\102\\label_1.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\labels\\102\\label_2.pdf",
+      "PackagePath": "staticwebassets\\labels\\102\\label_2.pdf"
     },
     {
       "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\labels\\16\\label_1.pdf",
@@ -401,6 +489,62 @@
       "PackagePath": "staticwebassets\\labels\\90\\label_2.pdf"
     },
     {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\labels\\91\\label_1.pdf",
+      "PackagePath": "staticwebassets\\labels\\91\\label_1.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\labels\\91\\label_2.pdf",
+      "PackagePath": "staticwebassets\\labels\\91\\label_2.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\labels\\92\\label_1.pdf",
+      "PackagePath": "staticwebassets\\labels\\92\\label_1.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\labels\\92\\label_2.pdf",
+      "PackagePath": "staticwebassets\\labels\\92\\label_2.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\labels\\93\\label_1.pdf",
+      "PackagePath": "staticwebassets\\labels\\93\\label_1.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\labels\\93\\label_2.pdf",
+      "PackagePath": "staticwebassets\\labels\\93\\label_2.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\labels\\94\\label_1.pdf",
+      "PackagePath": "staticwebassets\\labels\\94\\label_1.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\labels\\95\\label_1.pdf",
+      "PackagePath": "staticwebassets\\labels\\95\\label_1.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\labels\\96\\label_1.pdf",
+      "PackagePath": "staticwebassets\\labels\\96\\label_1.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\labels\\97\\label_1.pdf",
+      "PackagePath": "staticwebassets\\labels\\97\\label_1.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\labels\\98\\label_1.pdf",
+      "PackagePath": "staticwebassets\\labels\\98\\label_1.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\labels\\99\\label_1.pdf",
+      "PackagePath": "staticwebassets\\labels\\99\\label_1.pdf"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\signatures\\100\\signature_20260428131314.png",
+      "PackagePath": "staticwebassets\\signatures\\100\\signature_20260428131314.png"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\signatures\\100\\signature_20260428131315.png",
+      "PackagePath": "staticwebassets\\signatures\\100\\signature_20260428131315.png"
+    },
+    {
       "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\signatures\\64\\signature_20260323135227.png",
       "PackagePath": "staticwebassets\\signatures\\64\\signature_20260323135227.png"
     },
@@ -439,6 +583,10 @@
     {
       "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\signatures\\78\\signature_20260407080741.png",
       "PackagePath": "staticwebassets\\signatures\\78\\signature_20260407080741.png"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\signatures\\81\\signature_20260416060914.png",
+      "PackagePath": "staticwebassets\\signatures\\81\\signature_20260416060914.png"
     },
     {
       "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\signatures\\82\\signature_20260409083854.png",
@@ -497,6 +645,26 @@
       "PackagePath": "staticwebassets\\uploads\\companies\\3\\logo.png"
     },
     {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\companies\\4\\logo.png",
+      "PackagePath": "staticwebassets\\uploads\\companies\\4\\logo.png"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\12\\dda0f6a20d73434e93bdadd9a10ea611.jpg",
+      "PackagePath": "staticwebassets\\uploads\\products\\12\\dda0f6a20d73434e93bdadd9a10ea611.jpg"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\15\\4f3d1c511bce418fb27db49c23d29b3c.jpg",
+      "PackagePath": "staticwebassets\\uploads\\products\\15\\4f3d1c511bce418fb27db49c23d29b3c.jpg"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\16\\456dfc29194d4b889dfe5a48c27ecc9c.jpg",
+      "PackagePath": "staticwebassets\\uploads\\products\\16\\456dfc29194d4b889dfe5a48c27ecc9c.jpg"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\1\\089004e913384fbebdb1631434e8b0c8.jpg",
+      "PackagePath": "staticwebassets\\uploads\\products\\1\\089004e913384fbebdb1631434e8b0c8.jpg"
+    },
+    {
       "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\44\\0ee48a4b7c66494cbded200434dfb0ad.jpg",
       "PackagePath": "staticwebassets\\uploads\\products\\44\\0ee48a4b7c66494cbded200434dfb0ad.jpg"
     },
@@ -535,6 +703,10 @@
     {
       "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\44\\d442eeae51054e1cbdfefceb2ae7d56a.jpg",
       "PackagePath": "staticwebassets\\uploads\\products\\44\\d442eeae51054e1cbdfefceb2ae7d56a.jpg"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\45\\90b52b762315434da9e48bdf4bb60df9.jpg",
+      "PackagePath": "staticwebassets\\uploads\\products\\45\\90b52b762315434da9e48bdf4bb60df9.jpg"
     },
     {
       "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\products\\4\\0a5fbec150fa44c0b9a9f9e2c5fec253.jpg",
@@ -591,6 +763,18 @@
     {
       "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\returns\\12\\97eb0bb150b342b489498317f42d32cf.jpg",
       "PackagePath": "staticwebassets\\uploads\\returns\\12\\97eb0bb150b342b489498317f42d32cf.jpg"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\returns\\13\\1bc3e2d24808421ab38ec2124b84b1ab.jpg",
+      "PackagePath": "staticwebassets\\uploads\\returns\\13\\1bc3e2d24808421ab38ec2124b84b1ab.jpg"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\returns\\14\\5b007765b38a486ca731459beb458237.png",
+      "PackagePath": "staticwebassets\\uploads\\returns\\14\\5b007765b38a486ca731459beb458237.png"
+    },
+    {
+      "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\returns\\14\\e9c1aca7ef53494181e2add815c62c3c.jpg",
+      "PackagePath": "staticwebassets\\uploads\\returns\\14\\e9c1aca7ef53494181e2add815c62c3c.jpg"
     },
     {
       "Id": "C:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\backend\\Bakalauras.API\\wwwroot\\uploads\\returns\\6\\0c5b1c41113b4730958f950f6efc30ff.png",

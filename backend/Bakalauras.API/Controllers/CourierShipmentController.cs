@@ -15,7 +15,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Bakalauras.API.Services;
-
+using Bakalauras.API.Dtos;
 [ApiController]
 [Route("api/courier")]
 [Authorize]
@@ -66,7 +66,11 @@ public class CourierShipmentController : ControllerBase
 
         var shipments = await _db.shipments
             .AsNoTracking()
-            .Where(s => s.fk_Companyid_Company == companyId)
+            .Where(s =>
+                s.fk_Companyid_Company == companyId &&
+                (s.fk_Courierid_CourierNavigation == null ||
+                s.fk_Courierid_CourierNavigation.name != "DPD Paštomatas" &&
+                s.fk_Courierid_CourierNavigation.name != "DPD Kurjeris"))
             .Select(s => new
             {
                 s.id_Shipment,
@@ -86,6 +90,11 @@ public class CourierShipmentController : ControllerBase
                               && cc.fk_Clientid_Users == s.fk_Ordersid_OrdersNavigation.fk_Clientid_Users)
                     .Select(cc => cc.deliveryAddress + ", " + cc.city)
                     .FirstOrDefault(),
+                isReturn = s.shipment_statuses
+                    .OrderByDescending(ss => ss.date)
+                    .Select(ss => ss.fk_ShipmentStatusTypeid_ShipmentStatusTypeNavigation.name)
+                    .FirstOrDefault()
+                    .StartsWith("Grąžinimas"),
                 latestStatus = s.shipment_statuses
                     .OrderByDescending(ss => ss.date)
                     .Select(ss => new
@@ -99,7 +108,7 @@ public class CourierShipmentController : ControllerBase
                 packages = s.packages
                     .OrderBy(p => p.id_Package)
                     .Select(p => new { p.id_Package, p.trackingNumber, p.weight })
-                    .ToList()
+                    .ToList(),
             })
             .OrderByDescending(s => s.id_Shipment)
             .ToListAsync();
@@ -120,7 +129,12 @@ public class CourierShipmentController : ControllerBase
 
         var s = await _db.shipments
             .AsNoTracking()
-            .Where(x => x.id_Shipment == id && x.fk_Companyid_Company == companyId)
+            .Where(s =>
+            s.id_Shipment == id &&
+                s.fk_Companyid_Company == companyId &&
+                (s.fk_Courierid_CourierNavigation == null ||
+                s.fk_Courierid_CourierNavigation.name != "DPD Paštomatas" &&
+                s.fk_Courierid_CourierNavigation.name != "DPD Kurjeris"))
             .Select(x => new
             {
                 x.id_Shipment,
@@ -157,6 +171,11 @@ public class CourierShipmentController : ControllerBase
                         typeName = ss.fk_ShipmentStatusTypeid_ShipmentStatusTypeNavigation.name
                     })
                     .ToList(),
+                isReturn = x.shipment_statuses
+                    .OrderByDescending(ss => ss.date)
+                    .Select(ss => ss.fk_ShipmentStatusTypeid_ShipmentStatusTypeNavigation.name)
+                    .FirstOrDefault()
+                    .StartsWith("Grąžinimas"),
                 packages = x.packages
                     .OrderBy(p => p.id_Package)
                     .Select(p => new { p.id_Package, p.trackingNumber, p.weight, p.labelFile })

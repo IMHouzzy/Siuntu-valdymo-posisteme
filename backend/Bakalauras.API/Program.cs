@@ -22,8 +22,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // ── Services ──────────────────────────────────────────────────────────────────
 
-builder.Services.AddScoped<IEmailService,        SmtpEmailService>();
-builder.Services.AddScoped<IInvoiceService,      InvoiceService>();
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<CourierProviderFactory>();
@@ -33,7 +33,7 @@ builder.Services.AddHttpClient();
 // ── JWT auth — reads token from httpOnly cookie ───────────────────────────────
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-var jwtKey      = jwtSettings["Key"];
+var jwtKey = jwtSettings["Key"];
 
 if (string.IsNullOrWhiteSpace(jwtKey))
     throw new InvalidOperationException("Jwt:Key is missing in configuration.");
@@ -46,17 +46,17 @@ builder.Services
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer           = true,
-            ValidateAudience         = true,
-            ValidateLifetime         = true,
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
 
-            ValidIssuer      = jwtSettings["Issuer"],
-            ValidAudience    = jwtSettings["Audience"],
+            ValidIssuer = jwtSettings["Issuer"],
+            ValidAudience = jwtSettings["Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
 
             NameClaimType = System.Security.Claims.ClaimTypes.NameIdentifier,
-            ClockSkew     = TimeSpan.Zero,
+            ClockSkew = TimeSpan.Zero,
         };
 
         // ── Read JWT from the httpOnly cookie instead of Authorization header ─

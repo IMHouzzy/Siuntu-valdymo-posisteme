@@ -91,9 +91,21 @@
               "target": "Package",
               "version": "[2026.2.3, )"
             },
+            "SkiaSharp": {
+              "target": "Package",
+              "version": "[3.119.2, )"
+            },
             "Swashbuckle.AspNetCore": {
               "target": "Package",
               "version": "[6.4.0, )"
+            },
+            "ZXing.Net": {
+              "target": "Package",
+              "version": "[0.16.11, )"
+            },
+            "ZXing.Net.Bindings.SkiaSharp": {
+              "target": "Package",
+              "version": "[0.16.22, )"
             }
           },
           "imports": [

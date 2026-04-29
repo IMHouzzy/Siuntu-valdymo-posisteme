@@ -54,8 +54,8 @@ export default function ClientHeader() {
             Sekti siuntą
           </Link>
           <Link
-            to="/client/orders"
-            className={`ch-nav-link ${isActive("/client/orders") ? "ch-nav-link--active" : ""}`}
+            to="/client/profile#orders"
+            className={`ch-nav-link ${isActive("/client/profile#orders") ? "ch-nav-link--active" : ""}`}
             onClick={() => setMobileOpen(false)}
           >
             <FiShoppingBag size={15} />

@@ -1,0 +1,133 @@
+# Details
+
+Date : 2026-04-20 12:39:22
+
+Directory c:\\Users\\Ignas\\Desktop\\KTU\\VIII semestras\\Bakalauro baigiamasis projektas\\Siuntų valdymo posistemė\\frontend\\react-app
+
+Total : 118 files,  37161 codes, 941 comments, 2821 blanks, all 40923 lines
+
+[Summary](results.md) / Details / [Diff Summary](diff.md) / [Diff Details](diff-details.md)
+
+## Files
+| filename | language | code | comment | blank | total |
+| :--- | :--- | ---: | ---: | ---: | ---: |
+| [frontend/react-app/.env](/frontend/react-app/.env) | Dotenv | 2 | 0 | 0 | 2 |
+| [frontend/react-app/README.md](/frontend/react-app/README.md) | Markdown | 38 | 0 | 33 | 71 |
+| [frontend/react-app/package-lock.json](/frontend/react-app/package-lock.json) | JSON | 15,139 | 0 | 1 | 15,140 |
+| [frontend/react-app/package.json](/frontend/react-app/package.json) | JSON | 45 | 0 | 1 | 46 |
+| [frontend/react-app/public/index.html](/frontend/react-app/public/index.html) | HTML | 20 | 23 | 1 | 44 |
+| [frontend/react-app/public/manifest.json](/frontend/react-app/public/manifest.json) | JSON | 25 | 0 | 1 | 26 |
+| [frontend/react-app/src/App.css](/frontend/react-app/src/App.css) | PostCSS | 29 | 0 | 6 | 35 |
+| [frontend/react-app/src/App.js](/frontend/react-app/src/App.js) | JavaScript | 113 | 2 | 26 | 141 |
+| [frontend/react-app/src/App.test.js](/frontend/react-app/src/App.test.js) | JavaScript | 7 | 0 | 2 | 9 |
+| [frontend/react-app/src/components/AddButton.js](/frontend/react-app/src/components/AddButton.js) | JavaScript | 20 | 0 | 1 | 21 |
+| [frontend/react-app/src/components/ClientFooter.js](/frontend/react-app/src/components/ClientFooter.js) | JavaScript | 42 | 5 | 5 | 52 |
+| [frontend/react-app/src/components/ClientHeader.js](/frontend/react-app/src/components/ClientHeader.js) | JavaScript | 68 | 1 | 9 | 78 |
+| [frontend/react-app/src/components/ClientOrdersPage.js](/frontend/react-app/src/components/ClientOrdersPage.js) | JavaScript | 492 | 14 | 46 | 552 |
+| [frontend/react-app/src/components/CourierHeader.js](/frontend/react-app/src/components/CourierHeader.js) | JavaScript | 20 | 0 | 4 | 24 |
+| [frontend/react-app/src/components/DataTable.js](/frontend/react-app/src/components/DataTable.js) | JavaScript | 182 | 3 | 30 | 215 |
+| [frontend/react-app/src/components/DropdownMenu.js](/frontend/react-app/src/components/DropdownMenu.js) | JavaScript | 28 | 0 | 4 | 32 |
+| [frontend/react-app/src/components/Footer.js](/frontend/react-app/src/components/Footer.js) | JavaScript | 38 | 0 | 3 | 41 |
+| [frontend/react-app/src/components/FormPageLayout.js](/frontend/react-app/src/components/FormPageLayout.js) | JavaScript | 18 | 0 | 3 | 21 |
+| [frontend/react-app/src/components/LockerPicker.js](/frontend/react-app/src/components/LockerPicker.js) | JavaScript | 218 | 13 | 31 | 262 |
+| [frontend/react-app/src/components/Navbar.js](/frontend/react-app/src/components/Navbar.js) | JavaScript | 32 | 0 | 9 | 41 |
+| [frontend/react-app/src/components/ProfileNotifications.js](/frontend/react-app/src/components/ProfileNotifications.js) | JavaScript | 235 | 10 | 30 | 275 |
+| [frontend/react-app/src/components/ProtectedRoute.js](/frontend/react-app/src/components/ProtectedRoute.js) | JavaScript | 7 | 0 | 1 | 8 |
+| [frontend/react-app/src/components/ReturnFormModal.js](/frontend/react-app/src/components/ReturnFormModal.js) | JavaScript | 844 | 22 | 82 | 948 |
+| [frontend/react-app/src/components/RightDrawers/RightDrawerSidebar.js](/frontend/react-app/src/components/RightDrawers/RightDrawerSidebar.js) | JavaScript | 68 | 15 | 10 | 93 |
+| [frontend/react-app/src/components/SearchSelect.js](/frontend/react-app/src/components/SearchSelect.js) | JavaScript | 74 | 9 | 9 | 92 |
+| [frontend/react-app/src/components/ShipmentLabels.js](/frontend/react-app/src/components/ShipmentLabels.js) | JavaScript | 159 | 14 | 16 | 189 |
+| [frontend/react-app/src/components/ShipmentMap.js](/frontend/react-app/src/components/ShipmentMap.js) | JavaScript | 116 | 9 | 23 | 148 |
+| [frontend/react-app/src/components/SidebarLeft.js](/frontend/react-app/src/components/SidebarLeft.js) | JavaScript | 309 | 4 | 33 | 346 |
+| [frontend/react-app/src/components/SignInButtons.js](/frontend/react-app/src/components/SignInButtons.js) | JavaScript | 312 | 8 | 40 | 360 |
+| [frontend/react-app/src/components/SignInProfile.js](/frontend/react-app/src/components/SignInProfile.js) | JavaScript | 7 | 0 | 5 | 12 |
+| [frontend/react-app/src/components/SmartForm.js](/frontend/react-app/src/components/SmartForm.js) | JavaScript | 761 | 34 | 72 | 867 |
+| [frontend/react-app/src/components/StatusBadge.js](/frontend/react-app/src/components/StatusBadge.js) | JavaScript | 22 | 0 | 7 | 29 |
+| [frontend/react-app/src/components/TableToolbar.js](/frontend/react-app/src/components/TableToolbar.js) | JavaScript | 68 | 1 | 8 | 77 |
+| [frontend/react-app/src/components/header.js](/frontend/react-app/src/components/header.js) | JavaScript | 12 | 0 | 2 | 14 |
+| [frontend/react-app/src/components/routing/RequireAuth.js](/frontend/react-app/src/components/routing/RequireAuth.js) | JavaScript | 12 | 2 | 4 | 18 |
+| [frontend/react-app/src/components/routing/RequireRole.js](/frontend/react-app/src/components/routing/RequireRole.js) | JavaScript | 13 | 0 | 5 | 18 |
+| [frontend/react-app/src/index.css](/frontend/react-app/src/index.css) | PostCSS | 56 | 8 | 20 | 84 |
+| [frontend/react-app/src/index.js](/frontend/react-app/src/index.js) | JavaScript | 19 | 0 | 4 | 23 |
+| [frontend/react-app/src/layouts/AuthLayout.js](/frontend/react-app/src/layouts/AuthLayout.js) | JavaScript | 10 | 0 | 1 | 11 |
+| [frontend/react-app/src/layouts/ClientLayout.js](/frontend/react-app/src/layouts/ClientLayout.js) | JavaScript | 16 | 1 | 1 | 18 |
+| [frontend/react-app/src/layouts/CourierLayout.js](/frontend/react-app/src/layouts/CourierLayout.js) | JavaScript | 13 | 0 | 1 | 14 |
+| [frontend/react-app/src/layouts/StaffLayout.js](/frontend/react-app/src/layouts/StaffLayout.js) | JavaScript | 26 | 0 | 3 | 29 |
+| [frontend/react-app/src/pages/Courier/CourierShipmentDetail.js](/frontend/react-app/src/pages/Courier/CourierShipmentDetail.js) | JavaScript | 450 | 9 | 25 | 484 |
+| [frontend/react-app/src/pages/Courier/CourierShipmentsList.js](/frontend/react-app/src/pages/Courier/CourierShipmentsList.js) | JavaScript | 185 | 1 | 18 | 204 |
+| [frontend/react-app/src/pages/HomePage.js](/frontend/react-app/src/pages/HomePage.js) | JavaScript | 516 | 19 | 41 | 576 |
+| [frontend/react-app/src/pages/NotFoundPage.js](/frontend/react-app/src/pages/NotFoundPage.js) | JavaScript | 4 | 0 | 2 | 6 |
+| [frontend/react-app/src/pages/Returns/ReturnsList.js](/frontend/react-app/src/pages/Returns/ReturnsList.js) | JavaScript | 563 | 10 | 46 | 619 |
+| [frontend/react-app/src/pages/auth/ChangePasswordPage.js](/frontend/react-app/src/pages/auth/ChangePasswordPage.js) | JavaScript | 143 | 5 | 19 | 167 |
+| [frontend/react-app/src/pages/auth/ForgotPassword.js](/frontend/react-app/src/pages/auth/ForgotPassword.js) | JavaScript | 111 | 4 | 15 | 130 |
+| [frontend/react-app/src/pages/auth/Login.js](/frontend/react-app/src/pages/auth/Login.js) | JavaScript | 138 | 4 | 21 | 163 |
+| [frontend/react-app/src/pages/auth/Register.js](/frontend/react-app/src/pages/auth/Register.js) | JavaScript | 202 | 5 | 24 | 231 |
+| [frontend/react-app/src/pages/auth/ResetPassword.js](/frontend/react-app/src/pages/auth/ResetPassword.js) | JavaScript | 157 | 6 | 24 | 187 |
+| [frontend/react-app/src/pages/auth/authValidation.js](/frontend/react-app/src/pages/auth/authValidation.js) | JavaScript | 102 | 10 | 27 | 139 |
+| [frontend/react-app/src/pages/companyCrud/CompaniesList.js](/frontend/react-app/src/pages/companyCrud/CompaniesList.js) | JavaScript | 304 | 3 | 32 | 339 |
+| [frontend/react-app/src/pages/companyCrud/CompanyEdit.js](/frontend/react-app/src/pages/companyCrud/CompanyEdit.js) | JavaScript | 213 | 6 | 16 | 235 |
+| [frontend/react-app/src/pages/companyCrud/CompanyIntegrations.js](/frontend/react-app/src/pages/companyCrud/CompanyIntegrations.js) | JavaScript | 202 | 7 | 26 | 235 |
+| [frontend/react-app/src/pages/companyCrud/CompanyMembers.js](/frontend/react-app/src/pages/companyCrud/CompanyMembers.js) | JavaScript | 175 | 5 | 12 | 192 |
+| [frontend/react-app/src/pages/companyCrud/companyValidation.js](/frontend/react-app/src/pages/companyCrud/companyValidation.js) | JavaScript | 62 | 7 | 12 | 81 |
+| [frontend/react-app/src/pages/orderCrud/OrderAdd.js](/frontend/react-app/src/pages/orderCrud/OrderAdd.js) | JavaScript | 250 | 2 | 23 | 275 |
+| [frontend/react-app/src/pages/orderCrud/OrderDetailPage.js](/frontend/react-app/src/pages/orderCrud/OrderDetailPage.js) | JavaScript | 503 | 5 | 35 | 543 |
+| [frontend/react-app/src/pages/orderCrud/OrderEdit.js](/frontend/react-app/src/pages/orderCrud/OrderEdit.js) | JavaScript | 267 | 8 | 29 | 304 |
+| [frontend/react-app/src/pages/orderCrud/OrderPage.js](/frontend/react-app/src/pages/orderCrud/OrderPage.js) | JavaScript | 313 | 7 | 18 | 338 |
+| [frontend/react-app/src/pages/orderCrud/orderValidation.js](/frontend/react-app/src/pages/orderCrud/orderValidation.js) | JavaScript | 49 | 7 | 15 | 71 |
+| [frontend/react-app/src/pages/productCrud/ProductAdd.js](/frontend/react-app/src/pages/productCrud/ProductAdd.js) | JavaScript | 151 | 0 | 20 | 171 |
+| [frontend/react-app/src/pages/productCrud/ProductEdit.js](/frontend/react-app/src/pages/productCrud/ProductEdit.js) | JavaScript | 162 | 0 | 16 | 178 |
+| [frontend/react-app/src/pages/productCrud/ProductPage.js](/frontend/react-app/src/pages/productCrud/ProductPage.js) | JavaScript | 241 | 2 | 13 | 256 |
+| [frontend/react-app/src/pages/shipmentPages/ShipmentRegistration.js](/frontend/react-app/src/pages/shipmentPages/ShipmentRegistration.js) | JavaScript | 288 | 20 | 36 | 344 |
+| [frontend/react-app/src/pages/shipmentPages/ShipmentsPage.js](/frontend/react-app/src/pages/shipmentPages/ShipmentsPage.js) | JavaScript | 371 | 9 | 24 | 404 |
+| [frontend/react-app/src/pages/shipmentPages/shipmentValidation.js](/frontend/react-app/src/pages/shipmentPages/shipmentValidation.js) | JavaScript | 52 | 9 | 12 | 73 |
+| [frontend/react-app/src/pages/userCrud/Profile.js](/frontend/react-app/src/pages/userCrud/Profile.js) | JavaScript | 312 | 8 | 29 | 349 |
+| [frontend/react-app/src/pages/userCrud/TrackingPage.js](/frontend/react-app/src/pages/userCrud/TrackingPage.js) | JavaScript | 300 | 3 | 28 | 331 |
+| [frontend/react-app/src/pages/userCrud/UserAdd.js](/frontend/react-app/src/pages/userCrud/UserAdd.js) | JavaScript | 125 | 2 | 8 | 135 |
+| [frontend/react-app/src/pages/userCrud/UserEdit.js](/frontend/react-app/src/pages/userCrud/UserEdit.js) | JavaScript | 146 | 3 | 10 | 159 |
+| [frontend/react-app/src/pages/userCrud/UserHome.js](/frontend/react-app/src/pages/userCrud/UserHome.js) | JavaScript | 189 | 1 | 14 | 204 |
+| [frontend/react-app/src/pages/userCrud/UsersPage.js](/frontend/react-app/src/pages/userCrud/UsersPage.js) | JavaScript | 253 | 0 | 14 | 267 |
+| [frontend/react-app/src/pages/userCrud/userValidation.js](/frontend/react-app/src/pages/userCrud/userValidation.js) | JavaScript | 59 | 4 | 17 | 80 |
+| [frontend/react-app/src/reportWebVitals.js](/frontend/react-app/src/reportWebVitals.js) | JavaScript | 12 | 0 | 2 | 14 |
+| [frontend/react-app/src/services/AuthContext.js](/frontend/react-app/src/services/AuthContext.js) | JavaScript | 119 | 2 | 14 | 135 |
+| [frontend/react-app/src/services/CompanySwitchGuard.js](/frontend/react-app/src/services/CompanySwitchGuard.js) | JavaScript | 26 | 1 | 4 | 31 |
+| [frontend/react-app/src/services/api.js](/frontend/react-app/src/services/api.js) | JavaScript | 141 | 31 | 46 | 218 |
+| [frontend/react-app/src/setupTests.js](/frontend/react-app/src/setupTests.js) | JavaScript | 1 | 4 | 1 | 6 |
+| [frontend/react-app/src/styles/AddButton.css](/frontend/react-app/src/styles/AddButton.css) | PostCSS | 34 | 0 | 9 | 43 |
+| [frontend/react-app/src/styles/Auth.css](/frontend/react-app/src/styles/Auth.css) | PostCSS | 200 | 11 | 35 | 246 |
+| [frontend/react-app/src/styles/ClientFooter.css](/frontend/react-app/src/styles/ClientFooter.css) | PostCSS | 96 | 4 | 13 | 113 |
+| [frontend/react-app/src/styles/ClientHeader.css](/frontend/react-app/src/styles/ClientHeader.css) | PostCSS | 234 | 8 | 35 | 277 |
+| [frontend/react-app/src/styles/ClientOrdersPage.css](/frontend/react-app/src/styles/ClientOrdersPage.css) | PostCSS | 675 | 23 | 77 | 775 |
+| [frontend/react-app/src/styles/CompaniesList.css](/frontend/react-app/src/styles/CompaniesList.css) | PostCSS | 158 | 11 | 45 | 214 |
+| [frontend/react-app/src/styles/CompanyIntegrations.css](/frontend/react-app/src/styles/CompanyIntegrations.css) | PostCSS | 288 | 2 | 48 | 338 |
+| [frontend/react-app/src/styles/CompanyMembers.css](/frontend/react-app/src/styles/CompanyMembers.css) | PostCSS | 35 | 1 | 10 | 46 |
+| [frontend/react-app/src/styles/CourierHeader.css](/frontend/react-app/src/styles/CourierHeader.css) | PostCSS | 25 | 0 | 3 | 28 |
+| [frontend/react-app/src/styles/CourierLayout.css](/frontend/react-app/src/styles/CourierLayout.css) | PostCSS | 9 | 0 | 1 | 10 |
+| [frontend/react-app/src/styles/CourierPages.css](/frontend/react-app/src/styles/CourierPages.css) | PostCSS | 663 | 27 | 79 | 769 |
+| [frontend/react-app/src/styles/Dashboard.css](/frontend/react-app/src/styles/Dashboard.css) | PostCSS | 664 | 18 | 107 | 789 |
+| [frontend/react-app/src/styles/DataTable.css](/frontend/react-app/src/styles/DataTable.css) | PostCSS | 185 | 0 | 31 | 216 |
+| [frontend/react-app/src/styles/DropdownMenu.css](/frontend/react-app/src/styles/DropdownMenu.css) | PostCSS | 46 | 0 | 8 | 54 |
+| [frontend/react-app/src/styles/Footer.css](/frontend/react-app/src/styles/Footer.css) | PostCSS | 41 | 0 | 11 | 52 |
+| [frontend/react-app/src/styles/FormPageLayout.css](/frontend/react-app/src/styles/FormPageLayout.css) | PostCSS | 31 | 0 | 3 | 34 |
+| [frontend/react-app/src/styles/Header.css](/frontend/react-app/src/styles/Header.css) | PostCSS | 8 | 0 | 0 | 8 |
+| [frontend/react-app/src/styles/LockerPicker.css](/frontend/react-app/src/styles/LockerPicker.css) | PostCSS | 202 | 9 | 10 | 221 |
+| [frontend/react-app/src/styles/Navbar.css](/frontend/react-app/src/styles/Navbar.css) | PostCSS | 15 | 0 | 3 | 18 |
+| [frontend/react-app/src/styles/NotificationsPanel.css](/frontend/react-app/src/styles/NotificationsPanel.css) | PostCSS | 352 | 23 | 58 | 433 |
+| [frontend/react-app/src/styles/OrderDetail.css](/frontend/react-app/src/styles/OrderDetail.css) | PostCSS | 578 | 19 | 100 | 697 |
+| [frontend/react-app/src/styles/Profile.css](/frontend/react-app/src/styles/Profile.css) | PostCSS | 607 | 142 | 110 | 859 |
+| [frontend/react-app/src/styles/ReturnFormModal.css](/frontend/react-app/src/styles/ReturnFormModal.css) | PostCSS | 500 | 21 | 45 | 566 |
+| [frontend/react-app/src/styles/ReturnsList.css](/frontend/react-app/src/styles/ReturnsList.css) | PostCSS | 395 | 26 | 37 | 458 |
+| [frontend/react-app/src/styles/RightDrawerSidebar.css](/frontend/react-app/src/styles/RightDrawerSidebar.css) | PostCSS | 787 | 61 | 146 | 994 |
+| [frontend/react-app/src/styles/ShipmentLabels.css](/frontend/react-app/src/styles/ShipmentLabels.css) | PostCSS | 164 | 9 | 25 | 198 |
+| [frontend/react-app/src/styles/ShipmentMap.css](/frontend/react-app/src/styles/ShipmentMap.css) | PostCSS | 48 | 2 | 7 | 57 |
+| [frontend/react-app/src/styles/ShipmentRegistration.css](/frontend/react-app/src/styles/ShipmentRegistration.css) | PostCSS | 23 | 2 | 4 | 29 |
+| [frontend/react-app/src/styles/SidebarLeft.css](/frontend/react-app/src/styles/SidebarLeft.css) | PostCSS | 374 | 11 | 85 | 470 |
+| [frontend/react-app/src/styles/SignInButtons.css](/frontend/react-app/src/styles/SignInButtons.css) | PostCSS | 388 | 15 | 23 | 426 |
+| [frontend/react-app/src/styles/SmartForm.css](/frontend/react-app/src/styles/SmartForm.css) | PostCSS | 858 | 21 | 136 | 1,015 |
+| [frontend/react-app/src/styles/StatusBadge.css](/frontend/react-app/src/styles/StatusBadge.css) | PostCSS | 67 | 11 | 10 | 88 |
+| [frontend/react-app/src/styles/TableToolbar.css](/frontend/react-app/src/styles/TableToolbar.css) | PostCSS | 101 | 3 | 20 | 124 |
+| [frontend/react-app/src/styles/TrackingPage.css](/frontend/react-app/src/styles/TrackingPage.css) | PostCSS | 289 | 16 | 41 | 346 |
+| [frontend/react-app/src/styles/UserHome.css](/frontend/react-app/src/styles/UserHome.css) | PostCSS | 324 | 9 | 48 | 381 |
+| [frontend/react-app/src/styles/UserPage.css](/frontend/react-app/src/styles/UserPage.css) | PostCSS | 24 | 0 | 3 | 27 |
+| [frontend/react-app/src/styles/validation-styles.css](/frontend/react-app/src/styles/validation-styles.css) | PostCSS | 81 | 9 | 14 | 104 |
+
+[Summary](results.md) / Details / [Diff Summary](diff.md) / [Diff Details](diff-details.md)

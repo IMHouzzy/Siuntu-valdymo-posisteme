@@ -424,7 +424,7 @@ function ProductViewWidget({ items }) {
 export default function SmartForm({
   fields, initialValues = {}, patchValues = null,
   submitLabel = "Save", cancelLabel = "Cancel",
-  onSubmit, onCancel, onValuesChange, customFieldRenderers = {}, logoUploaderContext = {},
+  onSubmit, onCancel, onValuesChange, validate, customFieldRenderers = {}, logoUploaderContext = {},
 }) {
   const [values, setValues] = useState(() => ({ ...initialValues }));
   const [touched, setTouched] = useState({});
@@ -445,59 +445,163 @@ export default function SmartForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patchValues]);
 
-  const setField = (name, value) => setValues((prev) => { const next = { ...prev, [name]: value }; onValuesChange?.(next); return next; });
+  // FIXED: Call onValuesChange in useEffect after state update, not during
+  const prevValuesRef = useRef(values);
+  useEffect(() => {
+    if (prevValuesRef.current !== values) {
+      prevValuesRef.current = values;
+      onValuesChange?.(values);
+    }
+  }, [values, onValuesChange]);
+
+  const setField = (name, value) => setValues((prev) => ({ ...prev, [name]: value }));
   const markTouched = (name) => setTouched((p) => ({ ...p, [name]: true }));
 
   const setArrayRowField = (arrName, idx, fieldName, value) =>
-    setValues((prev) => { const arr = Array.isArray(prev[arrName]) ? prev[arrName] : []; const next = { ...prev, [arrName]: arr.map((row, i) => i === idx ? { ...row, [fieldName]: value } : row) }; onValuesChange?.(next); return next; });
-  const addArrayRow = (arrName, emptyRow) =>
-    setValues((prev) => { const arr = Array.isArray(prev[arrName]) ? prev[arrName] : []; const next = { ...prev, [arrName]: [...arr, { ...emptyRow }] }; onValuesChange?.(next); return next; });
-  const removeArrayRow = (arrName, idx, minRows = 0) =>
-    setValues((prev) => { const arr = Array.isArray(prev[arrName]) ? prev[arrName] : []; if (arr.length <= minRows) return prev; const next = { ...prev, [arrName]: arr.filter((_, i) => i !== idx) }; onValuesChange?.(next); return next; });
+    setValues((prev) => {
+      const arr = Array.isArray(prev[arrName]) ? prev[arrName] : [];
+      return { ...prev, [arrName]: arr.map((row, i) => i === idx ? { ...row, [fieldName]: value } : row) };
+    });
 
-  const errors = useMemo(() => {
+  const addArrayRow = (arrName, emptyRow) =>
+    setValues((prev) => {
+      const arr = Array.isArray(prev[arrName]) ? prev[arrName] : [];
+      return { ...prev, [arrName]: [...arr, { ...emptyRow }] };
+    });
+
+  const removeArrayRow = (arrName, idx, minRows = 0) =>
+    setValues((prev) => {
+      const arr = Array.isArray(prev[arrName]) ? prev[arrName] : [];
+      if (arr.length <= minRows) return prev;
+      return { ...prev, [arrName]: arr.filter((_, i) => i !== idx) };
+    });
+
+  // Built-in field validation (from field.required and field.validate)
+  // Built-in field validation (from field.required and field.validate)
+  const builtInErrors = useMemo(() => {
     const next = {};
-    const isEmpty = (v) => v == null || v === "" || (Array.isArray(v) && v.length === 0) || (typeof v === "number" && Number.isNaN(v));
+    const isEmpty = (v) =>
+      v == null ||
+      v === "" ||
+      (Array.isArray(v) && v.length === 0) ||
+      (typeof v === "number" && Number.isNaN(v));
+
     for (const f of fields) {
       const visible = f.visible ? f.visible(values) : true;
       if (!visible) continue;
+
+      // Handle array fields
       if (f.type === "array") {
         const arr = Array.isArray(values[f.name]) ? values[f.name] : [];
-        if (f.required && arr.length === 0) next[f.name] = "Required";
+        if (f.required && arr.length === 0) {
+          next[f.name] = "Privaloma įvesti";
+        }
+        // Validate each row
         arr.forEach((row, idx) => {
           (f.rowFields ?? []).forEach((rf) => {
             if (!(rf.visible ? rf.visible(row, values) : true)) return;
             const v = row?.[rf.name];
-            if (rf.required && isEmpty(v)) { next[`${f.name}[${idx}].${rf.name}`] = "Required"; return; }
-            if (typeof rf.validate === "function") { const msg = rf.validate(v, row, values); if (msg) next[`${f.name}[${idx}].${rf.name}`] = msg; }
+            if (rf.required && isEmpty(v)) {
+              next[`${f.name}[${idx}].${rf.name}`] = "Privaloma įvesti";
+              return;
+            }
+            if (typeof rf.validate === "function") {
+              const msg = rf.validate(v, row, values);
+              if (msg) next[`${f.name}[${idx}].${rf.name}`] = msg;
+            }
           });
         });
         continue;
       }
-      if (f.type === "map" || f.type === "product-view" || f.type === "display" || f.type === "locker-picker" || f.type === "courier-cards" || f.type === "packages") continue;
-      if (!f.name) continue;
-      const v = values[f.name];
-      if (f.required && isEmpty(v)) { next[f.name] = "Required"; continue; }
-      if (typeof f.validate === "function") { const msg = f.validate(v, values); if (msg) next[f.name] = msg; }
-      if (f.type === "map" || f.type === "product-view" || f.type === "display"
+
+      // Skip special types that don't need validation
+      if (f.type === "section" || f.type === "spacer" || f.type === "map"
+        || f.type === "product-view" || f.type === "display"
         || f.type === "locker-picker" || f.type === "courier-cards"
         || f.type === "packages" || f.type === "logo-uploader") continue;
+
+      if (!f.name) continue;
+
+      const v = values[f.name];
+      if (f.required && isEmpty(v)) {
+        next[f.name] = "Privaloma įvesti";
+        continue;
+      }
+      if (typeof f.validate === "function") {
+        const msg = f.validate(v, values);
+        if (msg) next[f.name] = msg;
+      }
     }
     return next;
   }, [fields, values]);
 
-  const canSubmit = Object.keys(errors).length === 0;
+  // Custom validation (from validate prop)
+  const customErrors = useMemo(() => {
+    return validate ? validate(values) : {};
+  }, [validate, values]);
+
+  // Combine ALL errors
+  const allErrors = useMemo(() => {
+    return { ...builtInErrors, ...customErrors };
+  }, [builtInErrors, customErrors]);
+
+  // ✅ FIXED: Check ALL errors before allowing submit
+  const canSubmit = useMemo(() => {
+    return Object.keys(allErrors).length === 0;
+  }, [allErrors]);
+
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Mark all fields as touched
     const t = {};
     fields.forEach((f) => {
-      if (f.type === "array") { const arr = Array.isArray(values[f.name]) ? values[f.name] : []; (f.rowFields ?? []).forEach((rf) => { arr.forEach((_, idx) => { if (rf.name) t[`${f.name}[${idx}].${rf.name}`] = true; }); }); }
+      if (f.type === "array") {
+        const arr = Array.isArray(values[f.name]) ? values[f.name] : [];
+        (f.rowFields ?? []).forEach((rf) => {
+          arr.forEach((_, idx) => {
+            if (rf.name) t[`${f.name}[${idx}].${rf.name}`] = true;
+          });
+        });
+      }
       else if (f.name) t[f.name] = true;
     });
-    setTouched(t);
-    if (!canSubmit) return;
-    try { setSubmitting(true); await onSubmit?.(values); } finally { setSubmitting(false); }
+
+    // Mark all error fields as touched
+    setTouched((prev) => {
+      const touched = { ...prev, ...t };
+      Object.keys(allErrors).forEach((k) => (touched[k] = true));
+      return touched;
+    });
+
+    // ✅ PREVENT submission if ANY errors exist
+    if (Object.keys(allErrors).length > 0) {
+      console.warn("Form validation failed:", allErrors);
+
+      // Optional: Scroll to first error
+      const firstErrorField = Object.keys(allErrors)[0];
+      const element = document.querySelector(`[name="${firstErrorField}"]`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.focus();
+      }
+
+      return; // Stop here - don't submit
+    }
+
+    try {
+      setSubmitting(true);
+      await onSubmit?.(values);
+    }
+    catch (error) {
+      console.error("Form submission error:", error);
+      alert(error.message || "Nepavyko išsaugoti. Bandykite dar kartą.");
+    }
+    finally {
+      setSubmitting(false);
+    }
   };
 
   const renderInput = (f, value, err, disabled, onChange, onBlur) => {
@@ -535,7 +639,6 @@ export default function SmartForm({
                   {c.deliveryTermDays && <span>{c.deliveryTermDays} d.</span>}
                   {c.isOwn && <span className="sf-courier-own">★ Jūsų</span>}
                 </div>
-                {c.supportsLockers && <span className="sf-courier-tag">📦 Paštomatas</span>}
               </button>
             );
           })}
@@ -543,7 +646,7 @@ export default function SmartForm({
       );
     }
     if (f.type === "logo-uploader") {
-      const {  isCreate, companyId: ctxCompanyId } = logoUploaderContext;
+      const { isCreate, companyId: ctxCompanyId } = logoUploaderContext;
       return (
         <LogoUploaderWidget
           currentUrl={value}
@@ -622,7 +725,26 @@ export default function SmartForm({
     }
     if (f.type === "searchselect") return <SearchSelect value={value} options={f.options ?? []} placeholder={f.placeholder ?? "Pasirinkite..."} onChange={(val) => onChange(val)} />;
     if (f.type === "checkbox") return <label className="sf-check"><input type="checkbox" checked={!!value} disabled={disabled} onChange={(e) => onChange(e.target.checked)} onBlur={onBlur} /><span>{f.help ?? ""}</span></label>;
-    return <input className={`sf-input ${err ? "is-error" : ""}`} type={f.type || "text"} placeholder={f.placeholder} value={value} disabled={disabled} onBlur={onBlur} onChange={(e) => { const raw = e.target.value; if (f.type === "number") onChange(raw === "" ? "" : Number(raw)); else onChange(raw); }} />;
+    return (
+      <input
+        className={`sf-input ${err ? "is-error" : ""}`}
+        type={f.type || "text"}
+        step={f.type === "number" ? "any" : undefined}
+        min={f.type === "number" ? 0 : undefined}
+        placeholder={f.placeholder}
+        value={value}
+        disabled={disabled}
+        onBlur={onBlur}
+        onChange={(e) => {
+          const raw = e.target.value;
+          if (f.type === "number") {
+            onChange(raw === "" ? "" : Math.max(0, Number(raw)));
+          } else {
+            onChange(raw);
+          }
+        }}
+      />
+    );
   };
 
   return (
@@ -658,7 +780,7 @@ export default function SmartForm({
           if (f.type === "array") {
             const arr = Array.isArray(values[f.name]) ? values[f.name] : [];
             const rowFields = f.rowFields ?? []; const minRows = f.minRows ?? 0;
-            const arrayErr = touched[f.name] ? errors[f.name] : null;
+            const arrayErr = touched[f.name] ? allErrors[f.name] : null;
             return (
               <div key={f.name} className="sf-field span-2">
                 <label className="sf-label">{f.label}{f.required ? <span className="sf-req">*</span> : null}</label>
@@ -670,7 +792,7 @@ export default function SmartForm({
                         {rowFields.map((rf) => {
                           if (!(rf.visible ? rf.visible(row, values) : true)) return null;
                           const key = `${f.name}[${rowIdx}].${rf.name}`;
-                          const rowErr = touched[key] ? errors[key] : null;
+                          const rowErr = touched[key] ? allErrors[key] : null;
                           const dis = rf.disabled ? rf.disabled(row, values) : false;
                           return (
                             <div key={key} className={`sf-field ${rf.colSpan === 2 ? "span-2" : ""}`} style={rf.colSpan === 2 ? { gridColumn: "span 2" } : undefined}>
@@ -726,7 +848,7 @@ export default function SmartForm({
           if (!f.name) return null;
           const disabled = f.disabled ? f.disabled(values) : false;
           const value = typeof f.getValue === "function" ? f.getValue(values) : (values[f.name] ?? "");
-          const err = touched[f.name] ? errors[f.name] : null;
+          const err = touched[f.name] ? allErrors[f.name] : null;
           return (
             <div key={f.name} className={`sf-field ${f.colSpan === 2 ? "span-2" : ""}`}>
               {f.label ? <label className="sf-label">{f.label}{f.required ? <span className="sf-req">*</span> : null}</label> : null}

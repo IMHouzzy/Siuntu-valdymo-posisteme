@@ -172,3 +172,75 @@
     max-width: 400px;
     padding: 20px;
 }
+
+/* Auth Form Validation Styles */
+/* Add these to your existing Auth.css file */
+
+/* Error state for input fields */
+.form-group input.error {
+    border-color: var(--color-danger, #dc2626);
+    background-color: rgba(220, 38, 38, 0.05);
+}
+
+.form-group input.error:focus {
+    border-color: var(--color-danger, #dc2626);
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+/* Error text below input */
+.form-group .error-text {
+    display: block;
+    color: var(--color-danger, #dc2626);
+    font-size: 0.75rem;
+    margin-top: 4px;
+    line-height: 1.2;
+}
+
+/* Help text below input */
+.form-group .help-text {
+    display: block;
+    color: var(--color-text-muted, #6b7280);
+    font-size: 0.75rem;
+    margin-top: 4px;
+    line-height: 1.2;
+}
+
+/* Submit button disabled state */
+.login-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Success state for input (optional) */
+.form-group input.success {
+    border-color: var(--color-accent, #10b981);
+}
+
+/* Form group spacing */
+.form-group {
+    margin-bottom: 16px;
+    position: relative;
+}
+
+/* Ensure error/help text doesn't affect layout */
+.form-group input {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Animation for error text appearance */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.form-group .error-text,
+.form-group .help-text {
+    animation: slideDown 0.2s ease-out;
+}

@@ -22,24 +22,41 @@ public class TrackingController : ControllerBase
     //   { type: "dpd",    dpdUrl: "https://..." }                    — redirect client to DPD
     //   { type: "custom", shipment: { ... }, statuses: [...] }       — show internal timeline
     //   404 if not found
-    [HttpGet("{trackingNumber}")]
-    public async Task<IActionResult> Track(string trackingNumber)
+    [HttpGet("{identifier}")]
+    public async Task<IActionResult> Track(string identifier)
     {
-        if (string.IsNullOrWhiteSpace(trackingNumber))
-            return BadRequest("Tracking number is required.");
+        if (string.IsNullOrWhiteSpace(identifier))
+            return BadRequest("Tracking identifier is required.");
 
-        // Look up the package by its tracking number
-        var package = await _db.packages
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.trackingNumber == trackingNumber);
+        package? package = null;
+        int shipmentId = 0;
+
+        // CASE 1: Shipment ID
+        if (int.TryParse(identifier, out var parsedId))
+        {
+            shipmentId = parsedId;
+
+            package = await _db.packages
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.fk_Shipmentid_Shipment == shipmentId);
+        }
+        else
+        {
+            // CASE 2: Tracking Number
+            package = await _db.packages
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.trackingNumber == identifier);
+
+            if (package != null)
+                shipmentId = package.fk_Shipmentid_Shipment;
+        }
 
         if (package == null)
-            return NotFound(new { message = "Siunta su šiuo numeriu nerasta." });
+            return NotFound(new { message = "Siunta nerasta." });
 
-        // Load the parent shipment with courier info
         var shipment = await _db.shipments
             .AsNoTracking()
-            .Where(s => s.id_Shipment == package.fk_Shipmentid_Shipment)
+            .Where(s => s.id_Shipment == shipmentId)
             .Select(s => new
             {
                 s.id_Shipment,
@@ -70,23 +87,19 @@ public class TrackingController : ControllerBase
         if (shipment == null)
             return NotFound(new { message = "Siunta nerasta." });
 
-        // Determine if this is a provider (DPD/LP Express) shipment
         var courierType = shipment.courier?.type ?? "CUSTOM";
         var isProvider = CourierProviderFactory.GetIntegrationKey(courierType) != null;
 
         if (isProvider)
         {
-            // Use the package's own tracking number for DPD redirect
-            // (each package has its own DPD parcel number)
-            var dpdParcel = trackingNumber;
-            var dpdUrl = $"https://www.dpdgroup.com/lt/mydpd/my-parcels/search?lang=lt&parcelNumber={Uri.EscapeDataString(dpdParcel)}";
+            var parcelNumber = package.trackingNumber;
 
             return Ok(new
             {
                 type = "dpd",
-                dpdUrl,
+                dpdUrl = $"https://www.dpdgroup.com/lt/mydpd/my-parcels/search?lang=lt&parcelNumber={Uri.EscapeDataString(parcelNumber)}",
                 courierName = shipment.courier?.name,
-                trackingNumber
+                trackingNumber = parcelNumber
             });
         }
 
@@ -118,7 +131,7 @@ public class TrackingController : ControllerBase
                 statusName = o.statusNavigation.name,
                 client = new
                 {
-                    name    = o.fk_Clientid_UsersNavigation.name,
+                    name = o.fk_Clientid_UsersNavigation.name,
                     surname = o.fk_Clientid_UsersNavigation.surname,
                 },
                 companyId = o.fk_Companyid_Company
@@ -133,7 +146,7 @@ public class TrackingController : ControllerBase
                 .AsNoTracking()
                 .Where(x =>
                     x.fk_Companyid_Company == order.companyId &&
-                    x.fk_Clientid_Users    == _db.orders
+                    x.fk_Clientid_Users == _db.orders
                         .Where(o2 => o2.id_Orders == shipment.fk_Ordersid_Orders)
                         .Select(o2 => o2.fk_Clientid_Users)
                         .FirstOrDefault())
@@ -148,7 +161,7 @@ public class TrackingController : ControllerBase
         return Ok(new
         {
             type = "custom",
-            trackingNumber,
+            trackingNumber = package.trackingNumber,
             courierName = shipment.courier?.name ?? "Įmonės kurjeris",
             shipment = new
             {

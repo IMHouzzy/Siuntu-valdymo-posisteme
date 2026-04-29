@@ -103,7 +103,7 @@
 .sb-dropdown-divider {
   height: 1px;
   background: var(--color-border);
-  margin: 0 var(--space-md);
+
 }
 .sb-dropdown-item {
   display: flex;

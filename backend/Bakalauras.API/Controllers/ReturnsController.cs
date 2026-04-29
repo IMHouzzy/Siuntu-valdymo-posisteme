@@ -1,15 +1,14 @@
 // Controllers/ReturnsController.cs
-// Updated logic:
-//   1. GET /api/returns/all  — hides status "Atmesta" (6) if evaluation not yet submitted
-//      (i.e. no item has been evaluated yet = fk_Adminid_Users is null)
-//   2. GET /api/returns/{id} — same visibility rule
-//   3. PUT /api/returns/{id}/evaluate/open  — called when worker OPENS the form → sets status to 2 "Vertinamas"
-//   4. PUT /api/returns/{id}/evaluate  — on submit:
-//        • auto-derives status from item evaluations (no manual status picker needed)
-//        • all declined  → 6 "Atmesta"
-//        • any approved  → 5 "Patvirtinta"
-//        • then creates a return shipment + generates labels (custom or DPD)
-//        • if labels created → 7 "Etiketės paruoštos"
+//
+// Address logic for return labels:
+//   SENDER  = the client returning the goods.
+//             Uses ret.returnStreet/City/PostalCode (what they filled in on the return form).
+//             Falls back to their current profile address in client_companies only if
+//             they left the return address blank.
+//
+//   RECIPIENT = the COMPANY receiving the returned goods.
+//               Uses company.returnStreet/City/PostalCode (the company's structured return address).
+//               Falls back to company.shippingStreet then company.address — never a random value.
 
 using Bakalauras.API.Models;
 using Bakalauras.API.Services;
@@ -26,16 +25,17 @@ public class ReturnsController : ControllerBase
     private readonly IWebHostEnvironment _env;
     private readonly CourierProviderFactory _providerFactory;
     private readonly INotificationService _notif;
+
     public ReturnsController(
         AppDbContext db,
         IWebHostEnvironment env,
         CourierProviderFactory providerFactory,
         INotificationService notif)
     {
-        _db = db;
-        _env = env;
+        _db              = db;
+        _env             = env;
         _providerFactory = providerFactory;
-        _notif = notif;
+        _notif           = notif;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -59,9 +59,8 @@ public class ReturnsController : ControllerBase
         return role is "OWNER" or "ADMIN" or "STAFF";
     }
 
-    // ── GET /api/returns/all ─────────────────────────────────────────────────
-    // Rule: if evaluation has NOT been submitted yet (fk_Adminid_Users is null),
-    // never expose status 6 ("Atmesta") to the list — it stays as "Sukurtas" visually.
+    // ── GET /api/returns/all ──────────────────────────────────────────────────
+
     [HttpGet("all")]
     public async Task<IActionResult> ListAll()
     {
@@ -80,7 +79,6 @@ public class ReturnsController : ControllerBase
             {
                 r.id_Returns,
                 r.date,
-                // If no admin has touched it yet, clamp to status 1 so "Atmesta" never leaks
                 displayStatusId = r.fk_Adminid_Users == null
                     ? 1
                     : r.fk_ReturnStatusTypeid_ReturnStatusType,
@@ -91,13 +89,13 @@ public class ReturnsController : ControllerBase
                 r.returnMethod,
                 r.clientNote,
                 r.employeeNote,
-                orderId = r.fk_ordersid_orders,
-                itemCount = r.return_items.Count,
-                totalAmount = r.return_items.Sum(ri => ri.returnSubTotal),
-                clientName = r.fk_Clientid_Users > 0
+                orderId             = r.fk_ordersid_orders,
+                itemCount           = r.return_items.Count,
+                totalAmount         = r.return_items.Sum(ri => ri.returnSubTotal),
+                clientName          = r.fk_Clientid_Users > 0
                     ? r.fk_Clientid_UsersNavigation.name + " " + r.fk_Clientid_UsersNavigation.surname
                     : null,
-                clientEmail = r.fk_Clientid_Users > 0
+                clientEmail         = r.fk_Clientid_Users > 0
                     ? r.fk_Clientid_UsersNavigation.email
                     : null,
                 evaluationSubmitted = r.fk_Adminid_Users != null,
@@ -107,7 +105,8 @@ public class ReturnsController : ControllerBase
         return Ok(returns);
     }
 
-    // ── GET /api/returns/{id} ────────────────────────────────────────────────
+    // ── GET /api/returns/{id} ─────────────────────────────────────────────────
+
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetReturn(int id)
     {
@@ -126,7 +125,6 @@ public class ReturnsController : ControllerBase
                 r.id_Returns,
                 r.date,
                 r.fk_ReturnStatusTypeid_ReturnStatusType,
-                // Clamp to "Sukurtas" if evaluation not yet submitted
                 displayStatusId = r.fk_Adminid_Users == null
                     ? 1
                     : r.fk_ReturnStatusTypeid_ReturnStatusType,
@@ -149,11 +147,11 @@ public class ReturnsController : ControllerBase
                 r.returnLat,
                 r.returnLng,
                 r.fk_Adminid_Users,
-                orderId = r.fk_ordersid_orders,
-                clientName = r.fk_Clientid_UsersNavigation.name + " " + r.fk_Clientid_UsersNavigation.surname,
+                orderId     = r.fk_ordersid_orders,
+                clientName  = r.fk_Clientid_UsersNavigation.name + " " + r.fk_Clientid_UsersNavigation.surname,
                 clientEmail = r.fk_Clientid_UsersNavigation.email,
                 clientPhone = r.fk_Clientid_UsersNavigation.phoneNumber,
-                clientId = r.fk_Clientid_Users,
+                clientId    = r.fk_Clientid_Users,
                 items = r.return_items.Select(ri => new
                 {
                     ri.id_ReturnItem,
@@ -164,11 +162,11 @@ public class ReturnsController : ControllerBase
                     ri.evaluationDate,
                     ri.imageUrls,
                     reason = ri.reasonId != null && ri.reasonNavigation != null
-                                ? ri.reasonNavigation.name
-                                : ri.reason,
+                        ? ri.reasonNavigation.name
+                        : ri.reason,
                     product = new
                     {
-                        id = ri.fk_OrdersProductid_OrdersProductNavigation.fk_Productid_Product,
+                        id   = ri.fk_OrdersProductid_OrdersProductNavigation.fk_Productid_Product,
                         name = ri.fk_OrdersProductid_OrdersProductNavigation.fk_Productid_ProductNavigation.name,
                         unit = ri.fk_OrdersProductid_OrdersProductNavigation.fk_Productid_ProductNavigation.unit,
                         imageUrl = ri.fk_OrdersProductid_OrdersProductNavigation
@@ -185,9 +183,8 @@ public class ReturnsController : ControllerBase
         return Ok(ret);
     }
 
-    // ── PUT /api/returns/{id}/evaluate/open ──────────────────────────────────
-    // Called as soon as the employee opens the evaluation drawer/form.
-    // Sets status to 2 "Vertinamas" if still in "Sukurtas" (1).
+    // ── PUT /api/returns/{id}/evaluate/open ───────────────────────────────────
+
     [HttpPut("{id:int}/evaluate/open")]
     public async Task<IActionResult> MarkAsBeingEvaluated(int id)
     {
@@ -202,26 +199,18 @@ public class ReturnsController : ControllerBase
             .FirstOrDefaultAsync(r => r.id_Returns == id && r.fk_Companyid_Company == companyId);
         if (ret == null) return NotFound();
 
-        // Only advance from "Sukurtas" (1) — don't overwrite a later status
         if (ret.fk_ReturnStatusTypeid_ReturnStatusType == 1)
         {
-            ret.fk_ReturnStatusTypeid_ReturnStatusType = 2; // Vertinamas
+            ret.fk_ReturnStatusTypeid_ReturnStatusType = 2;
             await _db.SaveChangesAsync();
-            await _notif.NotifyReturnStatusAsync(id, 2, companyId); // 2 = Vertinamas
+            await _notif.NotifyReturnStatusAsync(id, 2, companyId);
         }
 
         return Ok(new { statusId = ret.fk_ReturnStatusTypeid_ReturnStatusType });
     }
 
-    // ── PUT /api/returns/{id}/evaluate ───────────────────────────────────────
-    // Full evaluation submit:
-    //   1. Saves per-item evaluation + comment
-    //   2. Auto-derives status:
-    //        all items declined  → 6 Atmesta   (no labels)
-    //        any item approved   → create return shipment + labels
-    //           labels ok        → 7 Etiketės paruoštos
-    //           labels fail/none → 5 Patvirtinta
-    //   3. Creates return shipment row + packages with labels
+    // ── PUT /api/returns/{id}/evaluate ────────────────────────────────────────
+
     [HttpPut("{id:int}/evaluate")]
     public async Task<IActionResult> Evaluate(int id, [FromBody] EvaluateReturnDto dto)
     {
@@ -241,10 +230,9 @@ public class ReturnsController : ControllerBase
         {
             // ── 1. Save per-item evaluations ──────────────────────────────────
             var itemIds = dto.Items?.Select(i => i.ReturnItemId).ToList() ?? new();
-            List<return_item> dbItems = new();
             if (itemIds.Count > 0)
             {
-                dbItems = await _db.return_items
+                var dbItems = await _db.return_items
                     .Where(ri => ri.fk_Returnsid_Returns == id && itemIds.Contains(ri.id_ReturnItem))
                     .ToListAsync();
 
@@ -252,13 +240,12 @@ public class ReturnsController : ControllerBase
                 {
                     var item = dbItems.FirstOrDefault(i => i.id_ReturnItem == itemDto.ReturnItemId);
                     if (item == null) continue;
-                    item.evaluation = itemDto.Evaluation;
+                    item.evaluation        = itemDto.Evaluation;
                     item.evaluationComment = itemDto.EvaluationComment?.Trim();
-                    item.evaluationDate = DateOnly.FromDateTime(DateTime.UtcNow);
+                    item.evaluationDate    = DateOnly.FromDateTime(DateTime.UtcNow);
                 }
             }
 
-            // Re-load all items for the return (including any not in dto)
             var allItems = await _db.return_items
                 .Where(ri => ri.fk_Returnsid_Returns == id)
                 .ToListAsync();
@@ -267,36 +254,59 @@ public class ReturnsController : ControllerBase
             bool allDeclined = allItems.Count > 0 && allItems.All(i => i.evaluation == false);
             bool anyApproved = allItems.Any(i => i.evaluation == true);
 
-            ret.employeeNote = dto.EmployeeNote?.Trim();
+            ret.employeeNote     = dto.EmployeeNote?.Trim();
             ret.fk_Adminid_Users = User.GetUserId();
 
-            // ── 3. If any approved → create return shipment + labels ──────────
             bool labelsCreated = false;
 
             if (anyApproved)
             {
-                // Only approved items get packages (one package total for return shipment)
                 var approvedItems = allItems.Where(i => i.evaluation == true).ToList();
-                int packageCount = approvedItems.Count; // one package per approved return item
+                int packageCount  = approvedItems.Count;
 
-                // Gather sender info (the client who is returning = "sender" on return label)
+                // ── Sender = the CLIENT who is shipping the return ────────────
                 var clientUser = await _db.users.AsNoTracking()
                     .Where(u => u.id_Users == ret.fk_Clientid_Users)
                     .Select(u => new { u.name, u.surname, u.phoneNumber, u.email })
                     .FirstOrDefaultAsync();
 
-                var cc = await _db.client_companies.AsNoTracking()
+                // Profile address used ONLY as a fallback if the client left
+                // their return address blank on the return form
+                var clientProfileAddress = await _db.client_companies.AsNoTracking()
                     .Where(x => x.fk_Companyid_Company == companyId && x.fk_Clientid_Users == ret.fk_Clientid_Users)
                     .Select(x => new { x.deliveryAddress, x.city, x.country })
                     .FirstOrDefaultAsync();
 
-                // Recipient = company (they receive the returned goods)
+                var senderName    = $"{clientUser?.name} {clientUser?.surname}".Trim();
+                var senderPhone   = clientUser?.phoneNumber ?? "";
+
+                // Return form address takes priority — profile address is only a fallback
+                var senderStreet  = !string.IsNullOrWhiteSpace(ret.returnStreet)
+                    ? ret.returnStreet
+                    : (clientProfileAddress?.deliveryAddress ?? "");
+
+                var senderCity    = !string.IsNullOrWhiteSpace(ret.returnCity)
+                    ? ret.returnCity
+                    : (clientProfileAddress?.city ?? "");
+
+                var senderPostal  = (ret.returnPostalCode ?? "")
+                    .Replace("-", "").Replace(" ", "");
+
+                var senderCountry = MapCountry(
+                    !string.IsNullOrWhiteSpace(ret.returnCountry)
+                        ? ret.returnCountry
+                        : clientProfileAddress?.country);
+
+                // ── Recipient = the COMPANY receiving the return ───────────────
                 var company = await _db.companies.AsNoTracking()
                     .Where(c => c.id_Company == companyId)
                     .Select(c => new
                     {
                         c.name,
                         c.phoneNumber,
+                        c.email,
+                        // Use structured return address first, fall back to shipping address,
+                        // then the legacy single-field address — but never use random data
                         c.returnStreet,
                         c.returnCity,
                         c.returnPostalCode,
@@ -305,67 +315,71 @@ public class ReturnsController : ControllerBase
                         c.shippingCity,
                         c.shippingPostalCode,
                         c.shippingCountry,
-                        c.address
+                        c.address   // legacy fallback only
                     })
                     .FirstOrDefaultAsync();
 
-                var recipientStreet = company?.returnStreet ?? company?.shippingStreet ?? company?.address ?? "";
-                var recipientCity = company?.returnCity ?? company?.shippingCity ?? "";
-                var recipientPostalCode = (company?.returnPostalCode ?? company?.shippingPostalCode ?? "").Replace("-", "").Replace(" ", "");
-                var recipientCountry = company?.returnCountry ?? company?.shippingCountry ?? "LT";
+                // Build recipient address with clear fallback chain
+                var recipientStreet = FirstNonEmpty(
+                    company?.returnStreet,
+                    company?.shippingStreet,
+                    company?.address);
 
-                var senderName = $"{clientUser?.name} {clientUser?.surname}".Trim();
-                var senderPhone = clientUser?.phoneNumber ?? "";
-                var senderStreet = ret.returnStreet ?? cc?.deliveryAddress ?? "";
-                var senderCity = ret.returnCity ?? cc?.city ?? "";
-                var senderPostal = (ret.returnPostalCode ?? "").Replace("-", "").Replace(" ", "");
-                var senderCountry = MapCountry(ret.returnCountry ?? cc?.country ?? "LT");
+                var recipientCity = FirstNonEmpty(
+                    company?.returnCity,
+                    company?.shippingCity);
 
-                // Fetch courier
+                var recipientPostalCode = FirstNonEmpty(
+                    company?.returnPostalCode,
+                    company?.shippingPostalCode)
+                    .Replace("-", "").Replace(" ", "");
+
+                var recipientCountry = MapCountry(FirstNonEmpty(
+                    company?.returnCountry,
+                    company?.shippingCountry,
+                    "LT"));
+
+                // ── Courier ───────────────────────────────────────────────────
                 courier? courier = ret.fk_Courierid_Courier.HasValue
                     ? await _db.couriers.FindAsync(ret.fk_Courierid_Courier.Value)
                     : null;
 
                 var courierType = courier?.type ?? "CUSTOM";
-                var integKey = CourierProviderFactory.GetIntegrationKey(courierType);
+                var integKey    = CourierProviderFactory.GetIntegrationKey(courierType);
                 bool isProvider = integKey != null;
 
                 var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-
-                // Determine fk_Ordersid_Orders — required non-null on shipment table.
-                // Use the original order linked to this return.
                 var orderId = ret.fk_ordersid_orders ?? 0;
 
                 var returnShipment = new shipment
                 {
-                    trackingNumber = "",
-                    shippingDate = DateTime.UtcNow,
+                    trackingNumber        = "",
+                    shippingDate          = DateTime.UtcNow,
                     estimatedDeliveryDate = DateTime.UtcNow.AddDays(courier?.deliveryTermDays ?? 3),
-                    fk_Courierid_Courier = ret.fk_Courierid_Courier,
-                    fk_Ordersid_Orders = orderId,
-                    fk_Returnsid_Returns = id,
-                    fk_Companyid_Company = companyId,
-                    providerLockerId = ret.returnLockerId,
-                    DeliveryLat = ret.returnLat,
-                    DeliveryLng = ret.returnLng,
+                    fk_Courierid_Courier  = ret.fk_Courierid_Courier,
+                    fk_Ordersid_Orders    = orderId,
+                    fk_Returnsid_Returns  = id,
+                    fk_Companyid_Company  = companyId,
+                    providerLockerId      = ret.returnLockerId,
+                    DeliveryLat           = ret.returnLat,
+                    DeliveryLng           = ret.returnLng,
                 };
                 _db.shipments.Add(returnShipment);
                 await _db.SaveChangesAsync();
 
-                // Add initial status
                 _db.shipment_statuses.Add(new shipment_status
                 {
-                    fk_Shipmentid_Shipment = returnShipment.id_Shipment,
+                    fk_Shipmentid_Shipment                     = returnShipment.id_Shipment,
                     fk_ShipmentStatusTypeid_ShipmentStatusType = 5,
-                    date = DateTime.UtcNow
+                    date                                       = DateTime.UtcNow
                 });
 
-                var dir = Path.Combine(webRoot, "labels", returnShipment.id_Shipment.ToString());
-                Directory.CreateDirectory(dir);
+                var labelDir = Path.Combine(webRoot, "labels", returnShipment.id_Shipment.ToString());
+                Directory.CreateDirectory(labelDir);
 
                 if (isProvider)
                 {
-                    // ── DPD / provider path ───────────────────────────────────
+                    // ── Provider path (DPD etc.) ──────────────────────────────
                     ICourierProvider provider;
                     try { provider = await _providerFactory.GetProviderAsync(companyId, courierType); }
                     catch (InvalidOperationException ex)
@@ -376,31 +390,33 @@ public class ReturnsController : ControllerBase
 
                     var providerReq = new CourierShipmentRequest
                     {
-                        SenderName = senderName,
-                        SenderPhone = senderPhone,
-                        SenderStreet = senderStreet,
-                        SenderCity = senderCity,
-                        SenderPostalCode = senderPostal,
-                        SenderCountry = senderCountry,
-                        RecipientName = company?.name ?? "—",
-                        RecipientEmail = "",
-                        RecipientPhone = company?.phoneNumber ?? "",
-                        RecipientStreet = recipientStreet,
-                        RecipientCity = recipientCity,
-                        RecipientPostalCode = recipientPostalCode,
-                        RecipientCountry = recipientCountry,
-                        LockerId = ret.returnLockerId,
-                        PackageCount = packageCount,
+                        SenderName          = senderName,
+                        SenderPhone         = senderPhone,
+                        SenderStreet        = senderStreet,
+                        SenderCity          = senderCity,
+                        SenderPostalCode    = senderPostal,
+                        SenderCountry       = senderCountry,
+
+                        RecipientName        = company?.name ?? "—",
+                        RecipientEmail       = company?.email ?? "",
+                        RecipientPhone       = company?.phoneNumber ?? "",
+                        RecipientStreet      = recipientStreet,
+                        RecipientCity        = recipientCity,
+                        RecipientPostalCode  = recipientPostalCode,
+                        RecipientCountry     = recipientCountry,
+
+                        LockerId        = ret.returnLockerId,
+                        PackageCount    = packageCount,
                         PackageWeightKg = 1.0,
-                        OrderReference = $"Return-{id}",
+                        OrderReference  = $"Return-{id}",
                     };
 
                     var result = await provider.CreateShipmentAsync(providerReq);
 
                     if (result.ErrorMessage == null)
                     {
-                        returnShipment.trackingNumber = result.ProviderShipmentId;
-                        returnShipment.providerShipmentId = result.ProviderShipmentId;
+                        returnShipment.trackingNumber      = result.ProviderShipmentId;
+                        returnShipment.providerShipmentId  = result.ProviderShipmentId;
                         returnShipment.providerParcelNumber = result.ParcelNumbers.Count > 0
                             ? string.Join(",", result.ParcelNumbers)
                             : result.ProviderShipmentId;
@@ -412,13 +428,15 @@ public class ReturnsController : ControllerBase
                                 : result.ProviderShipmentId;
 
                             byte[]? labelBytes = result.PerParcelLabelBytes.Count > 0
-                                ? (i < result.PerParcelLabelBytes.Count ? result.PerParcelLabelBytes[i] : result.PerParcelLabelBytes.Last())
+                                ? (i < result.PerParcelLabelBytes.Count
+                                    ? result.PerParcelLabelBytes[i]
+                                    : result.PerParcelLabelBytes.Last())
                                 : null;
 
                             string? labelUrl = null;
                             if (labelBytes != null)
                             {
-                                var filePath = Path.Combine(dir, $"label_{i + 1}.pdf");
+                                var filePath = Path.Combine(labelDir, $"label_{i + 1}.pdf");
                                 await System.IO.File.WriteAllBytesAsync(filePath, labelBytes);
                                 labelUrl = $"/labels/{returnShipment.id_Shipment}/label_{i + 1}.pdf";
                             }
@@ -426,26 +444,26 @@ public class ReturnsController : ControllerBase
                             _db.packages.Add(new package
                             {
                                 fk_Shipmentid_Shipment = returnShipment.id_Shipment,
-                                labelFile = labelUrl,
-                                creationDate = DateTime.UtcNow,
-                                weight = 1.0,
-                                trackingNumber = pkgTracking,
+                                labelFile              = labelUrl,
+                                creationDate           = DateTime.UtcNow,
+                                weight                 = 1.0,
+                                trackingNumber         = pkgTracking,
                             });
                         }
                         labelsCreated = true;
                     }
-                    // If DPD call failed we still proceed — labels just won't be there
-                    // Status will be "Patvirtinta" (5) instead of 7
+                    // If provider call fails, proceed with status 5 (Patvirtinta) — no labels
                 }
                 else
                 {
-                    // ── Custom courier path — generate QuestPDF labels ────────
+                    // ── Custom courier path — professional QuestPDF labels ─────
                     var rng = new Random();
-                    var courierName = courier?.name ?? "—";
-                    var recipientAddr = string.Join(", ", new[] { recipientStreet, recipientCity, recipientCountry }.Where(s => !string.IsNullOrWhiteSpace(s)));
-                    var senderAddr = string.Join(", ", new[] { senderStreet, senderCity, senderCountry }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                    var courierName     = courier?.name ?? "—";
                     var shippingDateStr = DateTime.UtcNow.ToString("yyyy-MM-dd");
-                    var estimatedDeliveryStr = DateTime.UtcNow.AddDays(courier?.deliveryTermDays ?? 3).ToString("yyyy-MM-dd");
+                    var estimatedStr    = DateTime.UtcNow.AddDays(courier?.deliveryTermDays ?? 3).ToString("yyyy-MM-dd");
+
+                    var senderAddr    = BuildAddressLine(senderStreet, senderCity, senderCountry);
+                    var recipientAddr = BuildAddressLine(recipientStreet, recipientCity, recipientCountry);
 
                     string? firstTracking = null;
                     for (int i = 0; i < packageCount; i++)
@@ -453,7 +471,7 @@ public class ReturnsController : ControllerBase
                         string pkgTracking;
                         do
                         {
-                            var ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                            var ts     = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                             var suffix = rng.Next(1000, 9999);
                             pkgTracking = $"RET-{companyId}-{id}-{ts}-{suffix}";
                         }
@@ -461,30 +479,31 @@ public class ReturnsController : ControllerBase
 
                         if (firstTracking == null) firstTracking = pkgTracking;
 
+                        // Generate professional label with barcode + QR
                         string labelUrl = LabelGenerator.Generate(
-                            webRootPath: webRoot,
-                            shipmentId: returnShipment.id_Shipment,
-                            packageIndex: i + 1,
-                            totalPackages: packageCount,
-                            trackingNumber: pkgTracking,
-                            senderName: senderName,
-                            senderAddress: senderAddr,
-                            senderPhone: senderPhone,
-                            recipientName: company?.name ?? "—",
-                            recipientAddress: recipientAddr,
-                            recipientPhone: company?.phoneNumber ?? "",
-                            courierName: courierName,
-                            shippingDate: shippingDateStr,
-                            estimatedDelivery: estimatedDeliveryStr
+                            webRootPath:       webRoot,
+                            shipmentId:        returnShipment.id_Shipment,
+                            packageIndex:      i + 1,
+                            totalPackages:     packageCount,
+                            trackingNumber:    pkgTracking,
+                            senderName:        senderName,
+                            senderAddress:     senderAddr,
+                            senderPhone:       senderPhone,
+                            recipientName:     company?.name ?? "—",
+                            recipientAddress:  recipientAddr,
+                            recipientPhone:    company?.phoneNumber ?? "",
+                            courierName:       courierName,
+                            shippingDate:      shippingDateStr,
+                            estimatedDelivery: estimatedStr
                         );
 
                         _db.packages.Add(new package
                         {
                             fk_Shipmentid_Shipment = returnShipment.id_Shipment,
-                            labelFile = labelUrl,
-                            creationDate = DateTime.UtcNow,
-                            weight = 1.0,
-                            trackingNumber = pkgTracking,
+                            labelFile              = labelUrl,
+                            creationDate           = DateTime.UtcNow,
+                            weight                 = 1.0,
+                            trackingNumber         = pkgTracking,
                         });
                     }
 
@@ -496,25 +515,16 @@ public class ReturnsController : ControllerBase
             }
 
             // ── 4. Set final status ───────────────────────────────────────────
-            int finalStatus;
-            if (allDeclined)
-                finalStatus = 6;                          // Atmesta
-            else if (labelsCreated)
-                finalStatus = 7;                          // Etiketės paruoštos
-            else
-                finalStatus = 5;                          // Patvirtinta (labels pending / failed)
+            int finalStatus = allDeclined ? 6
+                            : labelsCreated ? 7
+                            : 5;
 
             ret.fk_ReturnStatusTypeid_ReturnStatusType = finalStatus;
-
             await _db.SaveChangesAsync();
             await tx.CommitAsync();
             await _notif.NotifyReturnStatusAsync(id, finalStatus, companyId);
-            return Ok(new
-            {
-                returnId = id,
-                statusId = finalStatus,
-                labelsCreated,
-            });
+
+            return Ok(new { returnId = id, statusId = finalStatus, labelsCreated });
         }
         catch (Exception ex)
         {
@@ -523,12 +533,21 @@ public class ReturnsController : ControllerBase
         }
     }
 
-    // ── Helper ────────────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /// <summary>Returns the first non-null, non-whitespace string from the candidates.</summary>
+    private static string FirstNonEmpty(params string?[] candidates)
+        => candidates.FirstOrDefault(s => !string.IsNullOrWhiteSpace(s)) ?? "";
+
+    /// <summary>Joins non-empty address parts with ", ".</summary>
+    private static string BuildAddressLine(params string?[] parts)
+        => string.Join(", ", parts.Where(s => !string.IsNullOrWhiteSpace(s)));
+
     private static string MapCountry(string? country) => country?.ToUpperInvariant() switch
     {
         "LIETUVA" or "LIETUVOS RESPUBLIKA" or "LT" => "LT",
         "LATVIJA" or "LATVIJOS RESPUBLIKA" or "LV" => "LV",
-        "ESTIJA" or "ESTIJOS RESPUBLIKA" or "EE" => "EE",
+        "ESTIJA"  or "ESTIJOS RESPUBLIKA"  or "EE" => "EE",
         "LENKIJA" or "LENKIJOS RESPUBLIKA" or "PL" => "PL",
         "VOKIETIJA" or "VOKIETIJOS FEDERACINĖ RESPUBLIKA" or "DE" => "DE",
         _ => "LT"
@@ -539,8 +558,7 @@ public class ReturnsController : ControllerBase
 
 public class EvaluateReturnDto
 {
-    // NOTE: StatusId is no longer used — status is derived automatically.
-    // Kept for backwards compat so old clients don't break.
+    /// <summary>Kept for backwards compat — status is now derived automatically from item evaluations.</summary>
     public int? StatusId { get; set; }
     public string? EmployeeNote { get; set; }
     public List<ReturnItemEvalDto> Items { get; set; } = new();
@@ -548,7 +566,7 @@ public class EvaluateReturnDto
 
 public class ReturnItemEvalDto
 {
-    public int ReturnItemId { get; set; }
-    public bool Evaluation { get; set; }
+    public int     ReturnItemId      { get; set; }
+    public bool    Evaluation        { get; set; }
     public string? EvaluationComment { get; set; }
 }

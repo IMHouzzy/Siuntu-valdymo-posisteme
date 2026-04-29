@@ -79,12 +79,25 @@ export default function UserHome() {
 
   const handleTrack = async (e) => {
     e.preventDefault();
-    const num = trackingInput.trim();
-    if (!num) { setError("Įveskite sekimo numerį."); return; }
+
+    const num = trackingInput.trim().toUpperCase();
+
+    if (!num) {
+      setError("Įveskite sekimo numerį.");
+      return;
+    }
+
+    if (!isValidTrackingNumber(num)) {
+      setError("Leidžiami numeriai turi prasidėti: PKG, RET arba 9999.");
+      return;
+    }
+
     setError("");
     setLoading(true);
+
     try {
       const data = await trackingApi.track(num);
+
       if (data.type === "dpd") {
         window.open(data.dpdUrl, "_blank", "noopener,noreferrer");
       } else {
@@ -100,7 +113,15 @@ export default function UserHome() {
       setLoading(false);
     }
   };
+  function isValidTrackingNumber(value) {
+    const v = value.trim().toUpperCase();
 
+    return (
+      v.startsWith("PKG") ||
+      v.startsWith("RET") ||
+      v.startsWith("9999")
+    );
+  }
   return (
     <div className="uhome-page">
       <section className="uhome-hero">
@@ -162,7 +183,7 @@ export default function UserHome() {
             <div className="uhome-orders-cta-title">Jūsų užsakymai</div>
             <div className="uhome-orders-cta-sub">Peržiūrėkite visus savo užsakymus ir jų siuntas vienoje vietoje.</div>
           </div>
-          <button className="uhome-orders-btn" onClick={() => navigate("/client/orders")}>
+          <button className="uhome-orders-btn" onClick={() => navigate("/client/profile#orders")}>
             Mano užsakymai <FiArrowRight size={15} />
           </button>
         </div>
