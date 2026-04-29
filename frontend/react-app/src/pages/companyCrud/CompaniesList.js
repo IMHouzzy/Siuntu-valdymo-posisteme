@@ -8,7 +8,7 @@ import {
 import { useAuth } from "../../services/AuthContext";
 import "../../styles/CompaniesList.css";
 import { companiesApi } from "../../services/api";
-const API = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065";
+const API = (process.env.REACT_APP_API_URL || "/api").replace(/\/api\/?$/, "");
 
 
 // Deterministic hue from company name — gives each card a unique accent colour

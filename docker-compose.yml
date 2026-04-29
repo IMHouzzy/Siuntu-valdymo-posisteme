@@ -59,6 +59,7 @@ services:
       args:
         REACT_APP_API_URL: /api
         REACT_APP_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+        REACT_APP_BUTENT_API_URL: ${REACT_APP_BUTENT_API_URL}
     container_name: siuntu_web
     restart: unless-stopped
     depends_on:

@@ -9,7 +9,7 @@ import "../styles/ReturnFormModal.css";
 import { lockerApi, companiesApi, clientReturnsApi } from "../services/api";
 import '../styles/validation-styles.css';
 // Fallback so ASSET_BASE is never undefined
-const ASSET_BASE = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065";
+const ASSET_BASE = (process.env.REACT_APP_API_URL || "/api").replace(/\/api\/?$/, "");
 
 const RETURN_REASONS = [
   { id: 1, label: "Pažeistas" },

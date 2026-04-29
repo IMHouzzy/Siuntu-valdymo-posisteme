@@ -20,6 +20,7 @@ import TrackSyncSmall from "../images/TrackSync_Small.png";
 import { useAuth } from "../services/AuthContext";
 
 const LS_KEY = "sidebar_open_groups_v1";
+const ASSET_BASE = (process.env.REACT_APP_API_URL || "/api").replace(/\/api\/?$/, "");
 
 function normalizeRole(r) {
   return String(r || "").trim().toUpperCase();
@@ -271,7 +272,7 @@ export default function SidebarLeft({ collapsed, onToggle }) {
             <img
               src={
                 activeCompany?.image
-                  ? `http://localhost:5065${activeCompany.image}`
+                  ? `${ASSET_BASE}${activeCompany.image}`
                   : TrackSyncSmall
               }
               alt={activeCompany?.name || "Company"}

@@ -20,7 +20,7 @@ import { useAuth } from "../../services/AuthContext";
 import NoImage from "../../images/no-camera.png";
 import { returnsApi } from "../../services/api";
 
-const API = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065";
+const API = (process.env.REACT_APP_API_URL || "/api").replace(/\/api\/?$/, "");
 
 // ── Status config ─────────────────────────────────────────────────────────────
 const RETURN_STATUS = {

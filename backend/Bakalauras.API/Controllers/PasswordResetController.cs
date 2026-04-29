@@ -20,11 +20,13 @@ public class PasswordResetController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IEmailService _email;
+    private readonly IConfiguration _cfg;
 
-    public PasswordResetController(AppDbContext db, IEmailService email)
+    public PasswordResetController(AppDbContext db, IEmailService email, IConfiguration cfg)
     {
         _db = db;
         _email = email;
+        _cfg = cfg;
     }
 
     // ── STEP 1: user submits email ────────────────────────────────────────────
@@ -53,8 +55,8 @@ public class PasswordResetController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-        // Change this URL to wherever your frontend is hosted
-        var resetUrl = $"http://localhost:3000/reset-password?token={rawToken}";
+        var frontendBase = (_cfg["FrontendBaseUrl"] ?? "http://localhost:3000").TrimEnd('/');
+        var resetUrl = $"{frontendBase}/reset-password?token={rawToken}";
 
         await _email.SendAsync(
             to: user.email,

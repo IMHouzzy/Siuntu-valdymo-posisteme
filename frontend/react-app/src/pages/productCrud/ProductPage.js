@@ -9,7 +9,7 @@ import NoImage from "../../images/no-camera.png";
 import { useAuth } from "../../services/AuthContext";
 import { productsApi } from "../../services/api";
 
-const API = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065";
+const API = (process.env.REACT_APP_API_URL || "/api").replace(/\/api\/?$/, "");
 function ProductList() {
     const navigate = useNavigate();
     const [products, setProducts] = useState([]);

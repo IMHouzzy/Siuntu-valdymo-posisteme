@@ -7,7 +7,7 @@
 //     browser sets the correct boundary automatically
 // ─────────────────────────────────────────────────────────────────────────────
 
-const BASE = (process.env.REACT_APP_API_URL ?? "http://localhost:5065/api")
+const BASE = (process.env.REACT_APP_API_URL ?? "/api")
     .replace(/\/$/, "");
 
 // ── Core fetch wrapper ────────────────────────────────────────────────────────

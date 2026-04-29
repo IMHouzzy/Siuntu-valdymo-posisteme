@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 
 const AuthContext = createContext();
 
-const API = "http://localhost:5065/api"; // ← single source of truth, includes /api
+const API = (process.env.REACT_APP_API_URL || "/api").replace(/\/$/, "");
 
 const apiFetch = (url, options = {}) =>
     fetch(url, { credentials: "include", ...options });

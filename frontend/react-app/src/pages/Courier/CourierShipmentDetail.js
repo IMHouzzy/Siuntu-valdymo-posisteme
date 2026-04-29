@@ -10,7 +10,7 @@ import {
   FiX, FiSave, FiNavigation, FiTag, FiBox,
 } from "react-icons/fi";
 
-const ASSET_BASE = process.env.REACT_APP_API_URL?.replace(/\/api$/, "") ?? "http://localhost:5065";
+const ASSET_BASE = (process.env.REACT_APP_API_URL || "/api").replace(/\/api\/?$/, "");
 
 const DONE_STATUSES = ["Pristatyta", "Grąžinimas pristatytas"];
 

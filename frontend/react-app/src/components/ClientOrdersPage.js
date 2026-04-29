@@ -16,7 +16,7 @@ import "../styles/ClientOrdersPage.css";
 import '../styles/validation-styles.css';
 import { lockerApi, clientApi, companiesApi } from "../services/api";
 
-const API = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065";
+const API = (process.env.REACT_APP_API_URL || "/api").replace(/\/api\/?$/, "");
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 const ORDER_STATUS = {

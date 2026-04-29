@@ -9,7 +9,7 @@ import { useAuth } from "../../services/AuthContext";
 import { shipmentsApi } from "../../services/api";
 import "../../styles/UserPage.css";
 
-const API = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065";
+const API = (process.env.REACT_APP_API_URL || "/api").replace(/\/api\/?$/, "");
 
 function ShipmentsList() {
   const navigate = useNavigate();

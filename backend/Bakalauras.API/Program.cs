@@ -1,4 +1,4 @@
-// Program.cs
+﻿// Program.cs
 using System.Text;
 using Bakalauras.API.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -11,7 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
-// ── DbContext ─────────────────────────────────────────────────────────────────
+// â”€â”€ DbContext â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(
@@ -20,7 +20,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     )
 );
 
-// ── Services ──────────────────────────────────────────────────────────────────
+// â”€â”€ Services â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
@@ -30,7 +30,7 @@ builder.Services.AddScoped<CourierProviderFactory>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 
-// ── JWT auth — reads token from httpOnly cookie ───────────────────────────────
+// â”€â”€ JWT auth â€” reads token from httpOnly cookie â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var jwtKey = jwtSettings["Key"];
@@ -59,7 +59,7 @@ builder.Services
             ClockSkew = TimeSpan.Zero,
         };
 
-        // ── Read JWT from the httpOnly cookie instead of Authorization header ─
+        // â”€â”€ Read JWT from the httpOnly cookie instead of Authorization header â”€
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = ctx =>
@@ -73,22 +73,30 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-// ── CORS — credentials require an explicit origin, not a wildcard ─────────────
+// â”€â”€ CORS â€” credentials require an explicit origin, not a wildcard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 builder.Services.AddCors(options =>
 {
+    var frontendOrigins = new[]
+    {
+        "http://localhost:3000",
+        "http://localhost:5173",
+        builder.Configuration["FrontendBaseUrl"]
+    }
+    .Where(origin => !string.IsNullOrWhiteSpace(origin))
+    .Select(origin => origin!.TrimEnd('/'))
+    .Distinct()
+    .ToArray();
+
     options.AddPolicy("Frontend", policy =>
         policy
-            .WithOrigins(
-                "http://localhost:3000",   // CRA
-                "http://localhost:5173"    // Vite  ← add/remove as needed
-            )
+            .WithOrigins(frontendOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials());          // required so the browser sends cookies
+            .AllowCredentials());
 });
 
-// ── Misc ──────────────────────────────────────────────────────────────────────
+// â”€â”€ Misc â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 var encKey = builder.Configuration["Encryption:Key"]
     ?? throw new InvalidOperationException("Encryption:Key is missing.");
@@ -100,7 +108,7 @@ builder.Services.AddHostedService<ClientSyncWorker>();
 builder.Services.AddHostedService<ProductSyncWorker>();
 builder.Services.AddHostedService<OrderSyncWorker>();
 
-// ── Pipeline ──────────────────────────────────────────────────────────────────
+// â”€â”€ Pipeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 var app = builder.Build();
 

@@ -5,7 +5,7 @@ import SearchSelect from "./SearchSelect";
 import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
 import { FiTrash2, FiImage, FiRefreshCw } from "react-icons/fi";
 import { lockerApi, companiesApi } from "../services/api";
-const ASSET_BASE = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065";
+const ASSET_BASE = (process.env.REACT_APP_API_URL || "/api").replace(/\/api\/?$/, "");
 
 
 // ─── Overlay root — one fixed div at z-index 99999, all portals go here ──────

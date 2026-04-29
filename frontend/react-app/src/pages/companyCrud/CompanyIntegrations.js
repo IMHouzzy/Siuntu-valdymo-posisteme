@@ -220,7 +220,7 @@ export default function CompanyIntegrations() {
       <IntegrationPanel
         title={<span style={{ display: "flex", alignItems: "center" }}><FiDatabase size={16} style={{ marginRight: 6 }} /> BŪTENT (apskaitos sistema)</span>}
         typeKey="BŪTENT" existing={butentExisting} loading={loading}
-        defaultBaseUrl="http://localhost:3000/api/v1/"
+        defaultBaseUrl={process.env.REACT_APP_BUTENT_API_URL || ""}
         onSave={p => handleSave("butent", p)} onDelete={() => handleDelete("butent", "BŪTENT")}
       />
       <IntegrationPanel

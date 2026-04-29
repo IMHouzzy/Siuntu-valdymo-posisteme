@@ -8,7 +8,7 @@ import { FiTrash2, FiEdit, FiUser, FiShield, FiBriefcase, FiCopy, FiCheck } from
 import { useAuth } from "../../services/AuthContext";
 import { usersApi } from "../../services/api";
 
-const API = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065";
+const API = (process.env.REACT_APP_API_URL || "/api").replace(/\/api\/?$/, "");
 
 function getInitials(name, surname) {
     return `${(name?.[0] ?? "").toUpperCase()}${(surname?.[0] ?? "").toUpperCase()}` || "?";

@@ -12,7 +12,7 @@ import {
 } from "react-icons/fi";
 import "../../styles/OrderDetail.css";
 
-const API = process.env.REACT_APP_API_BASE_URL || "http://localhost:5065";
+const API = (process.env.REACT_APP_API_URL || "/api").replace(/\/api\/?$/, "");
 
 const RETURN_STATUS = {
     1: { label: "Sukurtas", color: "var(--color-secondary)", icon: FiAlertCircle },
