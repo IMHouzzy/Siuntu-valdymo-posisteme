@@ -161,7 +161,7 @@ function ProductList() {
                     {/* Main Image */}
                     <div className={`rd-product-hero-img ${!product.images?.[0]?.url ? "rd-product-img-placeholder" : ""}`}>
                         {product.images?.[0]?.url ? (
-                            <img src={`${API}/${product.images[0].url}`} alt={product.name || "product"} />
+                            <img src={`${API}${product.images[0].url}`} alt={product.name || "product"} />
                         ) : (
                             <img src={NoImage} alt="No image" />
                         )}

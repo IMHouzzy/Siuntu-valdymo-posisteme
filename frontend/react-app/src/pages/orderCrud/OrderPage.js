@@ -275,7 +275,7 @@ function OrdersList() {
                                 <div key={i} className="rd-product-row">
                                     <div className={`rd-product-img ${!p.imageUrl ? "rd-product-img-placeholder" : ""}`}>
                                         {p.imageUrl ? (
-                                            <img src={`${API}/${p.imageUrl}`} alt={p.name} />
+                                            <img src={`${API}${p.imageUrl}`} alt={p.name} />
                                         ) : (
                                             <img src={NoImage} alt="No image" />
                                         )}

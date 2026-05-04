@@ -12,6 +12,26 @@ public interface IEmailService
                                   IEnumerable<(string path, string name)> attachments);
 }
 
+public sealed class NoOpEmailService : IEmailService
+{
+    private readonly ILogger<NoOpEmailService> _log;
+    public NoOpEmailService(ILogger<NoOpEmailService> log) => _log = log;
+
+    public Task SendAsync(string to, string subject, string htmlBody)
+    {
+        _log.LogWarning("Email skipped (no API key configured): {Subject} → {To}", subject, to);
+        return Task.CompletedTask;
+    }
+
+    public Task SendWithAttachmentAsync(string to, string subject, string htmlBody,
+                                        string attachmentPath, string attachmentName)
+        => SendAsync(to, subject, htmlBody);
+
+    public Task SendWithAttachmentsAsync(string to, string subject, string htmlBody,
+                                         IEnumerable<(string path, string name)> attachments)
+        => SendAsync(to, subject, htmlBody);
+}
+
 public class ResendEmailService : IEmailService
 {
     private readonly EmailBackgroundQueue _queue;

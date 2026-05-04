@@ -24,20 +24,25 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // â”€â”€ Services â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 builder.Services.AddOptions();
-builder.Services.AddHttpClient<ResendClient>();
-builder.Services.Configure<ResendClientOptions>(options =>
-{
-    var apiToken = builder.Configuration["EmailSettings:ResendApiKey"];
-    if (string.IsNullOrWhiteSpace(apiToken))
-        throw new InvalidOperationException("EmailSettings:ResendApiKey is missing.");
 
-    options.ApiToken = apiToken;
-    options.ThrowExceptions = true;
-});
-builder.Services.AddTransient<IResend, ResendClient>();
-builder.Services.AddSingleton<EmailBackgroundQueue>();
-builder.Services.AddHostedService<ResendEmailBackgroundWorker>();
-builder.Services.AddScoped<IEmailService, ResendEmailService>();
+var resendApiKey = builder.Configuration["EmailSettings:ResendApiKey"];
+if (!string.IsNullOrWhiteSpace(resendApiKey))
+{
+    builder.Services.AddHttpClient<ResendClient>();
+    builder.Services.Configure<ResendClientOptions>(options =>
+    {
+        options.ApiToken = resendApiKey;
+        options.ThrowExceptions = true;
+    });
+    builder.Services.AddTransient<IResend, ResendClient>();
+    builder.Services.AddSingleton<EmailBackgroundQueue>();
+    builder.Services.AddHostedService<ResendEmailBackgroundWorker>();
+    builder.Services.AddScoped<IEmailService, ResendEmailService>();
+}
+else
+{
+    builder.Services.AddScoped<IEmailService, NoOpEmailService>();
+}
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<JwtService>();
