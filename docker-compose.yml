@@ -38,12 +38,9 @@ services:
       Jwt__CookieSecure: ${JWT_COOKIE_SECURE}
       Encryption__Key: ${ENCRYPTION_KEY}
       GoogleAuth__ClientId: ${GOOGLE_CLIENT_ID}
-      EmailSettings__Host: ${SMTP_HOST}
-      EmailSettings__Port: ${SMTP_PORT}
-      EmailSettings__Username: ${SMTP_USERNAME}
-      EmailSettings__Password: ${SMTP_PASSWORD}
-      EmailSettings__FromName: ${SMTP_FROM_NAME}
-      EmailSettings__FromAddress: ${SMTP_FROM_ADDRESS}
+      EmailSettings__ResendApiKey: ${RESEND_API_KEY}
+      EmailSettings__FromName: ${EMAIL_FROM_NAME}
+      EmailSettings__FromAddress: ${EMAIL_FROM_ADDRESS}
       FrontendBaseUrl: ${PUBLIC_BASE_URL}
     volumes:
       - api_wwwroot:/app/wwwroot

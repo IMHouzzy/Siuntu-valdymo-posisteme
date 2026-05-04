@@ -1,19 +1,5 @@
-// Services/IEmailService.cs + SmtpEmailService.cs
-// Wire up in Program.cs:
-//   builder.Services.AddScoped<IEmailService, SmtpEmailService>();
-//
-// appsettings.json example:
-//   "EmailSettings": {
-//     "Host": "smtp.gmail.com",
-//     "Port": 587,
-//     "Username": "yourapp@gmail.com",
-//     "Password": "yourAppPassword",
-//     "FromName": "Jūsų Parduotuvė",
-//     "FromAddress": "yourapp@gmail.com"
-//   }
-
-using System.Net;
-using System.Net.Mail;
+using System.Threading.Channels;
+using Resend;
 
 namespace Bakalauras.API.Services;
 
@@ -23,83 +9,142 @@ public interface IEmailService
     Task SendWithAttachmentAsync(string to, string subject, string htmlBody,
                                  string attachmentPath, string attachmentName);
     Task SendWithAttachmentsAsync(string to, string subject, string htmlBody,
-                                  IEnumerable<(string path, string name)> attachments); // ← ADD
+                                  IEnumerable<(string path, string name)> attachments);
 }
-public class SmtpEmailService : IEmailService
-{
-    private readonly IConfiguration _cfg;
-    private readonly ILogger<SmtpEmailService> _log;
 
-    public SmtpEmailService(IConfiguration cfg, ILogger<SmtpEmailService> log)
+public class ResendEmailService : IEmailService
+{
+    private readonly EmailBackgroundQueue _queue;
+    private readonly ILogger<ResendEmailService> _log;
+
+    public ResendEmailService(EmailBackgroundQueue queue, ILogger<ResendEmailService> log)
     {
+        _queue = queue;
+        _log = log;
+    }
+
+    public Task SendWithAttachmentsAsync(string to, string subject, string htmlBody,
+                                         IEnumerable<(string path, string name)> attachments)
+    {
+        _queue.Queue(new QueuedEmail(
+            to,
+            subject,
+            htmlBody,
+            attachments.ToArray()));
+
+        _log.LogInformation("Email queued for {To} - {Subject}", to, subject);
+        return Task.CompletedTask;
+    }
+
+    public Task SendAsync(string to, string subject, string htmlBody)
+        => SendWithAttachmentsAsync(to, subject, htmlBody, Array.Empty<(string path, string name)>());
+
+    public Task SendWithAttachmentAsync(string to, string subject, string htmlBody,
+                                        string attachmentPath, string attachmentName)
+        => SendWithAttachmentsAsync(to, subject, htmlBody,
+            new[] { (attachmentPath, attachmentName) });
+}
+
+public sealed record QueuedEmail(
+    string To,
+    string Subject,
+    string HtmlBody,
+    IReadOnlyCollection<(string path, string name)> Attachments);
+
+public sealed class EmailBackgroundQueue
+{
+    private readonly Channel<QueuedEmail> _queue = Channel.CreateUnbounded<QueuedEmail>();
+
+    public void Queue(QueuedEmail email)
+        => _queue.Writer.TryWrite(email);
+
+    public IAsyncEnumerable<QueuedEmail> ReadAllAsync(CancellationToken cancellationToken)
+        => _queue.Reader.ReadAllAsync(cancellationToken);
+}
+
+public sealed class ResendEmailBackgroundWorker : BackgroundService
+{
+    private readonly EmailBackgroundQueue _queue;
+    private readonly IServiceScopeFactory _scopeFactory;  // ← replaces IResend
+    private readonly IConfiguration _cfg;
+    private readonly ILogger<ResendEmailBackgroundWorker> _log;
+
+    public ResendEmailBackgroundWorker(
+        EmailBackgroundQueue queue,
+        IServiceScopeFactory scopeFactory,               // ← inject this instead
+        IConfiguration cfg,
+        ILogger<ResendEmailBackgroundWorker> log)
+    {
+        _queue = queue;
+        _scopeFactory = scopeFactory;
         _cfg = cfg;
         _log = log;
     }
 
-
-
-    public Task SendWithAttachmentsAsync(string to, string subject, string htmlBody,
-                                             IEnumerable<(string path, string name)> attachments)
-            => SendCoreAsync(to, subject, htmlBody, attachments);
-
-
-    private async Task SendCoreAsync(string to, string subject, string htmlBody,
-                                      IEnumerable<(string path, string name)>? attachments)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var section = _cfg.GetSection("EmailSettings");
-        var host = section["Host"] ?? throw new InvalidOperationException("EmailSettings:Host missing");
-        var port = int.Parse(section["Port"] ?? "587");
-        var user = section["Username"] ?? throw new InvalidOperationException("EmailSettings:Username missing");
-        var pass = section["Password"] ?? throw new InvalidOperationException("EmailSettings:Password missing");
-        var fromName = section["FromName"] ?? "System";
-        var fromAddr = section["FromAddress"] ?? user;
-
-        using var client = new SmtpClient(host, port)
+        await foreach (var email in _queue.ReadAllAsync(stoppingToken))
         {
-            Credentials = new NetworkCredential(user, pass),
-            EnableSsl = true,
-            DeliveryMethod = SmtpDeliveryMethod.Network,
-        };
-
-        using var msg = new MailMessage
-        {
-            From = new MailAddress(fromAddr, fromName),
-            Subject = subject,
-            Body = htmlBody,
-            IsBodyHtml = true,
-        };
-        msg.To.Add(to);
-
-        // Attach all files in one message
-        if (attachments != null)
-        {
-            foreach (var (path, name) in attachments)
-            {
-                if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
-                {
-                    msg.Attachments.Add(new Attachment(path) { Name = name });
-                }
-            }
-        }
-
-        try
-        {
-            await client.SendMailAsync(msg);
-            _log.LogInformation("Email sent to {To} — {Subject}", to, subject);
-        }
-        catch (Exception ex)
-        {
-            _log.LogError(ex, "SMTP failed for {To} — {Subject}", to, subject);
-            throw;
+            // Create a short-lived scope per email so scoped services work fine
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var resend = scope.ServiceProvider.GetRequiredService<IResend>();
+            await SendCoreAsync(email, resend, stoppingToken);
         }
     }
 
-    // Keep old single-attachment methods working by delegating:
-    public Task SendAsync(string to, string subject, string htmlBody)
-        => SendCoreAsync(to, subject, htmlBody, null);
+    private async Task SendCoreAsync(QueuedEmail email, IResend resend, CancellationToken cancellationToken)
+    {
+        var section = _cfg.GetSection("EmailSettings");
+        var fromName = section["FromName"] ?? "System";
+        var fromAddr = section["FromAddress"]
+            ?? throw new InvalidOperationException("EmailSettings:FromAddress missing");
 
-    public Task SendWithAttachmentAsync(string to, string subject, string htmlBody,
-                                        string attachmentPath, string attachmentName)
-        => SendCoreAsync(to, subject, htmlBody,
-               new[] { (attachmentPath, attachmentName) });
+        var message = new EmailMessage
+        {
+            From = string.IsNullOrWhiteSpace(fromName) ? fromAddr : $"{fromName} <{fromAddr}>",
+            Subject = email.Subject,
+            HtmlBody = email.HtmlBody,
+        };
+        message.To.Add(email.To);
+
+        try
+        {
+            message.Attachments = await BuildAttachmentsAsync(email.Attachments, cancellationToken);
+
+            var response = await resend.EmailSendAsync(message, cancellationToken);
+            _log.LogInformation("Email sent to {To} - {Subject}. Resend id: {EmailId}",
+                email.To, email.Subject, response.Content);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Resend failed for {To} - {Subject}", email.To, email.Subject);
+        }
+    }
+
+
+    private static async Task<List<EmailAttachment>?> BuildAttachmentsAsync(
+        IEnumerable<(string path, string name)> attachments,
+        CancellationToken cancellationToken)
+    {
+        var result = new List<EmailAttachment>();
+
+        foreach (var (path, name) in attachments)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+                continue;
+
+            var attachment = await EmailAttachment.FromAsync(path, cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(name))
+                attachment.Filename = name;
+
+            result.Add(attachment);
+        }
+
+        return result.Count == 0 ? null : result;
+    }
 }

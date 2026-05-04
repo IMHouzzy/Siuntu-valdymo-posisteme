@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using QuestPDF.Infrastructure;
 using Bakalauras.API.Services;
+using Resend;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,7 +23,21 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // â”€â”€ Services â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+builder.Services.AddOptions();
+builder.Services.AddHttpClient<ResendClient>();
+builder.Services.Configure<ResendClientOptions>(options =>
+{
+    var apiToken = builder.Configuration["EmailSettings:ResendApiKey"];
+    if (string.IsNullOrWhiteSpace(apiToken))
+        throw new InvalidOperationException("EmailSettings:ResendApiKey is missing.");
+
+    options.ApiToken = apiToken;
+    options.ThrowExceptions = true;
+});
+builder.Services.AddTransient<IResend, ResendClient>();
+builder.Services.AddSingleton<EmailBackgroundQueue>();
+builder.Services.AddHostedService<ResendEmailBackgroundWorker>();
+builder.Services.AddScoped<IEmailService, ResendEmailService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<JwtService>();
@@ -30,7 +45,6 @@ builder.Services.AddScoped<CourierProviderFactory>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 
-// â”€â”€ JWT auth â€” reads token from httpOnly cookie â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var jwtKey = jwtSettings["Key"];
@@ -73,7 +87,6 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-// â”€â”€ CORS â€” credentials require an explicit origin, not a wildcard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 builder.Services.AddCors(options =>
 {
@@ -96,7 +109,6 @@ builder.Services.AddCors(options =>
             .AllowCredentials());
 });
 
-// â”€â”€ Misc â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 var encKey = builder.Configuration["Encryption:Key"]
     ?? throw new InvalidOperationException("Encryption:Key is missing.");
@@ -108,7 +120,6 @@ builder.Services.AddHostedService<ClientSyncWorker>();
 builder.Services.AddHostedService<ProductSyncWorker>();
 builder.Services.AddHostedService<OrderSyncWorker>();
 
-// â”€â”€ Pipeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 var app = builder.Build();
 
